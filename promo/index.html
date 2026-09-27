@@ -61,9 +61,19 @@
   .ring{position:absolute;left:540px;top:800px;width:0;height:0;transform-style:preserve-3d}
   .ring .item{position:absolute;transform-style:preserve-3d}
   .marquee{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--sans);font-size:34px;color:var(--muted);letter-spacing:.04em}
+
+  /* ?story — 15 s Instagram Stories cut: keep key content inside the safe zone */
+  body.story #s4-foot .serif{bottom:420px!important}
+  body.story .code-row{top:270px}
+  body.story #s5-num-mask{top:345px!important}
+  body.story #s5-name-mask{top:385px!important}
+  body.story #s5-avail10{top:555px!important}
+  body.story #s5-tagfade{top:1400px!important}
+  body.story #s5-tag-mask{top:1440px!important}
 </style>
 </head>
 <body>
+<script>if(new URLSearchParams(location.search).has('story'))document.body.classList.add('story');</script>
 <div id="stage">
 
   <!-- S1 · viewfinder cold open -->
@@ -136,9 +146,9 @@
     <div class="code-row" id="s5-codes"></div>
     <div class="abs" style="left:80px;top:210px;width:360px;height:290px;overflow:hidden" id="s5-num-mask"></div>
     <div class="abs" style="left:440px;top:250px;width:600px;height:150px;overflow:hidden" id="s5-name-mask"></div>
-    <div class="abs mono" style="left:448px;top:420px;font-size:26px;color:var(--muted)">/ 10 languages</div>
+    <div class="abs mono" id="s5-avail10" style="left:448px;top:420px;font-size:26px;color:var(--muted)">/ 10 languages</div>
     <div id="s5-phone-wrap" class="abs" style="left:0;top:0;perspective:2200px;width:1080px;height:1920px"></div>
-    <div class="abs" style="left:0;right:0;top:1600px;height:320px;background:linear-gradient(180deg,rgba(8,8,9,0),rgba(8,8,9,.85) 30%)"></div>
+    <div class="abs" id="s5-tagfade" style="left:0;right:0;top:1600px;height:320px;background:linear-gradient(180deg,rgba(8,8,9,0),rgba(8,8,9,.85) 30%)"></div>
     <div class="abs" style="left:40px;right:40px;top:1610px;height:150px;overflow:hidden" id="s5-tag-mask"></div>
   </section>
 
@@ -269,8 +279,9 @@ const s5nums=LANGS.map((l,i)=>{const d=document.createElement('div'); d.classNam
 const s5names=LANGS.map(l=>{const d=document.createElement('div'); d.className='abs serif ital'+(l.rtl?' rtl':''); css(d,{left:0,top:0,fontSize:l.rtl?'92px':'118px',lineHeight:'150px',whiteSpace:'nowrap'}); if(l.rtl){d.style.fontStyle='normal';d.style.fontWeight=600;} d.textContent=l.n; $('s5-name-mask').appendChild(d); return d;});
 const s5tags=LANGS.map(l=>{const d=document.createElement('div'); d.className='abs center-x serif'+(l.rtl?' rtl':''); css(d,{top:0,fontSize:l.rtl?'80px':'92px',lineHeight:'150px',whiteSpace:'nowrap'}); d.innerHTML=l.rtl?`${l.a} <span style="color:var(--rec)">${l.b}</span>`:`${l.a} <span class="ital" style="color:var(--rec)">${l.b}</span>`; $('s5-tag-mask').appendChild(d); return d;});
 const s5ghosts=LANGS.map(l=>{const d=document.createElement('div'); d.className='ghost'; css(d,{fontSize:'760px',top:'640px',left:'0'}); d.textContent=l.c; $('s5-ghosts').appendChild(d); return d;});
-const P5=makePhone($('s5-phone-wrap'),480,LANGS.map(l=>`assets/shots/${l.f}.jpg`));
-const P5X=(1080-P5.W)/2, P5Y=590; css(P5.el,{left:P5X+'px',top:P5Y+'px',transformStyle:'preserve-3d'});
+const STORY=document.body.classList.contains('story');
+const P5=makePhone($('s5-phone-wrap'),STORY?370:480,LANGS.map(l=>`assets/shots/${l.f}.jpg`));
+const P5X=(1080-P5.W)/2, P5Y=STORY?650:590; css(P5.el,{left:P5X+'px',top:P5Y+'px',transformStyle:'preserve-3d'});
 
 // S6 ring of phones
 const RING=LANGS.map(l=>{
@@ -352,7 +363,7 @@ function r4(t){
   const z=P(t,13.0,13.7,E.inOutExpo), zo=P(t,14.55,15,E.inExpo);
   const pill={x:P4.b+550*P4.k, y:P4.b+80*P4.k};
   const s=lerp(1,1.72,z);
-  const tx=lerp(0,700-P4X-pill.x*1.72,z), ty=lerp(0,300-P4Y-pill.y*1.72,z);
+  const tx=lerp(0,700-P4X-pill.x*1.72,z), ty=lerp(0,(STORY?210:300)-P4Y-pill.y*1.72,z);
   css($('s4-phone-wrap'),{transform:`translate(${tx}px,${ty+(1-rise)*1500}px) scale(${s*(1+zo*.15)})`,filter:zo>0?`blur(${zo*16}px)`:'none',opacity:1-zo*.6});
   P4.el.style.transform=`perspective(2000px) rotateX(${(1-rise)*28}deg)`;
   // tap
@@ -473,6 +484,22 @@ window.render=function(t){
 };
 window.DURATION=T.end;
 
+/* 15 s Stories cut: piecewise-linear remap of output time -> composition time.
+   [outStart,outEnd,srcStart,srcEnd] — every boundary sits on the 120 BPM beat grid. */
+const STORY_EDIT=[
+  [0,2,3,5],            // portfolio montage (hook)
+  [2,4.5,7,10.5],       // Introducing the new website…
+  [4.5,5.5,13.5,15],    // language switcher opens
+  [5.5,9.5,15,23],      // ten languages at 2x
+  [9.5,10.9,23,25.2],   // "10 LANGUAGES / Available in 10 languages."
+  [10.9,11.55,25.2,26.8],
+  [11.55,12,26.8,27.5], // zoom through the 0
+  [12,15,27.5,31.5],    // end card
+];
+function storySrc(t){ for(const [a,b,c,d] of STORY_EDIT) if(t<b) return c+(d-c)*(t-a)/(b-a); return 31.5-1e-6; }
+window.renderOut = STORY ? (t=>render(storySrc(t))) : render;
+window.OUT_DURATION = STORY ? 15 : T.end;
+
 window.ready=(async()=>{
   await document.fonts.load('500 100px "Cormorant Garamond"'); await document.fonts.load('italic 500 100px "Cormorant Garamond"');
   await document.fonts.load('italic 400 100px "Cormorant Garamond"');
@@ -485,7 +512,7 @@ window.ready=(async()=>{
 
 // preview mode: ?t=12.3 or live playback
 const qs=new URLSearchParams(location.search);
-if(qs.has('play')){ window.ready.then(()=>{ const t0=performance.now(); const loop=()=>{ render(((performance.now()-t0)/1000)%T.end); requestAnimationFrame(loop); }; loop(); }); }
+if(qs.has('play')){ window.ready.then(()=>{ const t0=performance.now(); const loop=()=>{ renderOut(((performance.now()-t0)/1000)%OUT_DURATION); requestAnimationFrame(loop); }; loop(); }); }
 </script>
 </body>
 </html>
