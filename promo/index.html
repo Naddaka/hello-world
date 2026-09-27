@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NADDAKA — New Website Promo</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+  :root{
+    --bg:#080809; --fg:#efeae2; --muted:#8e8a84; --faint:#5c5954; --rec:#c4543a; --elev:#121214;
+    --serif:"Cormorant Garamond","Times New Roman",serif;
+    --sans:"Manrope",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+    --arabic:"Noto Naskh Arabic",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:lining-nums;font-feature-settings:'lnum' 1}
+  #stage{position:absolute;inset:0;overflow:hidden;background:var(--bg)}
+  .scene{position:absolute;inset:0;display:none;overflow:hidden}
+  .abs{position:absolute}
+  .cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .center-x{left:0;right:0;text-align:center}
+  .mono{font-family:var(--mono);letter-spacing:.18em;text-transform:uppercase}
+  .serif{font-family:var(--serif)}
+  .ital{font-style:italic}
+  .dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--rec);vertical-align:middle;margin-right:.7em;transform:translateY(-.08em)}
+  .ch{display:inline-block;white-space:pre}
+  .rtl{direction:rtl;font-family:var(--arabic)}
+
+  /* overlays */
+  #grain,#vignette,#flash,#leak{position:absolute;inset:0;pointer-events:none}
+  #vignette{background:radial-gradient(ellipse 80% 65% at 50% 50%,transparent 55%,rgba(0,0,0,.55) 100%)}
+  #grain{opacity:.1;mix-blend-mode:overlay;background-size:256px 256px}
+  #flash{background:#fff;opacity:0}
+  #leak{mix-blend-mode:screen;opacity:0}
+
+  /* viewfinder */
+  .corner{position:absolute;width:90px;height:90px;border-color:rgba(239,234,226,.85);border-style:solid;border-width:0}
+  .vf-txt{position:absolute;font-family:var(--mono);font-size:26px;letter-spacing:.14em;color:rgba(239,234,226,.85)}
+
+  /* phone */
+  .phone{position:absolute;border-radius:var(--r);background:#0c0c0e;
+    box-shadow:0 0 0 2px #2a2a2e inset,0 0 0 1px #3a3a40,0 60px 120px rgba(0,0,0,.65),0 0 80px rgba(196,84,58,.08)}
+  .phone .screen{position:absolute;overflow:hidden;border-radius:var(--sr);background:#000}
+  .phone .screen img{position:absolute;left:0;top:0;width:100%;display:block}
+  .phone .glare{position:absolute;inset:0;border-radius:var(--sr);background:linear-gradient(115deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 32%);pointer-events:none}
+
+  /* dropdown */
+  .dd{position:absolute;background:rgba(18,18,20,.97);border:1px solid rgba(239,234,226,.14);box-shadow:0 30px 60px rgba(0,0,0,.6);overflow:hidden}
+  .dd-item{position:absolute;left:0;right:0;display:flex;align-items:center;font-family:var(--sans);color:var(--fg)}
+  .dd-item .c{font-family:var(--mono);color:var(--muted);letter-spacing:.08em}
+
+  /* ten languages */
+  .code-row{position:absolute;left:70px;right:70px;top:118px;display:flex;justify-content:space-between;font-weight:600;font-size:30px;letter-spacing:.06em}
+  .code-row span{position:relative;color:var(--faint)}
+  .code-row span i{position:absolute;left:0;right:0;bottom:-14px;height:4px;background:var(--rec);transform-origin:left;transform:scaleX(0)}
+  .mask{position:absolute;overflow:hidden}
+  .ghost{position:absolute;font-family:var(--sans);font-weight:800;line-height:.8;color:transparent;-webkit-text-stroke:2px rgba(239,234,226,.09);white-space:nowrap}
+
+  /* 10 */
+  #ten{position:absolute;left:0;right:0;top:360px;display:flex;justify-content:center;font-family:var(--serif);font-weight:500;font-size:900px;line-height:.9;letter-spacing:-.04em;color:#fff;text-shadow:0 20px 80px rgba(0,0,0,.6)}
+  .ring{position:absolute;left:540px;top:800px;width:0;height:0;transform-style:preserve-3d}
+  .ring .item{position:absolute;transform-style:preserve-3d}
+  .marquee{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--sans);font-size:34px;color:var(--muted);letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- S1 · viewfinder cold open -->
+  <section class="scene" id="s1">
+    <img class="cover" id="s1-bg" src="assets/stills/hero-shoot.jpg" style="object-position:62% 50%">
+    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(8,8,9,.55),rgba(8,8,9,.25) 40%,rgba(8,8,9,.8))"></div>
+    <div id="vf">
+      <div class="corner" style="left:60px;top:60px;border-left-width:4px;border-top-width:4px"></div>
+      <div class="corner" style="right:60px;top:60px;border-right-width:4px;border-top-width:4px"></div>
+      <div class="corner" style="left:60px;bottom:60px;border-left-width:4px;border-bottom-width:4px"></div>
+      <div class="corner" style="right:60px;bottom:60px;border-right-width:4px;border-bottom-width:4px"></div>
+      <div class="vf-txt" style="left:100px;top:100px"><span class="dot" id="rec-dot"></span>REC</div>
+      <div class="vf-txt" id="tc" style="right:100px;top:100px">00:00:00:00</div>
+      <div class="vf-txt" style="left:100px;bottom:100px;font-size:22px">4K · 25P · ISO 800 · 5600K</div>
+      <div class="vf-txt" style="right:100px;bottom:100px;font-size:22px">NADDAKA · KYIV</div>
+      <div class="abs" style="left:520px;top:940px;width:40px;height:2px;background:rgba(239,234,226,.5)"></div>
+      <div class="abs" style="left:539px;top:921px;width:2px;height:40px;background:rgba(239,234,226,.5)"></div>
+    </div>
+    <div class="abs center-x mono" id="s1-kicker" style="top:470px;font-size:30px;color:var(--fg)"><span class="dot"></span>Production · Kyiv · Since 2006</div>
+    <div class="abs center-x" id="s1-a" style="top:600px">
+      <div class="serif" style="font-size:300px;line-height:1;font-weight:500" id="s1-num-a">20</div>
+      <div class="mono" style="font-size:30px;margin-top:6px">years in frame</div>
+    </div>
+    <div class="abs center-x" id="s1-b" style="top:1080px">
+      <div class="serif" style="font-size:300px;line-height:1;font-weight:500" id="s1-num-b">1000+</div>
+      <div class="mono" style="font-size:30px;margin-top:6px">projects</div>
+    </div>
+  </section>
+
+  <!-- S2 · portfolio montage -->
+  <section class="scene" id="s2">
+    <div id="s2-imgs"></div>
+    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(8,8,9,.35),rgba(8,8,9,.05) 35%,rgba(8,8,9,.05) 65%,rgba(8,8,9,.55))"></div>
+    <div class="abs center-x" id="s2-word" style="top:0;height:1920px;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:-.02em;text-transform:uppercase;mix-blend-mode:difference;color:#fff;line-height:.9"></div>
+    <div class="abs mono" id="s2-shot" style="left:80px;bottom:90px;font-size:24px"></div>
+    <div class="abs mono" style="right:80px;bottom:90px;font-size:24px;color:var(--fg)">naddaka.com / works</div>
+    <div class="abs" id="s2-shut-t" style="left:0;right:0;top:0;height:0;background:var(--bg)"></div>
+    <div class="abs" id="s2-shut-b" style="left:0;right:0;bottom:0;height:0;background:var(--bg)"></div>
+  </section>
+
+  <!-- S3 · introducing -->
+  <section class="scene" id="s3">
+    <div class="abs" id="s3-glow" style="left:-300px;right:-300px;top:1100px;height:1400px;background:radial-gradient(ellipse at 50% 50%,rgba(196,84,58,.28),transparent 60%)"></div>
+    <div class="abs" id="s3-text" style="left:80px;right:80px;top:640px">
+      <div class="mono" id="s3-kick" style="font-size:28px;color:var(--fg);margin-bottom:40px"><span class="dot"></span>New · 2026</div>
+      <div class="serif ital" id="s3-intro" style="font-size:210px;line-height:1;font-weight:500;margin-left:-8px">Introducing</div>
+      <div class="mask" style="position:relative;height:120px;margin-top:40px"><div id="s3-l2" style="position:absolute;font-size:96px;font-weight:600;letter-spacing:-.02em;line-height:1.15">the new website</div></div>
+      <div class="mask" style="position:relative;height:100px;margin-top:4px"><div id="s3-l3" class="serif ital" style="position:absolute;font-size:84px;line-height:1.1;color:rgba(239,234,226,.85)">of our production company.</div></div>
+      <div id="s3-line" style="height:3px;background:var(--rec);margin-top:50px;transform-origin:left;transform:scaleX(0);width:920px"></div>
+    </div>
+  </section>
+
+  <!-- S4 · the site on a phone + language switch -->
+  <section class="scene" id="s4">
+    <img class="cover" src="assets/stills/hero-shoot.jpg" style="filter:blur(40px) brightness(.28) saturate(.8);transform:scale(1.2)">
+    <div class="abs center-x" id="s4-head" style="top:120px">
+      <div class="mono" style="font-size:26px;color:var(--muted)"><span class="dot"></span>The new website</div>
+      <div class="serif" style="font-size:120px;line-height:1.1;font-weight:500;margin-top:10px">naddaka<span class="ital">.com</span></div>
+    </div>
+    <div id="s4-phone-wrap" class="abs" style="left:0;top:0;transform-origin:0 0"></div>
+    <div class="abs" id="s4-foot" style="left:0;right:0;bottom:0;height:560px;background:linear-gradient(180deg,rgba(8,8,9,0),rgba(8,8,9,.97) 50%)">
+      <div class="abs center-x serif" style="bottom:170px;font-size:92px;line-height:1"><span class="ital">Speaks</span> your language.</div>
+    </div>
+  </section>
+
+  <!-- S5 · ten languages, one by one -->
+  <section class="scene" id="s5">
+    <div class="abs" id="s5-glow" style="left:-200px;right:-200px;top:500px;height:1300px;background:radial-gradient(ellipse at 50% 50%,rgba(196,84,58,.22),transparent 62%)"></div>
+    <div id="s5-ghosts"></div>
+    <div class="code-row" id="s5-codes"></div>
+    <div class="abs" style="left:80px;top:210px;width:360px;height:290px;overflow:hidden" id="s5-num-mask"></div>
+    <div class="abs" style="left:440px;top:250px;width:600px;height:150px;overflow:hidden" id="s5-name-mask"></div>
+    <div class="abs mono" style="left:448px;top:420px;font-size:26px;color:var(--muted)">/ 10 languages</div>
+    <div id="s5-phone-wrap" class="abs" style="left:0;top:0;perspective:2200px;width:1080px;height:1920px"></div>
+    <div class="abs" style="left:0;right:0;top:1600px;height:320px;background:linear-gradient(180deg,rgba(8,8,9,0),rgba(8,8,9,.85) 30%)"></div>
+    <div class="abs" style="left:40px;right:40px;top:1610px;height:150px;overflow:hidden" id="s5-tag-mask"></div>
+  </section>
+
+  <!-- S6 · 10 -->
+  <section class="scene" id="s6">
+    <div class="abs" style="left:-300px;right:-300px;top:200px;height:1300px;background:radial-gradient(ellipse at 50% 50%,rgba(196,84,58,.25),transparent 60%)"></div>
+    <div class="abs mono center-x" id="s6-kick" style="top:150px;font-size:28px"><span class="dot"></span>naddaka.com</div>
+    <div class="abs" id="s6-ringwrap" style="inset:0;perspective:1700px;perspective-origin:540px 700px"><div class="ring" id="s6-ring"></div></div>
+    <div id="ten"><span id="ten-1">1</span><span id="ten-0">0</span></div>
+    <div class="abs center-x" id="s6-lang" style="top:1300px;font-size:84px;font-weight:700;letter-spacing:.32em;padding-left:.32em"></div>
+    <div class="abs center-x serif ital" id="s6-avail" style="top:1440px;font-size:96px;line-height:1.1"></div>
+    <div class="abs" style="left:0;right:0;top:1640px;height:60px;overflow:hidden" id="s6-mq-wrap"><div class="marquee" id="s6-mq"></div></div>
+  </section>
+
+  <!-- S7 · end card -->
+  <section class="scene" id="s7">
+    <div class="abs" id="s7-glow" style="left:-300px;right:-300px;top:300px;height:1200px;background:radial-gradient(ellipse at 50% 50%,rgba(196,84,58,.22),transparent 60%)"></div>
+    <div class="abs mono center-x" id="s7-kick" style="top:560px;font-size:28px"><span class="dot"></span>The new website is live</div>
+    <div class="abs" id="s7-logo" style="left:190px;top:660px;width:700px;height:310px"><img src="assets/logo.svg" style="width:100%;height:100%"></div>
+    <div class="abs center-x serif" id="s7-url" style="top:1090px;font-size:128px;line-height:1;font-weight:500">naddaka<span class="ital">.com</span></div>
+    <div class="abs" id="s7-line" style="left:290px;width:500px;top:1250px;height:3px;background:var(--rec);transform-origin:center;transform:scaleX(0)"></div>
+    <div class="abs center-x" id="s7-codes" style="top:1370px;font-size:32px;font-weight:600;letter-spacing:.1em"></div>
+    <div class="abs center-x mono" id="s7-avail" style="top:1440px;font-size:24px;color:var(--muted)">Available in 10 languages</div>
+    <div class="abs center-x mono" id="s7-foot" style="top:1760px;font-size:22px;color:var(--faint)">Production · Kyiv · Since 2006</div>
+  </section>
+
+  <div id="leak"></div>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+  <div id="flash"></div>
+</div>
+
+<script>
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const clamp = (x,a=0,b=1) => Math.min(b,Math.max(a,x));
+const lerp = (a,b,p) => a+(b-a)*p;
+const E = {
+  lin:p=>p,
+  outExpo:p=>p>=1?1:1-Math.pow(2,-10*p),
+  inExpo:p=>p<=0?0:Math.pow(2,10*p-10),
+  outCubic:p=>1-Math.pow(1-p,3),
+  inCubic:p=>p*p*p,
+  inOutCubic:p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2,
+  inOutExpo:p=>p<=0?0:p>=1?1:p<.5?Math.pow(2,20*p-10)/2:(2-Math.pow(2,-20*p+10))/2,
+  outBack:p=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(p-1,3)+c1*Math.pow(p-1,2)},
+};
+const P = (t,a,b,e=E.outExpo) => e(clamp((t-a)/(b-a)));
+const css = (el,o) => { for (const k in o) el.style[k]=o[k]; };
+function splitChars(el){
+  const txt=el.textContent; el.textContent='';
+  return [...txt].map(c=>{const s=document.createElement('span');s.className='ch';s.textContent=c;el.appendChild(s);return s;});
+}
+// letter reveal: rise + unblur
+function revealChars(chars,t,start,stagger=.035,dur=.55,dy=60,blur=14){
+  chars.forEach((c,i)=>{
+    const p=P(t,start+i*stagger,start+i*stagger+dur);
+    c.style.opacity=p; c.style.transform=`translateY(${(1-p)*dy}px)`; c.style.filter=p<1?`blur(${(1-p)*blur}px)`:'none';
+  });
+}
+function rng(seed){ let s=seed>>>0||1; return ()=>{ s^=s<<13; s^=s>>>17; s^=s<<5; return ((s>>>0)%100000)/100000; }; }
+
+/* ================= data ================= */
+const LANGS=[
+  {c:'UA',n:'Українська',a:'Продакшн',b:'без заморочок.',f:'ua'},
+  {c:'EN',n:'English',a:'Production',b:'without the fuss.',f:'en'},
+  {c:'RU',n:'Русский',a:'Продакшн',b:'без заморочек.',f:'ru'},
+  {c:'DE',n:'Deutsch',a:'Produktion',b:'ohne Umstände.',f:'de'},
+  {c:'PL',n:'Polski',a:'Produkcja',b:'bez kombinowania.',f:'pl'},
+  {c:'FR',n:'Français',a:'Une prod',b:'sans prise de tête.',f:'fr'},
+  {c:'ES',n:'Español',a:'Producción',b:'sin complicaciones.',f:'es'},
+  {c:'TR',n:'Türkçe',a:'Prodüksiyon',b:'zahmetsiz.',f:'tr'},
+  {c:'AZ',n:'Azərbaycan',a:'Prodakşn',b:'əngəlsiz.',f:'az'},
+  {c:'AR',n:'العربية',a:'إنتاج',b:'بلا تعقيد.',f:'ar',rtl:true},
+];
+const STILLS=['daremno-nervuvala','lamborghini-urus','aquabox-ad-for-screens-3b','one-horse-jumping-training-day','right-choice','subaru-reels','03-uclinic-general-web','rw-detailing01-web','aaamc2018-gala-cover3b','tesla-picnik','soko-animate-cover-1','bodrum-2018cover-big','blackout-cover','dlz-cover-02','edit'];
+const WORDS=['Ads','Animation','Viral','Events','Medicine','Branding','Same-day<br>edit','Since<br>2006'];
+
+/* ================= timeline ================= */
+const T={ s1:[0,3], s2:[3,7], s3:[7,10.5], s4:[10.5,15], s5:[15,23], s6:[23,27.5], s7:[27.5,31.5], end:31.5 };
+const S5D=[1,1,1,1,.5,.5,.5,.5,.5,1.5];
+const S5START=[]; { let a=T.s5[0]; S5D.forEach(d=>{S5START.push(a); a+=d;}); }
+
+/* ================= phone factory ================= */
+function makePhone(parent,W,src,opts={}){
+  const b=Math.round(W*.024), sw=W-2*b, sh=Math.round(sw*1688/780), H=sh+2*b;
+  const ph=document.createElement('div'); ph.className='phone';
+  css(ph,{width:W+'px',height:H+'px','--r':Math.round(W*.13)+'px','--sr':Math.round(W*.13-b)+'px'});
+  ph.style.setProperty('--r',Math.round(W*.13)+'px'); ph.style.setProperty('--sr',Math.round(W*.13-b)+'px');
+  const sc=document.createElement('div'); sc.className='screen'; css(sc,{left:b+'px',top:b+'px',width:sw+'px',height:sh+'px'});
+  ph.appendChild(sc);
+  const imgs=[].concat(src).map(s=>{const im=document.createElement('img'); im.src=s; sc.appendChild(im); return im;});
+  if(!opts.noGlare){const g=document.createElement('div'); g.className='glare'; css(g,{left:b+'px',top:b+'px',width:sw+'px',height:sh+'px'}); ph.appendChild(g);}
+  parent.appendChild(ph);
+  return {el:ph,screen:sc,imgs,W,H,b,sw,sh,k:sw/780};
+}
+
+/* ================= build ================= */
+// S1
+// S2 stills
+const s2imgs=STILLS.map(n=>{const im=document.createElement('img'); im.className='cover'; im.src=`assets/stills/${n}.jpg`; im.style.display='none'; $('s2-imgs').appendChild(im); return im;});
+// S3
+const s3intro=splitChars($('s3-intro'));
+// S4 phone
+const P4=makePhone($('s4-phone-wrap'),600,'assets/shots/en-full.jpg');
+const P4X=240, P4Y=400; css(P4.el,{left:P4X+'px',top:P4Y+'px'});
+// dropdown inside screen (css px of the 390-wide site => *2k video px)
+const u=2*P4.k;
+const dd=document.createElement('div'); dd.className='dd';
+const DDW=196, DDR=314, DDT=66, IH=38;
+css(dd,{left:(DDR-DDW)*u+'px',top:DDT*u+'px',width:DDW*u+'px',height:(IH*10+12)*u+'px',borderRadius:14*u+'px'});
+const ddItems=LANGS.map((l,i)=>{
+  const it=document.createElement('div'); it.className='dd-item';
+  css(it,{top:(6+i*IH)*u+'px',height:IH*u+'px',padding:`0 ${14*u}px`,fontSize:15*u+'px',gap:12*u+'px'});
+  it.innerHTML=`<span class="c" style="font-size:${11*u}px;width:${24*u}px">${l.c}</span><span${l.rtl?' class="rtl"':''}>${l.n}</span>`;
+  dd.appendChild(it); return it;
+});
+const ddHi=document.createElement('div'); css(ddHi,{position:'absolute',left:6*u+'px',right:6*u+'px',height:(IH-4)*u+'px',borderRadius:9*u+'px',background:'rgba(239,234,226,.08)',borderLeft:`${3*u}px solid var(--rec)`});
+dd.insertBefore(ddHi,dd.firstChild);
+P4.screen.appendChild(dd);
+const tap=document.createElement('div'); css(tap,{position:'absolute',width:'40px',height:'40px',borderRadius:'50%',border:'3px solid rgba(239,234,226,.9)',left:(550*P4.k-20)+'px',top:(80*P4.k-20)+'px',opacity:0});
+P4.screen.appendChild(tap);
+
+// S5
+LANGS.forEach(l=>{const s=document.createElement('span'); s.innerHTML=`${l.c}<i></i>`; $('s5-codes').appendChild(s);});
+const s5codes=[...$('s5-codes').children];
+const s5nums=LANGS.map((l,i)=>{const d=document.createElement('div'); d.className='abs serif'; css(d,{left:0,top:0,fontSize:'300px',lineHeight:'290px',fontWeight:500,letterSpacing:'-.03em'}); d.textContent=String(i+1).padStart(2,'0'); $('s5-num-mask').appendChild(d); return d;});
+const s5names=LANGS.map(l=>{const d=document.createElement('div'); d.className='abs serif ital'+(l.rtl?' rtl':''); css(d,{left:0,top:0,fontSize:l.rtl?'92px':'118px',lineHeight:'150px',whiteSpace:'nowrap'}); if(l.rtl){d.style.fontStyle='normal';d.style.fontWeight=600;} d.textContent=l.n; $('s5-name-mask').appendChild(d); return d;});
+const s5tags=LANGS.map(l=>{const d=document.createElement('div'); d.className='abs center-x serif'+(l.rtl?' rtl':''); css(d,{top:0,fontSize:l.rtl?'80px':'92px',lineHeight:'150px',whiteSpace:'nowrap'}); d.innerHTML=l.rtl?`${l.a} <span style="color:var(--rec)">${l.b}</span>`:`${l.a} <span class="ital" style="color:var(--rec)">${l.b}</span>`; $('s5-tag-mask').appendChild(d); return d;});
+const s5ghosts=LANGS.map(l=>{const d=document.createElement('div'); d.className='ghost'; css(d,{fontSize:'760px',top:'640px',left:'0'}); d.textContent=l.c; $('s5-ghosts').appendChild(d); return d;});
+const P5=makePhone($('s5-phone-wrap'),480,LANGS.map(l=>`assets/shots/${l.f}.jpg`));
+const P5X=(1080-P5.W)/2, P5Y=590; css(P5.el,{left:P5X+'px',top:P5Y+'px',transformStyle:'preserve-3d'});
+
+// S6 ring of phones
+const RING=LANGS.map(l=>{
+  const it=document.createElement('div'); it.className='item';
+  const ph=makePhone(it,220,`assets/shots/${l.f}.jpg`,{noGlare:true});
+  css(ph.el,{left:(-ph.W/2)+'px',top:(-ph.H/2)+'px',boxShadow:'0 0 0 1px #3a3a40'});
+  $('s6-ring').appendChild(it); return {it,ph};
+});
+const s6lang=$('s6-lang'); s6lang.textContent='LANGUAGES'; const s6langC=splitChars(s6lang);
+const s6avail=$('s6-avail'); s6avail.textContent='Available in 10 languages.'; const s6availC=splitChars(s6avail);
+$('s6-mq').innerHTML=Array(3).fill(LANGS.map(l=>l.rtl?`<span class="rtl" style="unicode-bidi:isolate">${l.n}</span>`:l.n).join('  <span style="color:var(--rec)">·</span>  ')).join('  <span style="color:var(--rec)">·</span>  ');
+
+// S7
+$('s7-codes').innerHTML=LANGS.map(l=>`<span style="display:inline-block">${l.c}</span>`).join('<span style="display:inline-block;width:26px"></span>');
+const s7codes=[...$('s7-codes').querySelectorAll('span')].filter((_,i)=>i%2===0);
+
+// grain texture
+const gc=document.createElement('canvas'); gc.width=gc.height=256; const gx=gc.getContext('2d'); const gd=gx.createImageData(256,256);
+{const r=rng(7); for(let i=0;i<gd.data.length;i+=4){const v=r()*255; gd.data[i]=gd.data[i+1]=gd.data[i+2]=v; gd.data[i+3]=255;}}
+gx.putImageData(gd,0,0); $('grain').style.backgroundImage=`url(${gc.toDataURL()})`;
+
+/* ================= scene renderers ================= */
+function show(id,t,[a,b]){ const on=t>=a&&t<b; $(id).style.display=on?'block':'none'; return on; }
+
+function r1(t){
+  const bgp=P(t,0,3,E.lin);
+  css($('s1-bg'),{opacity:P(t,0,.9,E.outCubic),transform:`scale(${lerp(1.12,1.32,bgp)})`,filter:`blur(${lerp(22,3,P(t,0,2.4,E.outCubic))}px) brightness(${lerp(.3,.62,bgp)}) saturate(.85)`});
+  $('rec-dot').style.opacity=(Math.floor(t*2)%2===0)?1:.15;
+  const f=Math.round(t*30); $('tc').textContent=`00:00:${String(Math.floor(f/30)).padStart(2,'0')}:${String(f%30).padStart(2,'0')}`;
+  const k=P(t,.2,.9); css($('s1-kicker'),{opacity:k,letterSpacing:lerp(.45,.18,k)+'em'});
+  const a=P(t,.7,1.3); css($('s1-a'),{opacity:a,transform:`translateY(${(1-a)*50}px)`,filter:`blur(${(1-a)*12}px)`});
+  $('s1-num-a').textContent=Math.round(20*P(t,.7,1.8,E.outCubic));
+  const b=P(t,1.5,2.1); css($('s1-b'),{opacity:b,transform:`translateY(${(1-b)*50}px)`,filter:`blur(${(1-b)*12}px)`});
+  $('s1-num-b').textContent=Math.round(1000*P(t,1.5,2.5,E.outCubic))+(t>2.3?'+':'');
+  // whip out
+  const w=P(t,2.72,3,E.inExpo);
+  css($('s1'),{transform:`scale(${1+w*.35})`,filter:w>0?`blur(${w*18}px)`:'none'});
+}
+
+function r2(t){
+  const lt=t-T.s2[0];
+  const idx=Math.min(STILLS.length-1,Math.floor(lt/.25));
+  s2imgs.forEach((im,i)=>{ im.style.display=i===idx?'block':'none'; });
+  const im=s2imgs[idx], sp=(lt-idx*.25)/(idx===STILLS.length-1?.5:.25);
+  const dir=idx%2?1:-1, pop=clamp(1-(lt-idx*.25)/.07);
+  css(im,{transform:`scale(${1.08+sp*.08}) translateX(${dir*sp*30}px)`,filter:`contrast(1.12) saturate(.8) brightness(${.78+pop*.5})`});
+  const wi=Math.min(WORDS.length-1,Math.floor(lt/.5)), wp=(lt-wi*.5);
+  const w=$('s2-word');
+  if(w.dataset.i!=wi){ w.dataset.i=wi; w.innerHTML=WORDS[wi]; const len=Math.max(...WORDS[wi].split('<br>').map(s=>s.length)); w.style.fontSize=Math.min(230,1000/(len*.74))+'px'; }
+  const wp2=P(wp,0,.18);
+  css(w,{transform:`scale(${lerp(1.25,1,wp2)+wp*.06})`,opacity:wp2,filter:wp2<1?`blur(${(1-wp2)*10}px)`:'none'});
+  $('s2-shot').textContent=`Shot ${String(idx+1).padStart(2,'0')} / ${STILLS.length}`;
+  const sh=P(t,6.7,7,E.inCubic)*960;
+  $('s2-shut-t').style.height=sh+'px'; $('s2-shut-b').style.height=sh+'px';
+}
+
+function r3(t){
+  revealChars(s3intro,t,7.15,.045,.7,70,16);
+  const k=P(t,7.05,7.6); css($('s3-kick'),{opacity:k,transform:`translateX(${(1-k)*-30}px)`});
+  const l2=P(t,7.85,8.45); $('s3-l2').style.transform=`translateY(${(1-l2)*120}px)`;
+  const l3=P(t,8.2,8.8); $('s3-l3').style.transform=`translateY(${(1-l3)*110}px)`;
+  $('s3-line').style.transform=`scaleX(${P(t,8.7,9.6,E.inOutCubic)})`;
+  const drift=P(t,7,10.5,E.lin);
+  const out=P(t,10.1,10.5,E.inExpo);
+  css($('s3-text'),{transform:`translateY(${-drift*30-out*300}px) scale(${1+drift*.03-out*.08})`,opacity:1-out,filter:out>0?`blur(${out*14}px)`:'none'});
+  $('s3-glow').style.transform=`translateY(${-drift*200}px)`;
+}
+
+function r4(t){
+  // rise
+  const rise=P(t,10.5,11.4);
+  const head=P(t,10.75,11.35)*(1-P(t,13,13.4,E.inCubic));
+  css($('s4-head'),{opacity:head,transform:`translateY(${(1-P(t,10.75,11.35))*40}px)`});
+  // scroll site
+  const down=P(t,11.5,12.55,E.inOutCubic), up=P(t,12.6,13.05,E.inOutExpo);
+  const scroll=(down-up)*2600;
+  P4.imgs[0].style.transform=`translateY(${-scroll}px)`;
+  // zoom into language pill
+  const z=P(t,13.0,13.7,E.inOutExpo), zo=P(t,14.55,15,E.inExpo);
+  const pill={x:P4.b+550*P4.k, y:P4.b+80*P4.k};
+  const s=lerp(1,1.72,z);
+  const tx=lerp(0,700-P4X-pill.x*1.72,z), ty=lerp(0,300-P4Y-pill.y*1.72,z);
+  css($('s4-phone-wrap'),{transform:`translate(${tx}px,${ty+(1-rise)*1500}px) scale(${s*(1+zo*.15)})`,filter:zo>0?`blur(${zo*16}px)`:'none',opacity:1-zo*.6});
+  P4.el.style.transform=`perspective(2000px) rotateX(${(1-rise)*28}deg)`;
+  // tap
+  const tp=P(t,13.55,13.95,E.outCubic); css(tap,{opacity:(t>13.55?1:0)*(1-tp),transform:`scale(${1+tp*1.6})`});
+  // dropdown
+  const dOpen=P(t,13.7,14.0);
+  css(dd,{opacity:dOpen,transform:`translateY(${(1-dOpen)*-10*u}px) scaleY(${lerp(.85,1,dOpen)})`,transformOrigin:'top'});
+  ddItems.forEach((it,i)=>{const p=P(t,13.75+i*.035,14.05+i*.035); css(it,{opacity:p,transform:`translateX(${(1-p)*12*u}px)`});});
+  const hi=clamp((t-14.05)/.05,0,9); // runs through all 10 fast
+  const hIdx=t<14.05?1:Math.min(9,Math.floor(hi*.2)); // 14.05..14.5 -> 0..9
+  ddHi.style.top=((6+hIdx*IH+2)*u)+'px'; ddHi.style.opacity=dOpen;
+  ddItems.forEach((it,i)=>it.style.color=i===hIdx?'var(--fg)':'rgba(239,234,226,.7)');
+  const foot=P(t,13.65,14.15); css($('s4-foot'),{opacity:foot*(1-zo)});
+  $('s4-foot').firstElementChild.style.transform=`translateY(${(1-foot)*40}px)`;
+}
+
+function langAt(t){ let i=0; for(let j=0;j<10;j++) if(t>=S5START[j]) i=j; return i; }
+function r5(t){
+  const i=langAt(t), st=S5START[i], lt=t-st;
+  const inP=P(t,15,15.5); // scene entrance
+  // codes
+  s5codes.forEach((c,j)=>{ c.style.color=j<i?'var(--fg)':j===i?'var(--rec)':'var(--faint)'; c.firstElementChild.style.transform=`scaleX(${j===i?P(lt,0,.3):0})`; c.style.opacity=P(t,15+j*.03,15.4+j*.03); });
+  // swap helpers
+  const swapIn=P(lt,0,.32), swapInT=P(lt,0,.4,E.outCubic);
+  const roll=(arr,h)=>arr.forEach((el,j)=>{
+    if(j===i){ css(el,{display:'block',transform:`translateY(${(1-swapIn)*h}px)`,opacity:1,filter:swapIn<1?`blur(${(1-swapIn)*8}px)`:'none'}); }
+    else if(j===i-1 && swapIn<1){ css(el,{display:'block',transform:`translateY(${-swapIn*h}px)`,opacity:1-swapIn,filter:`blur(${swapIn*8}px)`}); }
+    else el.style.display='none';
+  });
+  roll(s5nums,290); roll(s5names,150); roll(s5tags,150);
+  // ghosts
+  s5ghosts.forEach((g,j)=>{
+    if(j===i){ css(g,{display:'block',opacity:swapInT,transform:`translateX(${lerp(260,40,swapInT)-lt*40}px)`}); }
+    else if(j===i-1 && swapInT<1){ css(g,{display:'block',opacity:1-swapInT,transform:`translateX(${lerp(40,-400,swapInT)}px)`}); }
+    else g.style.display='none';
+  });
+  // phone screens slide
+  const sp=P(lt,0,.38), rtl=LANGS[i].rtl?-1:1;
+  P5.imgs.forEach((im,j)=>{
+    if(j===i) css(im,{display:'block',zIndex:2,transform:`translateX(${(1-sp)*100*rtl}%)`,filter:'none'});
+    else if(j===i-1 && sp<1) css(im,{display:'block',zIndex:1,transform:`translateX(${-sp*35*rtl}%)`,filter:`brightness(${1-sp*.6})`});
+    else im.style.display='none';
+  });
+  if(i===0){ P5.imgs[0].style.transform=`translateX(0)`; }
+  // phone float & 3D
+  const outP=P(t,22.55,23,E.inExpo);
+  const ry=Math.sin((t-15)*1.1)*9 - (1-inP)*30, rx=4+Math.sin((t-15)*.8)*2;
+  css(P5.el,{transform:`translateY(${(1-inP)*300+Math.sin((t-15)*1.6)*8}px) rotateY(${ry+outP*120}deg) rotateX(${rx}deg) scale(${lerp(.9,1,inP)*(1-outP*.5)})`,opacity:inP*(1-outP)});
+  // flash tick on each change (not first)
+  $('s5-glow').style.opacity=.7+.3*(1-P(lt,0,.5));
+  css($('s5'),{filter:outP>0?`blur(${outP*14}px)`:'none',transform:`scale(${1+outP*.08})`});
+}
+
+let tenMeasured=null;
+function r6(t){
+  const lt=t-T.s6[0];
+  const inP=P(t,23,23.45);
+  const zoom=P(t,27.0,27.5,E.inExpo);
+  // ring
+  const ringIn=P(t,23.1,23.9);
+  const spin=-(lt*42 + (1-ringIn)*140 + E.inExpo(clamp((t-26.7)/.8))*260);
+  $('s6-ring').style.transform=`translateY(${(1-ringIn)*200}px) rotateX(-9deg) rotateY(${spin}deg)`;
+  RING.forEach(({it},j)=>{
+    const ang=j*36; const a=((ang+spin)%360+360)%360*Math.PI/180; const front=Math.cos(a);
+    css(it,{transform:`rotateY(${ang}deg) translateZ(470px)`,opacity:ringIn*(.28+.72*clamp((front+.2)/1.2))*(1-P(t,26.75,27.1))});
+    it.firstElementChild.style.filter=`brightness(${.35+.65*clamp(front)})`;
+  });
+  // 10
+  const ten=$('ten');
+  if(!tenMeasured){ ten.style.transform='none'; const r0=$('ten-0').getBoundingClientRect(), rw=ten.getBoundingClientRect(); tenMeasured={x:r0.left+r0.width*.5-rw.left,y:r0.top+r0.height*.53-rw.top}; }
+  css(ten,{transformOrigin:`${tenMeasured.x}px ${tenMeasured.y}px`,transform:`scale(${lerp(1.5,1,inP)*(1+zoom*40)})`,opacity:inP,filter:inP<1?`blur(${(1-inP)*30}px)`:'none'});
+  revealChars(s6langC,t,23.35,.04,.5,40,10);
+  revealChars(s6availC,t,23.95,.028,.6,50,12);
+  const fadeText=1-P(t,26.8,27.1);
+  [$('s6-lang'),$('s6-avail'),$('s6-mq-wrap'),$('s6-kick')].forEach(e=>e.style.opacity=fadeText);
+  $('s6-kick').style.opacity=P(t,23.3,23.8)*fadeText;
+  const mq=$('s6-mq'); mq.style.transform=`translateX(${-lt*140}px)`; $('s6-mq-wrap').style.opacity=P(t,24.4,25)*fadeText;
+}
+
+function r7(t){
+  const k=P(t,28.1,28.6); css($('s7-kick'),{opacity:k,letterSpacing:lerp(.4,.18,k)+'em'});
+  const l=P(t,27.6,28.5,E.outCubic);
+  css($('s7-logo'),{clipPath:`inset(0 ${(1-l)*100}% 0 0)`,opacity:P(t,27.6,27.9),transform:`scale(${lerp(1.06,1,P(t,27.6,29.5,E.outCubic))})`,filter:l<1?`blur(${(1-l)*6}px)`:'none'});
+  const u2=P(t,28.35,28.95); css($('s7-url'),{opacity:u2,transform:`translateY(${(1-u2)*40}px)`,filter:u2<1?`blur(${(1-u2)*10}px)`:'none'});
+  $('s7-line').style.transform=`scaleX(${P(t,28.7,29.4,E.inOutCubic)})`;
+  s7codes.forEach((c,i)=>{const p=P(t,29+i*.06,29.4+i*.06); css(c,{opacity:p,transform:`translateY(${(1-p)*20}px)`,color:p>0&&t<29+i*.06+.25?'var(--rec)':'var(--fg)'});});
+  $('s7-avail').style.opacity=P(t,29.7,30.2);
+  $('s7-foot').style.opacity=P(t,29.9,30.4);
+  $('s7-glow').style.transform=`translateX(${Math.sin((t-27.5)*.9)*80}px) scale(${1+(t-27.5)*.03})`;
+  const out=P(t,31.0,31.5,E.inCubic); $('s7').style.opacity=1-out;
+}
+
+/* ================= global fx ================= */
+function flash(t){
+  const hits=[[3.0,.55,'#fff'],[15.0,.35,'#fff'],[23.0,.45,'#c4543a'],[27.5,.25,'#fff']];
+  let o=0,col='#fff';
+  hits.forEach(([h,a,c])=>{ if(t>=h&&t<h+.4){ const v=a*Math.exp(-(t-h)*14); if(v>o){o=v;col=c;} } });
+  css($('flash'),{opacity:o,background:col});
+}
+function leak(t){
+  const bumps=[[2.9,1.2],[6.9,1],[14.9,1.2],[22.9,1.4],[27.4,1.2]];
+  let o=0,x=0;
+  bumps.forEach(([h,d])=>{ const p=(t-h)/d; if(p>0&&p<1){ const v=Math.sin(p*Math.PI); if(v>o){o=v; x=lerp(-40,120,p);} } });
+  css($('leak'),{opacity:o*.55,background:`radial-gradient(ellipse 60% 45% at ${x}% 40%,rgba(255,140,70,.8),rgba(196,84,58,.35) 40%,transparent 70%)`});
+}
+
+window.render=function(t){
+  if(show('s1',t,T.s1)) r1(t);
+  if(show('s2',t,T.s2)) r2(t);
+  if(show('s3',t,T.s3)) r3(t);
+  if(show('s4',t,T.s4)) r4(t);
+  if(show('s5',t,T.s5)) r5(t);
+  if(show('s6',t,T.s6)) r6(t);
+  if(show('s7',t,T.s7)) r7(t);
+  flash(t); leak(t);
+  const r=rng(Math.floor(t*30)*2654435761+1);
+  $('grain').style.backgroundPosition=`${Math.floor(r()*256)}px ${Math.floor(r()*256)}px`;
+};
+window.DURATION=T.end;
+
+window.ready=(async()=>{
+  await document.fonts.load('500 100px "Cormorant Garamond"'); await document.fonts.load('italic 500 100px "Cormorant Garamond"');
+  await document.fonts.load('italic 400 100px "Cormorant Garamond"');
+  for(const w of [400,500,600,700,800]) await document.fonts.load(`${w} 100px Manrope`);
+  await document.fonts.load('400 30px "JetBrains Mono"'); await document.fonts.load('600 30px "Noto Naskh Arabic"','العربية'); await document.fonts.load('400 30px "Noto Naskh Arabic"','العربية');
+  await document.fonts.ready;
+  await Promise.all([...document.images].map(im=>im.decode().catch(()=>{})));
+  render(0); return true;
+})();
+
+// preview mode: ?t=12.3 or live playback
+const qs=new URLSearchParams(location.search);
+if(qs.has('play')){ window.ready.then(()=>{ const t0=performance.now(); const loop=()=>{ render(((performance.now()-t0)/1000)%T.end); requestAnimationFrame(loop); }; loop(); }); }
+</script>
+</body>
+</html>
