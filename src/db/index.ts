@@ -5,6 +5,7 @@ import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { config } from "@/lib/config";
 import * as schema from "./schema";
+import { seedModels } from "./seed";
 
 export type Db = BetterSQLite3Database<typeof schema>;
 
@@ -19,6 +20,7 @@ export function openDb(file: string): { db: Db; sqlite: Database.Database } {
 
 export function runMigrations(db: Db) {
   migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+  seedModels(db);
 }
 
 // One connection per process; survives Next dev hot reloads.

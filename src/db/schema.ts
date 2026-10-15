@@ -39,6 +39,8 @@ export const jobs = sqliteTable(
     params: text("params", { mode: "json" }).notNull().default(sql`'{}'`),
     status: text("status", { enum: JOB_STATUSES }).notNull().default("queued"),
     providerJobId: text("provider_job_id"),
+    /** Result URL as returned by the provider (short-lived). */
+    resultUrl: text("result_url"),
     /** Path relative to DATA_DIR. */
     resultPath: text("result_path"),
     costEstimate: real("cost_estimate"),
@@ -46,6 +48,8 @@ export const jobs = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
+    /** When the worker picked the job up and sent it to the provider. */
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
     finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
   },
   (t) => [index("jobs_status_idx").on(t.status), index("jobs_created_at_idx").on(t.createdAt)],
