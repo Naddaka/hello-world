@@ -87,11 +87,38 @@ export function JobsTable({ initial, limit, timeZone }: { initial: JobView[]; li
                 </span>
               </td>
               <td className="py-2 pr-4 whitespace-nowrap text-neutral-400">{formatDuration(j.startedAt, j.finishedAt)}</td>
-              <td className="py-2 whitespace-nowrap">{formatUsd(j.costEstimate)}</td>
+              <td className="py-2 whitespace-nowrap tabular-nums">
+                <Cost job={j} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Cost cell: what the job counts as in spending (see lib/spending.ts). */
+function Cost({ job: j }: { job: JobView }) {
+  if (j.status === "failed") {
+    return j.costActual ? (
+      <span title="Провайдер списал за неудачную генерацию">{formatUsd(j.costActual)}</span>
+    ) : (
+      <span title={`Не списано (оценка была ${formatUsd(j.costEstimate)})`} className="text-neutral-500">
+        $0
+      </span>
+    );
+  }
+  if (j.status === "done") {
+    return j.costActual !== null ? (
+      <span title={`Фактически по данным провайдера (оценка ${formatUsd(j.costEstimate)})`}>{formatUsd(j.costActual)}</span>
+    ) : (
+      <span title="По цене из каталога">{formatUsd(j.costEstimate)}</span>
+    );
+  }
+  return (
+    <span title="Оценка, ещё не списано" className="text-neutral-400">
+      ≈ {formatUsd(j.costEstimate)}
+    </span>
   );
 }

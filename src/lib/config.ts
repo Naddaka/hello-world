@@ -15,4 +15,9 @@ export const config = {
   get timezone() {
     return process.env.APP_TIMEZONE || "Europe/Kyiv";
   },
+  /** Monthly spend limit in USD, or null for no limit. */
+  get monthlyBudget(): number | null {
+    const n = parseFloat(process.env.MONTHLY_BUDGET_USD ?? "");
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  },
 };

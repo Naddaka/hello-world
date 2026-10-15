@@ -103,7 +103,7 @@ export function GenerateForm({ models }: { models: ModelView[] }) {
         <button disabled={busy} className="rounded bg-white px-4 py-2 font-medium text-black disabled:opacity-50">
           {busy ? "Отправляю…" : "Сгенерировать"}
         </button>
-        <span className="text-sm text-neutral-400">Оценка: {formatUsd(estimate)}</span>
+        <span className="text-sm whitespace-nowrap text-neutral-400">Оценка: {formatUsd(estimate)}</span>
         {msg && <span className={msg.kind === "ok" ? "text-sm text-green-400" : "text-sm text-red-400"}>{msg.text}</span>}
       </div>
     </form>

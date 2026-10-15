@@ -9,11 +9,13 @@ import { kindForPath } from "./storage";
 export const PROMPT_MAX = 5000;
 
 export type CreateJobInput = { modelId: unknown; prompt: unknown; params: unknown };
-export type CreateJobResult = { ok: true; id: string } | { ok: false; error: string };
+export type CreateJobResult = { ok: true; id: string } | { ok: false; error: string; code?: "budget" };
 
 export type CreateJobOptions = {
   isModelAvailable: (m: Model) => boolean;
   uploadExists: (id: string) => boolean;
+  /** Returns an error message when the estimated cost doesn't fit the monthly budget. */
+  checkBudget?: (estimate: number | null) => string | null;
 };
 
 export function createJob(db: Db, input: CreateJobInput, opts: CreateJobOptions): CreateJobResult {
@@ -34,10 +36,12 @@ export function createJob(db: Db, input: CreateJobInput, opts: CreateJobOptions)
     }
   }
 
+  const costEstimate = estimateCost(model, v.params);
+  const overBudget = opts.checkBudget?.(costEstimate);
+  if (overBudget) return { ok: false, error: overBudget, code: "budget" };
+
   const id = randomUUID();
-  db.insert(jobs)
-    .values({ id, modelId: model.id, prompt, params: v.params, costEstimate: estimateCost(model, v.params) })
-    .run();
+  db.insert(jobs).values({ id, modelId: model.id, prompt, params: v.params, costEstimate }).run();
   return { ok: true, id };
 }
 
@@ -51,6 +55,7 @@ export type JobView = {
   params: ParamValues;
   status: JobStatus;
   costEstimate: number | null;
+  costActual: number | null;
   error: string | null;
   createdAt: string;
   startedAt: string | null;
@@ -79,6 +84,7 @@ export function listJobs(db: Db, limit = 50): JobView[] {
     params: job.params as ParamValues,
     status: job.status,
     costEstimate: job.costEstimate,
+    costActual: job.costActual,
     error: job.error,
     createdAt: job.createdAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,

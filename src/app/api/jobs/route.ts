@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { createJob, listJobs } from "@/lib/jobs";
 import { config } from "@/lib/config";
+import { budgetError, budgetState } from "@/lib/spending";
 import { uploadExists } from "@/lib/uploads";
 import { isModelAvailable } from "@/providers";
 
@@ -20,8 +21,15 @@ export async function POST(req: Request) {
   const res = createJob(
     getDb(),
     { modelId: body.modelId, prompt: body.prompt, params: body.params },
-    { isModelAvailable, uploadExists: (id) => uploadExists(config.dataDir, id) },
+    {
+      isModelAvailable,
+      uploadExists: (id) => uploadExists(config.dataDir, id),
+      checkBudget: (estimate) => {
+        const budget = config.monthlyBudget;
+        return budget === null ? null : budgetError(budgetState(getDb(), config.timezone, budget), estimate);
+      },
+    },
   );
-  if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.code === "budget" ? 402 : 400 });
   return NextResponse.json({ id: res.id }, { status: 201 });
 }

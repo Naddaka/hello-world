@@ -3,6 +3,8 @@ import Link from "next/link";
 const LINKS = [
   { href: "/", label: "Генерация" },
   { href: "/history", label: "История" },
+  { href: "/spending", label: "Расходы" },
+  { href: "/models", label: "Модели" },
 ];
 
 export function Nav({ mode }: { mode: "mock" | "real" }) {
