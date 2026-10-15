@@ -1,5 +1,6 @@
 import type { Model } from "@/db/schema";
 import { config } from "@/lib/config";
+import { createFalAdapter } from "./fal";
 import { createMockAdapter } from "./mock";
 import type { ProviderAdapter } from "./types";
 
@@ -8,8 +9,10 @@ const mock = createMockAdapter({
   maxMs: Number(process.env.MOCK_MAX_MS) || undefined,
 });
 
-/** Real adapters by models.provider. */
-const adapters: Record<string, ProviderAdapter> = {};
+/** Real adapters by models.provider. Keys are read at call time, never logged. */
+const adapters: Record<string, ProviderAdapter> = {
+  fal: createFalAdapter({ apiKey: () => process.env.FAL_KEY }),
+};
 
 /** In mock mode every model goes to the mock adapter. */
 export function getAdapter(model: Model): ProviderAdapter {

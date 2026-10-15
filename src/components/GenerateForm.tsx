@@ -155,7 +155,11 @@ function Field({
       );
       break;
     case "boolean":
-      control = <input type="checkbox" name={f.key} checked={value === true} onChange={(e) => onChange(e.target.checked)} />;
+      control = (
+        <span className="flex h-[42px] items-center">
+          <input type="checkbox" name={f.key} checked={value === true} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
+        </span>
+      );
       break;
     case "text":
       control = (

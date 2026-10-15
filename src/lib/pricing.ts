@@ -3,10 +3,13 @@ import type { ParamValues } from "./params";
 
 /**
  * Optional per-model pricing tweaks (models.price_rules).
- * - multipliers: { resolution: { "1080p": 2 } } multiplies the price when a param has that value
+ * - variants: unit price overrides for param combinations, first match wins,
+ *   e.g. [{ when: { generate_audio: true }, priceUsd: 0.168 }]; otherwise models.price_usd
+ * - multipliers: { resolution: { "4K": 2 } } multiplies the price when a param has that value
  * - secondsParam / countParam: which param holds duration / number of images
  */
 export type PriceRules = {
+  variants?: { when: Record<string, string | number | boolean>; priceUsd: number }[];
   multipliers?: Record<string, Record<string, number>>;
   secondsParam?: string;
   countParam?: string;
@@ -20,7 +23,8 @@ export function estimateCost(model: Pick<Model, "priceUnit" | "priceUsd" | "pric
   let units: number;
   switch (model.priceUnit) {
     case "per_second": {
-      const s = Number(params[rules.secondsParam ?? "duration"]);
+      // parseFloat: some APIs encode duration as "8s"
+      const s = parseFloat(String(params[rules.secondsParam ?? "duration"]));
       if (!Number.isFinite(s) || s <= 0) return null;
       units = s;
       break;
@@ -37,7 +41,8 @@ export function estimateCost(model: Pick<Model, "priceUnit" | "priceUsd" | "pric
       // Token-based pricing needs a provider-specific token estimate (added with the Seedance adapter).
       return null;
   }
-  let price = model.priceUsd * units;
+  const variant = rules.variants?.find((v) => Object.entries(v.when).every(([k, val]) => params[k] === val));
+  let price = (variant?.priceUsd ?? model.priceUsd) * units;
   for (const [key, table] of Object.entries(rules.multipliers ?? {})) {
     const m = table[String(params[key])];
     if (m !== undefined) price *= m;
