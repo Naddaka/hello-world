@@ -1,5 +1,7 @@
 import type { Model } from "@/db/schema";
 import { config } from "@/lib/config";
+import { readUploadAsDataUri } from "@/lib/uploads";
+import { createBytePlusAdapter } from "./byteplus";
 import { createFalAdapter } from "./fal";
 import { createMockAdapter } from "./mock";
 import type { ProviderAdapter } from "./types";
@@ -12,6 +14,10 @@ const mock = createMockAdapter({
 /** Real adapters by models.provider. Keys are read at call time, never logged. */
 const adapters: Record<string, ProviderAdapter> = {
   fal: createFalAdapter({ apiKey: () => process.env.FAL_KEY }),
+  byteplus: createBytePlusAdapter({
+    apiKey: () => process.env.BYTEPLUS_API_KEY,
+    readImage: (id) => readUploadAsDataUri(config.dataDir, id),
+  }),
 };
 
 /** In mock mode every model goes to the mock adapter. */

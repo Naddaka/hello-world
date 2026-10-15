@@ -15,6 +15,9 @@ export type ParamField =
 
 export type ParamValues = Record<string, string | number | boolean>;
 
+/** Upload ids as stored in params for "image" fields: <uuid>.<ext>. */
+export const UPLOAD_ID_RE = /^[0-9a-f-]{36}\.(png|jpg|webp)$/;
+
 export type ValidationResult = { ok: true; params: ParamValues } | { ok: false; error: string };
 
 function isEmpty(v: unknown) {
@@ -50,15 +53,16 @@ export function validateParams(schema: ParamField[], input: Record<string, unkno
       case "boolean":
         out[f.key] = raw === true || raw === "true" || raw === "on" || raw === "1";
         break;
-      case "text":
-      case "image": {
+      case "text": {
         const s = String(raw);
-        if (f.type === "text" && f.maxLength && s.length > f.maxLength) {
-          return { ok: false, error: `«${f.label}»: не длиннее ${f.maxLength} символов.` };
-        }
+        if (f.maxLength && s.length > f.maxLength) return { ok: false, error: `«${f.label}»: не длиннее ${f.maxLength} символов.` };
         out[f.key] = s;
         break;
       }
+      case "image":
+        if (!UPLOAD_ID_RE.test(String(raw))) return { ok: false, error: `«${f.label}»: некорректный файл.` };
+        out[f.key] = String(raw);
+        break;
     }
   }
   return { ok: true, params: out };

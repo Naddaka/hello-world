@@ -1,7 +1,7 @@
 import type { Db } from "./index";
 import { models } from "./schema";
 import type { ParamField } from "@/lib/params";
-import type { PriceRules } from "@/lib/pricing";
+import type { PriceRules, TokenRules } from "@/lib/pricing";
 
 type Seed = typeof models.$inferInsert & { paramsSchema: ParamField[]; priceRules?: PriceRules | null };
 
@@ -170,6 +170,95 @@ export const FAL_MODELS: Seed[] = [
   },
 ];
 
+// BytePlus ModelArk Seedance. Model ids, params, pixel sizes and prices from the ModelArk docs
+// (checked 2026-10-15): seedance-2-5, video-generation-tutorial, model-pricing.
+// Billing: USD per 1M tokens, tokens ≈ duration × width × height × 24 fps / 1024
+// (e.g. Seedance 2.5, 720p 16:9, 5 s: 108 000 tokens × $10.70/M = $1.156, matches the docs' example).
+// Prices are for inputs without video (we only send text + an optional image).
+const RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"] as const;
+const dims = (rows: [number, number][]) => Object.fromEntries(RATIOS.map((r, i) => [r, rows[i]])) as Record<string, [number, number]>;
+const DIMS_720P = dims([[1280, 720], [1112, 834], [960, 960], [834, 1112], [720, 1280], [1470, 630]]);
+const DIMS_1080P = dims([[1920, 1080], [1664, 1248], [1440, 1440], [1248, 1664], [1080, 1920], [2206, 946]]);
+const seedanceTokens = (dimsByRes: TokenRules["dims"]): TokenRules => ({ fps: 24, dims: dimsByRes, fallbackRatio: "16:9" });
+
+const seedanceParams = (resolutions: string[], maxDuration: number): ParamField[] => [
+  {
+    key: "resolution",
+    label: "Разрешение",
+    type: "select",
+    options: resolutions.map((value) => ({ value })),
+    default: "720p",
+  },
+  {
+    key: "ratio",
+    label: "Соотношение сторон",
+    type: "select",
+    options: [...RATIOS.map((value) => ({ value: value as string })), { value: "adaptive", label: "Авто (adaptive)" }],
+    default: "16:9",
+    help: "С картинкой-первым кадром всегда adaptive: пропорции берутся из картинки.",
+  },
+  {
+    key: "duration",
+    label: "Длительность, с",
+    type: "select",
+    options: Array.from({ length: maxDuration - 3 }, (_, i) => ({ value: i + 4 })),
+    default: 5,
+  },
+  { key: "generate_audio", label: "Звук", type: "boolean", default: true },
+  { key: "watermark", label: "Водяной знак", type: "boolean", default: false },
+  seed,
+  { key: "image", label: "Референс-изображение", type: "image" },
+  {
+    key: "image_role",
+    label: "Роль изображения",
+    type: "select",
+    options: [
+      { value: "first_frame", label: "Первый кадр" },
+      { value: "reference_image", label: "Референс (стиль, персонаж)" },
+    ],
+    default: "first_frame",
+  },
+];
+
+export const BYTEPLUS_MODELS: Seed[] = [
+  {
+    id: "byteplus-seedance-2-5",
+    provider: "byteplus",
+    providerModelId: "dreamina-seedance-2-5-260628",
+    name: "Seedance 2.5 (BytePlus)",
+    type: "video",
+    // $10.70/M tokens for 480p/720p, $11.70/M for 1080p
+    priceUnit: "per_1m_tokens",
+    priceUsd: 10.7,
+    priceRules: {
+      variants: [{ when: { resolution: "1080p" }, priceUsd: 11.7 }],
+      tokens: seedanceTokens({
+        "480p": dims([[854, 480], [752, 560], [640, 640], [560, 752], [480, 854], [992, 432]]),
+        "720p": DIMS_720P,
+        "1080p": DIMS_1080P,
+      }),
+    },
+    paramsSchema: seedanceParams(["480p", "720p", "1080p"], 30),
+  },
+  {
+    id: "byteplus-seedance-2-0-fast",
+    provider: "byteplus",
+    providerModelId: "dreamina-seedance-2-0-fast-260128",
+    name: "Seedance 2.0 Fast (BytePlus)",
+    type: "video",
+    // $5.60/M tokens, 480p/720p only
+    priceUnit: "per_1m_tokens",
+    priceUsd: 5.6,
+    priceRules: {
+      tokens: seedanceTokens({
+        "480p": dims([[864, 496], [752, 560], [640, 640], [560, 752], [496, 864], [992, 432]]),
+        "720p": DIMS_720P,
+      }),
+    },
+    paramsSchema: seedanceParams(["480p", "720p"], 15),
+  },
+];
+
 export function seedModels(db: Db) {
-  db.insert(models).values([...SEED_MODELS, ...FAL_MODELS]).onConflictDoNothing().run();
+  db.insert(models).values([...SEED_MODELS, ...FAL_MODELS, ...BYTEPLUS_MODELS]).onConflictDoNothing().run();
 }

@@ -68,8 +68,13 @@ export function JobsTable({ initial, limit, timeZone }: { initial: JobView[]; li
               <td className="py-2 pr-4 whitespace-nowrap text-neutral-400">{formatDateTime(j.createdAt, timeZone)}</td>
               <td className="py-2 pr-4 whitespace-nowrap">{j.modelName}</td>
               <td className="py-2 pr-4">
-                <div className="line-clamp-2 max-w-md" title={j.prompt}>
-                  {j.prompt}
+                <div className="flex items-start gap-2">
+                  {j.inputs.map((i) => (
+                    <img key={i.url} src={i.url} alt="референс" title="Референс-изображение" className="h-8 w-8 shrink-0 rounded object-cover" />
+                  ))}
+                  <div className="line-clamp-2 max-w-md" title={j.prompt}>
+                    {j.prompt}
+                  </div>
                 </div>
                 {j.error && <div className="mt-1 text-xs text-red-400">{j.error}</div>}
               </td>

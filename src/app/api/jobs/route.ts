@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { createJob, listJobs } from "@/lib/jobs";
+import { config } from "@/lib/config";
+import { uploadExists } from "@/lib/uploads";
 import { isModelAvailable } from "@/providers";
 
 export async function GET(req: Request) {
@@ -15,7 +17,11 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Некорректный запрос." }, { status: 400 });
   }
-  const res = createJob(getDb(), { modelId: body.modelId, prompt: body.prompt, params: body.params }, isModelAvailable);
+  const res = createJob(
+    getDb(),
+    { modelId: body.modelId, prompt: body.prompt, params: body.params },
+    { isModelAvailable, uploadExists: (id) => uploadExists(config.dataDir, id) },
+  );
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
   return NextResponse.json({ id: res.id }, { status: 201 });
 }

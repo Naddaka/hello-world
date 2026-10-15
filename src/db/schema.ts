@@ -48,6 +48,8 @@ export const jobs = sqliteTable(
     /** Failed attempts to download the result from the provider. */
     downloadAttempts: integer("download_attempts").notNull().default(0),
     costEstimate: real("cost_estimate"),
+    /** Cost from the provider's reported usage (e.g. tokens), when available. */
+    costActual: real("cost_actual"),
     error: text("error"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()

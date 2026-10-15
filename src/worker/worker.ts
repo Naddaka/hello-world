@@ -2,6 +2,7 @@ import { and, asc, count, eq, isNull, isNotNull } from "drizzle-orm";
 import type { Db } from "@/db";
 import { jobs, models, type Job, type Model } from "@/db/schema";
 import type { ParamValues } from "@/lib/params";
+import { actualCost } from "@/lib/pricing";
 import type { ProviderAdapter } from "@/providers/types";
 
 export type WorkerDeps = {
@@ -61,7 +62,7 @@ async function pollRunning(deps: WorkerDeps) {
         const s = await deps.getAdapter(model).getStatus(model, job.providerJobId!);
         const now = (deps.now ?? (() => new Date()))();
         if (s.status === "done") {
-          await finishDone(deps, job, s.resultUrls, now);
+          await finishDone(deps, job, model, s.resultUrls, now, s.usage);
         } else if (s.status === "failed") {
           fail(deps, job.id, s.error || "Провайдер вернул ошибку без описания.");
         }
@@ -74,7 +75,14 @@ async function pollRunning(deps: WorkerDeps) {
 }
 
 /** Download results into DATA_DIR; the job becomes done only once all files are stored. */
-async function finishDone(deps: WorkerDeps, job: Job, resultUrls: string[], now: Date) {
+async function finishDone(
+  deps: WorkerDeps,
+  job: Job,
+  model: Model,
+  resultUrls: string[],
+  now: Date,
+  usage?: { tokens?: number },
+) {
   if (resultUrls.length === 0) {
     fail(deps, job.id, "Провайдер сообщил о готовности, но не вернул ни одного файла.");
     return;
@@ -84,7 +92,14 @@ async function finishDone(deps: WorkerDeps, job: Job, resultUrls: string[], now:
     for (const [i, url] of resultUrls.entries()) files.push(await deps.saveResult(url, job.id, i));
     deps.db
       .update(jobs)
-      .set({ status: "done", resultUrls, resultFiles: files, resultPath: files[0], finishedAt: now })
+      .set({
+        status: "done",
+        resultUrls,
+        resultFiles: files,
+        resultPath: files[0],
+        finishedAt: now,
+        costActual: actualCost(model, job.params as ParamValues, usage),
+      })
       .where(eq(jobs.id, job.id))
       .run();
   } catch (e) {

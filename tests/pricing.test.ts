@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { estimateCost } from "@/lib/pricing";
+import { BYTEPLUS_MODELS } from "@/db/seed";
+import { actualCost, estimateCost } from "@/lib/pricing";
 
 describe("estimateCost", () => {
   it("per second uses duration and multipliers", () => {
@@ -39,5 +40,28 @@ describe("estimateCost variants", () => {
     expect(estimateCost(veo, { duration: "5s", resolution: "1080p", generate_audio: true })).toBe(0.75);
     expect(estimateCost(veo, { duration: "4s", resolution: "4k", generate_audio: false })).toBe(1.2);
     expect(estimateCost(veo, { duration: "4s", resolution: "4k", generate_audio: true })).toBe(1.4);
+  });
+});
+
+describe("token pricing (Seedance)", () => {
+  const [s25, fast] = BYTEPLUS_MODELS.map((m) => ({ priceUnit: m.priceUnit, priceUsd: m.priceUsd, priceRules: m.priceRules ?? null }));
+
+  it("matches the BytePlus price examples for Seedance 2.5 (16:9, 5 s, no video input)", () => {
+    expect(estimateCost(s25, { resolution: "480p", ratio: "16:9", duration: 5 })).toBeCloseTo(0.514, 3);
+    expect(estimateCost(s25, { resolution: "720p", ratio: "16:9", duration: 5 })).toBeCloseTo(1.156, 3);
+    expect(estimateCost(s25, { resolution: "1080p", ratio: "16:9", duration: 5 })).toBeCloseTo(2.843, 3);
+  });
+
+  it("2.0 Fast, adaptive ratio falls back to 16:9 dims, unsupported resolution → null", () => {
+    expect(estimateCost(fast, { resolution: "720p", ratio: "16:9", duration: 5 })).toBeCloseTo(0.6048, 4);
+    expect(estimateCost(fast, { resolution: "720p", ratio: "adaptive", duration: 5 })).toBeCloseTo(0.6048, 4);
+    expect(estimateCost(fast, { resolution: "1080p", ratio: "16:9", duration: 5 })).toBeNull();
+  });
+
+  it("actual cost from reported tokens uses the resolution's price", () => {
+    expect(actualCost(s25, { resolution: "1080p" }, { tokens: 246840 })).toBeCloseTo(2.8880, 4);
+    expect(actualCost(s25, { resolution: "720p" }, { tokens: 108900 })).toBeCloseTo(1.1652, 4);
+    expect(actualCost(s25, { resolution: "720p" }, undefined)).toBeNull();
+    expect(actualCost({ priceUnit: "per_second", priceUsd: 1, priceRules: null }, {}, { tokens: 5 })).toBeNull();
   });
 });

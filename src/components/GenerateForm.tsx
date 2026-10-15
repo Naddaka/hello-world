@@ -5,6 +5,7 @@ import type { ModelView } from "@/lib/catalog";
 import type { ParamField, ParamValues } from "@/lib/params";
 import { estimateCost } from "@/lib/pricing";
 import { formatUsd } from "@/lib/format";
+import { ImageUpload } from "./ImageUpload";
 
 export const JOBS_CHANGED = "jobs:changed";
 
@@ -167,7 +168,7 @@ function Field({
       );
       break;
     case "image":
-      control = <span className="text-xs text-neutral-500">Загрузка изображений появится вместе с референсами.</span>;
+      control = <ImageUpload name={f.key} value={value === undefined ? undefined : String(value)} onChange={onChange} />;
       break;
   }
   return (

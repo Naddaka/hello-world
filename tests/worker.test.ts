@@ -11,6 +11,7 @@ import { MAX_DOWNLOAD_ATTEMPTS, recoverInterrupted, tick, type WorkerDeps } from
 import { tempDb } from "./helpers";
 
 let t: ReturnType<typeof tempDb>;
+const OPTS = { isModelAvailable: () => true, uploadExists: () => true };
 afterEach(() => t?.close());
 
 function setup(adapter: ProviderAdapter, maxConcurrent = 5, save?: WorkerDeps["saveResult"]): WorkerDeps {
@@ -25,7 +26,7 @@ function setup(adapter: ProviderAdapter, maxConcurrent = 5, save?: WorkerDeps["s
 }
 
 function newJob(db: typeof t.db, prompt = "a cat", modelId = "mock-video") {
-  const r = createJob(db, { modelId, prompt, params: { duration: 10 } }, () => true);
+  const r = createJob(db, { modelId, prompt, params: { duration: 10 } }, OPTS);
   if (!r.ok) throw new Error(r.error);
   return r.id;
 }
@@ -66,7 +67,7 @@ describe("job lifecycle (mock)", () => {
   it("stores every image of a multi-image job", async () => {
     let now = 0;
     const deps = setup(createMockAdapter({ minMs: 10, maxMs: 10, now: () => now }));
-    const r = createJob(deps.db, { modelId: "mock-image", prompt: "x", params: { num_images: 3 } }, () => true);
+    const r = createJob(deps.db, { modelId: "mock-image", prompt: "x", params: { num_images: 3 } }, OPTS);
     if (!r.ok) throw new Error(r.error);
     await tick(deps);
     now += 100;
@@ -93,6 +94,19 @@ describe("job lifecycle (mock)", () => {
       error: expect.stringContaining("не удалось скачать"),
       resultUrls: ["https://x/y.mp4"],
     });
+  });
+
+  it("stores the actual cost from provider token usage", async () => {
+    const deps = setup({
+      generate: async () => "cgt",
+      getStatus: async () => ({ status: "done", resultUrls: ["mock://video"], usage: { tokens: 108_000 } }),
+    });
+    const r = createJob(deps.db, { modelId: "byteplus-seedance-2-5", prompt: "x", params: { resolution: "720p", duration: 5 } }, OPTS);
+    if (!r.ok) throw new Error(r.error);
+    expect(status(deps.db, r.id).costEstimate).toBeCloseTo(1.1556, 4);
+    await tick(deps);
+    await tick(deps);
+    expect(status(deps.db, r.id)).toMatchObject({ status: "done", costActual: 1.1556 });
   });
 
   it("a download that recovers on retry ends done", async () => {
@@ -163,10 +177,10 @@ describe("job lifecycle (mock)", () => {
 describe("createJob", () => {
   it("validates model, prompt and params", () => {
     t = tempDb();
-    expect(createJob(t.db, { modelId: "nope", prompt: "x", params: {} }, () => true)).toMatchObject({ ok: false });
-    expect(createJob(t.db, { modelId: "mock-video", prompt: "  ", params: {} }, () => true)).toMatchObject({ ok: false });
-    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: { duration: 7 } }, () => true)).toMatchObject({ ok: false });
-    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: {} }, () => false)).toMatchObject({ ok: false });
-    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: {} }, () => true)).toMatchObject({ ok: true });
+    expect(createJob(t.db, { modelId: "nope", prompt: "x", params: {} }, OPTS)).toMatchObject({ ok: false });
+    expect(createJob(t.db, { modelId: "mock-video", prompt: "  ", params: {} }, OPTS)).toMatchObject({ ok: false });
+    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: { duration: 7 } }, OPTS)).toMatchObject({ ok: false });
+    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: {} }, { ...OPTS, isModelAvailable: () => false })).toMatchObject({ ok: false });
+    expect(createJob(t.db, { modelId: "mock-video", prompt: "x", params: {} }, OPTS)).toMatchObject({ ok: true });
   });
 });
