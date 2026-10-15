@@ -5,6 +5,7 @@ import type { JobStatus } from "@/db/schema";
 import type { JobView } from "@/lib/jobs";
 import { formatDateTime, formatDuration, formatUsd } from "@/lib/format";
 import { JOBS_CHANGED } from "./GenerateForm";
+import { ResultPreview } from "./ResultPreview";
 
 const STATUS: Record<JobStatus, { label: string; cls: string }> = {
   queued: { label: "В очереди", cls: "bg-neutral-700 text-neutral-200" },
@@ -55,6 +56,7 @@ export function JobsTable({ initial, limit, timeZone }: { initial: JobView[]; li
             <th className="py-2 pr-4 font-normal">Создана</th>
             <th className="py-2 pr-4 font-normal">Модель</th>
             <th className="py-2 pr-4 font-normal">Промпт</th>
+            <th className="py-2 pr-4 font-normal">Результат</th>
             <th className="py-2 pr-4 font-normal">Статус</th>
             <th className="py-2 pr-4 font-normal">Время</th>
             <th className="py-2 font-normal">Стоимость</th>
@@ -70,6 +72,9 @@ export function JobsTable({ initial, limit, timeZone }: { initial: JobView[]; li
                   {j.prompt}
                 </div>
                 {j.error && <div className="mt-1 text-xs text-red-400">{j.error}</div>}
+              </td>
+              <td className="py-2 pr-4">
+                <ResultPreview files={j.files} />
               </td>
               <td className="py-2 pr-4">
                 <span data-status={j.status} className={`rounded px-2 py-0.5 text-xs whitespace-nowrap ${STATUS[j.status].cls}`}>

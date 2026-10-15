@@ -15,6 +15,20 @@
       "when": 1792056503942,
       "tag": "0001_job_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792065804543,
+      "tag": "0002_drop_result_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792065805598,
+      "tag": "0003_result_files",
+      "breakpoints": true
     }
   ]
 }

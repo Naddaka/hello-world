@@ -19,17 +19,18 @@ export function createMockAdapter(opts: MockOptions = {}): ProviderAdapter {
     async generate(model: Model, input: GenerateInput) {
       const duration = Math.round(minMs + Math.random() * (maxMs - minMs));
       const fail = input.prompt.toLowerCase().includes(MOCK_FAIL_WORD) ? 1 : 0;
-      return ["mock", model.type, now(), duration, fail].join(".");
+      const count = model.type === "image" ? Math.max(1, Number(input.params.num_images) || 1) : 1;
+      return ["mock", model.type, now(), duration, fail, count].join(".");
     },
 
     async getStatus(_model: Model, providerJobId: string): Promise<ProviderStatus> {
-      const [prefix, type, start, duration, fail] = providerJobId.split(".");
+      const [prefix, type, start, duration, fail, count = "1"] = providerJobId.split(".");
       if (prefix !== "mock" || !start || !duration) throw new Error(`Неизвестный mock id: ${providerJobId}`);
       const elapsed = now() - Number(start);
       if (elapsed < Math.min(1500, Number(duration) / 3)) return { status: "queued" };
       if (elapsed < Number(duration)) return { status: "running" };
       if (fail === "1") return { status: "failed", error: "Mock: провайдер отклонил запрос (тестовая ошибка)." };
-      return { status: "done", resultUrl: `mock://${type}` };
+      return { status: "done", resultUrls: Array.from({ length: Number(count) }, () => `mock://${type}`) };
     },
   };
 }

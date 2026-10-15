@@ -1,4 +1,6 @@
 import { getDb } from "@/db";
+import { config } from "@/lib/config";
+import { saveResult } from "@/lib/storage";
 import { getAdapter } from "@/providers";
 import { recoverInterrupted, tick, type WorkerDeps } from "./worker";
 
@@ -10,6 +12,7 @@ export function startWorker() {
   const deps: WorkerDeps = {
     db: getDb(),
     getAdapter,
+    saveResult: (url, jobId, index) => saveResult(config.dataDir, url, jobId, index),
     maxConcurrent: Number(process.env.MAX_CONCURRENT_JOBS) || 5,
     log: (m) => console.log(`[worker] ${m}`),
   };

@@ -3,7 +3,8 @@ import type { ParamValues } from "@/lib/params";
 
 export type ProviderStatus =
   | { status: "queued" | "running" }
-  | { status: "done"; resultUrl: string }
+  /** One URL per output file (several images per job are possible). */
+  | { status: "done"; resultUrls: string[] }
   | { status: "failed"; error: string };
 
 export type GenerateInput = { prompt: string; params: ParamValues };

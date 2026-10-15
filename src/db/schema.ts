@@ -39,10 +39,14 @@ export const jobs = sqliteTable(
     params: text("params", { mode: "json" }).notNull().default(sql`'{}'`),
     status: text("status", { enum: JOB_STATUSES }).notNull().default("queued"),
     providerJobId: text("provider_job_id"),
-    /** Result URL as returned by the provider (short-lived). */
-    resultUrl: text("result_url"),
-    /** Path relative to DATA_DIR. */
+    /** Result URLs as returned by the provider (short-lived), JSON array. */
+    resultUrls: text("result_urls", { mode: "json" }).$type<string[]>(),
+    /** Main result file, path relative to DATA_DIR. */
     resultPath: text("result_path"),
+    /** All result files (several images per job), paths relative to DATA_DIR, JSON array. */
+    resultFiles: text("result_files", { mode: "json" }).$type<string[]>(),
+    /** Failed attempts to download the result from the provider. */
+    downloadAttempts: integer("download_attempts").notNull().default(0),
     costEstimate: real("cost_estimate"),
     error: text("error"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })

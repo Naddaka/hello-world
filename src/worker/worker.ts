@@ -7,12 +7,16 @@ import type { ProviderAdapter } from "@/providers/types";
 export type WorkerDeps = {
   db: Db;
   getAdapter: (model: Model) => ProviderAdapter;
+  /** Download one result file, return its path relative to DATA_DIR. */
+  saveResult: (url: string, jobId: string, index: number) => Promise<string>;
   maxConcurrent: number;
   now?: () => Date;
   log?: (msg: string) => void;
 };
 
 const MAX_ERROR_LEN = 1000;
+/** Provider links expire, so give up on a download after this many failed ticks. */
+export const MAX_DOWNLOAD_ATTEMPTS = 5;
 
 export function errorText(e: unknown): string {
   const s = e instanceof Error ? e.message : String(e);
@@ -57,11 +61,7 @@ async function pollRunning(deps: WorkerDeps) {
         const s = await deps.getAdapter(model).getStatus(model, job.providerJobId!);
         const now = (deps.now ?? (() => new Date()))();
         if (s.status === "done") {
-          deps.db
-            .update(jobs)
-            .set({ status: "done", resultUrl: s.resultUrl, finishedAt: now })
-            .where(eq(jobs.id, job.id))
-            .run();
+          await finishDone(deps, job, s.resultUrls, now);
         } else if (s.status === "failed") {
           fail(deps, job.id, s.error || "Провайдер вернул ошибку без описания.");
         }
@@ -71,6 +71,30 @@ async function pollRunning(deps: WorkerDeps) {
       }
     }),
   );
+}
+
+/** Download results into DATA_DIR; the job becomes done only once all files are stored. */
+async function finishDone(deps: WorkerDeps, job: Job, resultUrls: string[], now: Date) {
+  if (resultUrls.length === 0) {
+    fail(deps, job.id, "Провайдер сообщил о готовности, но не вернул ни одного файла.");
+    return;
+  }
+  try {
+    const files: string[] = [];
+    for (const [i, url] of resultUrls.entries()) files.push(await deps.saveResult(url, job.id, i));
+    deps.db
+      .update(jobs)
+      .set({ status: "done", resultUrls, resultFiles: files, resultPath: files[0], finishedAt: now })
+      .where(eq(jobs.id, job.id))
+      .run();
+  } catch (e) {
+    const attempts = job.downloadAttempts + 1;
+    deps.log?.(`download failed for job ${job.id} (attempt ${attempts}): ${errorText(e)}`);
+    deps.db.update(jobs).set({ resultUrls, downloadAttempts: attempts }).where(eq(jobs.id, job.id)).run();
+    if (attempts >= MAX_DOWNLOAD_ATTEMPTS) {
+      fail(deps, job.id, `Генерация готова, но файл не удалось скачать: ${errorText(e)}`);
+    }
+  }
 }
 
 /** Send queued jobs to providers, up to the concurrency limit. */

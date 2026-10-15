@@ -6,3 +6,4 @@
 - Everything must work with `PROVIDER_MODE=mock` (no network). Real adapters follow official provider docs only; unknowns are marked `TODO`.
 - Never commit secrets; never log API keys.
 - Checks before commit: `npm run lint && npm test && npm run build`.
+- `drizzle/` and `assets/mock/` are read at runtime from `process.cwd()`; the Docker image must include them.

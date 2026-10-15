@@ -4,6 +4,7 @@ import type { Db } from "@/db";
 import { jobs, models, type JobStatus, type Model, type ModelType } from "@/db/schema";
 import { validateParams, type ParamField, type ParamValues } from "./params";
 import { estimateCost } from "./pricing";
+import { kindForPath } from "./storage";
 
 export const PROMPT_MAX = 5000;
 
@@ -43,7 +44,10 @@ export type JobView = {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  files: JobFileView[];
 };
+
+export type JobFileView = { url: string; downloadUrl: string; kind: "video" | "image" | "other" };
 
 export function listJobs(db: Db, limit = 50): JobView[] {
   const rows = db
@@ -66,5 +70,9 @@ export function listJobs(db: Db, limit = 50): JobView[] {
     createdAt: job.createdAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
+    files: (job.resultFiles ?? []).map((f, i) => {
+      const url = `/api/jobs/${job.id}/files/${i}`;
+      return { url, downloadUrl: `${url}?download`, kind: kindForPath(f) };
+    }),
   }));
 }
