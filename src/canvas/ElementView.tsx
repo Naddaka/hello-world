@@ -14,6 +14,8 @@ import { openMenu, type MenuEntry } from '../ui/ContextMenu';
 import { copySelection } from '../ui/clipboard';
 import { startLineFrom } from './LinesLayer';
 import { SwatchCard } from './SwatchCard';
+import { TableCard } from '../table/TableCard';
+import { convertNoteToDocument, DocumentTile, exportDocument, openDocument } from '../doc/DocumentView';
 import { LabelChips, openLabelPicker } from '../ui/Labels';
 
 /**
@@ -33,6 +35,17 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
   if (!many && ['CARD', 'COLUMN', 'TASK_LIST', 'LINK'].includes(element.type)) {
     items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : element.type === 'LINK' ? 'Изменить ссылку' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
   }
+  if (!many && element.type === 'CARD') items.push({ label: 'Преобразовать в документ', run: () => convertNoteToDocument(element) });
+  if (!many && element.type === 'DOCUMENT') {
+    items.push(
+      { label: 'Открыть', hint: '↵', run: () => openDocument(element.id) },
+      { label: element.preview ? 'Показывать значком' : 'Показывать начало текста', run: () => actions.update(element.id, { preview: !element.preview }) },
+      { label: 'Экспорт в PDF', run: () => void exportDocument(element, 'pdf') },
+      { label: 'Экспорт в Word', run: () => void exportDocument(element, 'doc') },
+      { label: 'Экспорт в Markdown', run: () => void exportDocument(element, 'md') },
+    );
+  }
+  if (!many && element.type === 'TABLE') items.push({ label: 'Редактировать таблицу', hint: '↵', run: () => actions.setEditing(element.id) });
   if (!many && element.type === 'COLOR_SWATCH') {
     items.push({ label: 'Изменить цвет', hint: 'двойной клик', run: () => document.querySelector<HTMLInputElement>(`[data-element-id="${element.id}"] input[type="color"]`)?.click() });
     for (const [display, label] of [['hex', 'HEX'], ['rgb', 'RGB'], ['hsl', 'HSL'], ['none', 'Без подписи']] as const) {
@@ -133,7 +146,7 @@ export function ElementView({
     }
     startElementDrag(e, ids, () => {
       // A second click on a selected note or task list starts editing it.
-      if (!readOnly && wasSoleSelection && (element.type === 'CARD' || element.type === 'TASK_LIST') && !element.locked) actions.setEditing(element.id);
+      if (!readOnly && wasSoleSelection && (element.type === 'CARD' || element.type === 'TASK_LIST' || element.type === 'TABLE') && !element.locked) actions.setEditing(element.id);
     });
   };
 
@@ -171,6 +184,7 @@ export function ElementView({
     e.stopPropagation();
     if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
+    else if (element.type === 'DOCUMENT') openDocument(element.id);
     else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
     else if (!element.locked && !['COLUMN', 'FILE', 'COLOR_SWATCH'].includes(element.type)) actions.setEditing(element.id);
   };
@@ -180,7 +194,7 @@ export function ElementView({
     mode === 'canvas'
       ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
       : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
-  const resizable = mode === 'canvas' && element.type !== 'BOARD' && selected && !element.locked && !drag && !readOnly;
+  const resizable = mode === 'canvas' && !['BOARD', 'TABLE', 'DOCUMENT'].includes(element.type) && selected && !element.locked && !drag && !readOnly;
   const soleSelected = useStore((s) => s.selection.length === 1 && s.selection[0] === element.id);
   const lineHandle = mode === 'canvas' && soleSelected && !drag && !readOnly && !editing;
 
@@ -203,6 +217,8 @@ export function ElementView({
       {element.type === 'FILE' && <FileCard element={element} selected={selected} />}
       {element.type === 'LINK' && <LinkCard element={element} selected={selected} editing={editing} />}
       {element.type === 'COLOR_SWATCH' && <SwatchCard element={element} selected={selected} />}
+      {element.type === 'TABLE' && <TableCard element={element} selected={selected} editing={editing} />}
+      {element.type === 'DOCUMENT' && <DocumentTile element={element} selected={selected} />}
       {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
       {lineHandle && <span className="line-from" title="Потяните, чтобы провести линию" role="presentation" onPointerDown={(e) => startLineFrom(element.id, e)} />}

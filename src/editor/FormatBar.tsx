@@ -37,7 +37,7 @@ function Btn({ label, on, onClick, children, style }: { label: string; on?: bool
   );
 }
 
-export function FormatBar({ editor, cardId, color, zoom }: { editor: Editor; cardId: string; color: CardColor; zoom: number }) {
+export function FormatBar({ editor, cardId, color, zoom, inline = false }: { editor: Editor; cardId?: string; color?: CardColor; zoom: number; inline?: boolean }) {
   const [popup, setPopup] = useState<Popup>(null);
   const [href, setHref] = useState('');
   const state = useEditorState({
@@ -72,7 +72,7 @@ export function FormatBar({ editor, cardId, color, zoom }: { editor: Editor; car
   };
 
   return (
-    <div className="formatbar panel" style={{ transform: `scale(${1 / zoom})` }} onPointerDown={(e) => e.stopPropagation()}>
+    <div className={`formatbar panel${inline ? ' inline' : ''}`} style={inline ? undefined : { transform: `scale(${1 / zoom})` }} onPointerDown={(e) => e.stopPropagation()}>
       <div style={{ position: 'relative' }}>
         <Btn label="Стиль текста" onClick={() => toggle('style')} style={{ fontWeight: 500, padding: '0 8px' }}>
           {styleLabel}
@@ -122,6 +122,7 @@ export function FormatBar({ editor, cardId, color, zoom }: { editor: Editor; car
           </div>
         )}
       </div>
+      {cardId && color && (<>
       <span className="fmt-sep" aria-hidden="true" />
       <div style={{ position: 'relative' }}>
         <Btn label="Цвет карточки" onClick={() => toggle('color')}>
@@ -146,6 +147,7 @@ export function FormatBar({ editor, cardId, color, zoom }: { editor: Editor; car
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 }

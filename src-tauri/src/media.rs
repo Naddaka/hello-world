@@ -193,3 +193,25 @@ mod tests {
         assert_eq!(extension_of("weird.e/x"), "bin");
     }
 }
+
+/// Writes bytes sent from the UI to a path the user chose in the save dialog.
+/// The body is the raw file; the path comes percent-encoded in `x-path`.
+#[tauri::command]
+pub async fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("ожидались байты файла".into());
+    };
+    let path = request
+        .headers()
+        .get("x-path")
+        .and_then(|v| v.to_str().ok())
+        .map(percent_decode)
+        .ok_or("не указан путь")?;
+    std::fs::write(&path, bytes).map_err(|e| format!("Не удалось сохранить {path}: {e}"))
+}
+
+/// Opens the system print dialog for the window (macOS offers "Save as PDF").
+#[tauri::command]
+pub fn print_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.print().map_err(|e| e.to_string())
+}

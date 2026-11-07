@@ -5,6 +5,8 @@ import { isTauri } from '../storage/repo';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
+// Full-window views (documents) also need room for the window buttons.
+if (macOverlay) document.documentElement.classList.add('mac-overlay');
 
 export function TopBar() {
   const elements = useStore((s) => s.elements);

@@ -3,11 +3,11 @@ import { actions, boardPath, containingBoard, useStore } from '../model/store';
 import { HOME_ID, type ZElement } from '../model/types';
 import { elementText } from '../model/text';
 import { centreOn } from '../canvas/runtime';
-import { IconBoard, IconColumn, IconFile, IconLine, IconLink, IconMedia, IconNote, IconSearch, IconSwatch, IconTag, IconTasks } from './icons';
+import { IconBoard, IconColumn, IconFile, IconLine, IconLink, IconMedia, IconNote, IconSearch, IconScript, IconSwatch, IconTable, IconTag, IconTasks } from './icons';
 
 type Sort = 'viewed' | 'modified';
 
-const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink, LINE: IconLine, COLOR_SWATCH: IconSwatch, LABEL: IconTag } as const;
+const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink, LINE: IconLine, COLOR_SWATCH: IconSwatch, LABEL: IconTag, TABLE: IconTable, DOCUMENT: IconScript } as const;
 
 /** Opens the board holding an element, selects it and scrolls it into view. */
 export function reveal(element: ZElement) {

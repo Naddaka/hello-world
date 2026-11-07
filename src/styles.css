@@ -467,3 +467,64 @@ svg.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
 .swatch-color { aspect-ratio: 1 / 0.86; display: flex; align-items: flex-end; padding: 8px; }
 .swatch-value { font: 500 11px var(--mono); opacity: 0.9; }
 .swatch-name { padding: 6px 10px 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- stage 2: toolbar fits 13 tools ---------- */
+.toolbar { max-height: calc(100% - 40px); overflow-y: auto; scrollbar-width: none; }
+.toolbar .tool { padding: 6px 0; gap: 3px; }
+
+/* ---------- stage 2: tables ---------- */
+.table-card { padding: 10px; }
+.table-box { position: relative; outline: none; }
+.zt { border-collapse: collapse; table-layout: fixed; font-size: 13px; color: var(--ink-2); }
+.zt td, .zt th { border: 1px solid var(--line); height: 32px; padding: 0 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; position: relative; }
+.zt.with-header tbody tr:first-child td { background: var(--hover); font-weight: 600; color: var(--ink); }
+.zt-colhead { height: 22px !important; font: 500 11px var(--mono); color: var(--muted); background: var(--canvas); text-align: center; cursor: s-resize; user-select: none; }
+.zt-resize { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 2; }
+.zt-resize:hover { background: var(--accent); }
+.zt-rowhead { position: absolute; left: -30px; top: 50%; transform: translateY(-50%); width: 22px; font: 500 11px var(--mono); color: var(--muted); text-align: right; cursor: e-resize; }
+.zt td:first-child { overflow: visible; }
+.zt-cell.in-range { background: color-mix(in srgb, var(--accent) 9%, transparent) !important; }
+.zt-cell.active { box-shadow: inset 0 0 0 2px var(--accent); }
+.zt-cell.error { color: var(--danger); font: 500 12px var(--mono); }
+.zt-input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 8px; border: 0; outline: 2px solid var(--accent); background: var(--card); font: 13px var(--font); color: var(--ink); z-index: 3; }
+.zt-check { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); vertical-align: middle; }
+.zt-suggest { position: absolute; left: 0; top: 100%; z-index: 10; list-style: none; margin: 4px 0 0; padding: 4px; border-radius: 10px; min-width: 180px; }
+.zt-suggest button { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; font: 12px var(--mono); color: var(--ink); text-align: left; cursor: pointer; }
+.zt-suggest button:hover { background: var(--hover); }
+.table-bar { position: absolute; left: 0; bottom: calc(100% + 16px); display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 12px; white-space: nowrap; z-index: 5; }
+.table-bar select { height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 12px var(--font); padding: 0 6px; }
+.swatch.small { width: 18px; height: 18px; }
+.table-header-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); padding: 0 4px; }
+.table-hint { margin-top: 8px; font-size: 11px; color: var(--faint); }
+.table-card.editing { padding-left: 38px; }
+
+/* ---------- stage 2: documents ---------- */
+.doc-icon { background: var(--board-gray-bg); color: var(--board-gray-fg); box-shadow: inset 0 0 0 1px var(--board-gray-ring); border-radius: 14px !important; width: 84px !important; height: 104px !important; }
+.doc-preview { padding: 14px 16px; max-height: 260px; overflow: hidden; }
+.doc-preview-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.doc-preview-body { font-size: 12.5px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.doc-overlay { position: fixed; inset: 0; z-index: 1200; background: var(--canvas); display: flex; flex-direction: column; }
+.doc-head { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--app); }
+.doc-count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.doc-page { flex: 1 1 auto; overflow-y: auto; width: min(760px, calc(100% - 32px)); margin: 24px auto 0; padding: 40px 56px 80px; background: var(--card); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-card); }
+.doc-title { width: 100%; border: 0; background: transparent; font: 700 30px/1.2 var(--font); letter-spacing: -0.01em; color: var(--ink); outline: none; margin-bottom: 12px; }
+.formatbar.inline { position: sticky; top: 0; left: auto; bottom: auto; margin-bottom: 16px; width: max-content; max-width: 100%; flex-wrap: wrap; }
+.doc-rt { font-size: 16px; line-height: 1.7; min-height: 50vh; }
+.doc-rt h1 { font-size: 26px; }
+.doc-rt h2 { font-size: 20px; }
+
+/* ---------- printing (PDF export) ---------- */
+#print-root { display: none; }
+@media print {
+  body.printing > *:not(#print-root) { display: none !important; }
+  body.printing #print-root { display: block; }
+  body.printing { overflow: visible; background: #fff; color: #000; }
+  .print-doc { font: 12pt/1.55 'Inter', sans-serif; color: #000; }
+  .print-doc h1 { font-size: 22pt; margin: 0 0 12pt; }
+  .print-doc h2 { font-size: 15pt; }
+  .print-doc mark { background: #ffe58a; }
+  .print-doc pre { background: #f2f4f7; padding: 8pt; border-radius: 6pt; }
+}
+.zt-capture { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; resize: none; pointer-events: none; }
+.doc-head .link-btn { align-self: center; }
+.mac-overlay .doc-head { padding-left: 84px; }

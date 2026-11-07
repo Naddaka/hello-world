@@ -38,6 +38,10 @@ export function elementText(e: ZElement): string {
       return [e.name, e.hex].filter(Boolean).join(' ');
     case 'LABEL':
       return e.name;
+    case 'TABLE':
+      return e.cells.map((row) => row.filter(Boolean).join(' ')).filter(Boolean).join('\n');
+    case 'DOCUMENT':
+      return [e.title, docText(e.content)].filter(Boolean).join('\n');
   }
 }
 

@@ -272,6 +272,12 @@ export const actions = {
     return element.id;
   },
 
+  /** Swaps an element for another with the same id (e.g. a note converted to a document), as one undo step. */
+  replace(before: ZElement, after: ZElement) {
+    commit([{ kind: 'delete', element: before }, { kind: 'create', element: after }]);
+    set({ selection: [after.id], editingId: null });
+  },
+
   /** Removes an element without leaving an undo step if its creation is the latest one. */
   discard(id: string) {
     const element = get().elements[id];

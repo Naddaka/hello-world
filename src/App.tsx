@@ -12,6 +12,7 @@ import { useClipboard } from './ui/clipboard';
 import { InboxPanel, TrashPanel } from './ui/Panels';
 import { SearchPanel } from './ui/SearchPanel';
 import { LabelPicker } from './ui/Labels';
+import { DocumentOverlay } from './doc/DocumentView';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -96,6 +97,7 @@ export function App() {
       {panel === 'search' && <SearchPanel />}
       <ContextMenu />
       <LabelPicker />
+      <DocumentOverlay />
     </div>
   );
 }

@@ -145,6 +145,36 @@ export interface SwatchElement extends ElementBase {
   display: 'hex' | 'rgb' | 'hsl' | 'none';
 }
 
+export type CellKind = 'auto' | 'number' | 'currency' | 'percent' | 'checkbox' | 'text' | 'date';
+
+export interface CellFormat {
+  kind?: CellKind;
+  align?: 'left' | 'center' | 'right';
+  bold?: boolean;
+  /** Background, as a card colour key. */
+  fill?: CardColor;
+}
+
+export interface TableElement extends ElementBase {
+  type: 'TABLE';
+  /** What was typed in each cell, row by row; formulas start with "=". */
+  cells: string[][];
+  /** Column widths in pixels. */
+  colWidths: number[];
+  /** Formats keyed by "row,col". */
+  formats: Record<string, CellFormat>;
+  /** The first row is styled as a header. */
+  header: boolean;
+}
+
+export interface DocumentElement extends ElementBase {
+  type: 'DOCUMENT';
+  title: string;
+  content: JSONContent;
+  /** Show the beginning of the text on the board instead of an icon. */
+  preview: boolean;
+}
+
 /** A label definition. Labels live outside boards (parentId null). */
 export interface LabelElement extends ElementBase {
   type: 'LABEL';
@@ -164,7 +194,9 @@ export type ZElement =
   | LinkElement
   | LineElement
   | SwatchElement
-  | LabelElement;
+  | LabelElement
+  | TableElement
+  | DocumentElement;
 export type ElementType = ZElement['type'];
 
 type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
@@ -181,7 +213,9 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<LinkElement, 'id' | 'type'>> &
   Partial<Omit<LineElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<SwatchElement, 'id' | 'type'>> &
-  Partial<Omit<LabelElement, 'id' | 'type' | 'color'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
+  Partial<Omit<LabelElement, 'id' | 'type' | 'color'>> &
+  Partial<Omit<TableElement, 'id' | 'type'>> &
+  Partial<Omit<DocumentElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -194,6 +228,8 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   LINE: 0,
   COLOR_SWATCH: 12,
   LABEL: 0,
+  TABLE: 46,
+  DOCUMENT: 14,
 };
 
 /** Types that can be placed inside a column. */

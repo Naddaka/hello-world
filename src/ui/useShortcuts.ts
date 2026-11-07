@@ -3,6 +3,7 @@ import { actions, canvasChildren, useStore } from '../model/store';
 import { GRID, type CardElement } from '../model/types';
 import { setCamera, sizes, zoomAt, zoomToFit } from '../canvas/runtime';
 import { closeMenu, useMenu } from './ContextMenu';
+import { openDocument, useOpenDocument } from '../doc/DocumentView';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -31,7 +32,7 @@ export function useShortcuts() {
         actions.setPanel('search');
         return;
       }
-      if (isTyping(e.target) || useMenu.getState().items) return;
+      if (isTyping(e.target) || useMenu.getState().items || useOpenDocument.getState().id) return;
 
       const state = useStore.getState();
       const selected = state.selection.map((id) => state.elements[id]).filter(Boolean);
@@ -89,6 +90,7 @@ export function useShortcuts() {
         e.preventDefault();
         const el = selected[0];
         if (el.type === 'BOARD') actions.openBoard(el.id);
+        else if (el.type === 'DOCUMENT') openDocument(el.id);
         else if (!el.locked && el.section !== 'TRASH') actions.setEditing(el.id);
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length > 0) {
         e.preventDefault();

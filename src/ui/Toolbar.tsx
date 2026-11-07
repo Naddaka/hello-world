@@ -9,6 +9,7 @@ import {
   IconBoard,
   IconColumn,
   IconDraw,
+  IconFile,
   IconLine,
   IconLink,
   IconMedia,
@@ -21,8 +22,10 @@ import {
 } from './icons';
 import { newLine } from '../canvas/LinesLayer';
 import { addSwatch } from '../canvas/SwatchCard';
+import { newTableFields, tableWidth } from '../table/TableCard';
+import { newDocumentFields, openDocument } from '../doc/DocumentView';
 
-type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH' | 'TABLE' | 'DOCUMENT';
 
 interface Tool {
   label: string;
@@ -39,7 +42,8 @@ const TOOLS: Tool[] = [
   { label: 'Задачи', Icon: IconTasks, kind: 'TASK_LIST' },
   { label: 'Ссылка', Icon: IconLink, kind: 'LINK' },
   { label: 'Медиа', Icon: IconMedia, kind: 'MEDIA' },
-  { label: 'Таблица', Icon: IconTable, soon: 'этап 2' },
+  { label: 'Таблица', Icon: IconTable, kind: 'TABLE' },
+  { label: 'Документ', Icon: IconFile, kind: 'DOCUMENT' },
   { label: 'Сценарий', Icon: IconScript, soon: 'этап 4' },
   { label: 'Линия', Icon: IconLine, kind: 'LINE' },
   { label: 'Цвет', Icon: IconSwatch, kind: 'COLOR_SWATCH' },
@@ -54,6 +58,11 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
   if (kind === 'LINK') addLink(null, { x: gx, y: gy }, parent);
   else if (kind === 'LINE') actions.select([actions.insert(newLine({ elementId: null, x: gx, y: gy }, { elementId: null, x: gx + 24, y: gy }), boardId, 0, 0, 0)]);
   else if (kind === 'COLOR_SWATCH') addSwatch({ x: gx, y: gy }, parent);
+  else if (kind === 'TABLE') {
+    const fields = newTableFields();
+    const id = actions.insert(fields, parent, gx, gy, tableWidth(fields.colWidths));
+    actions.setEditing(id);
+  } else if (kind === 'DOCUMENT') openDocument(actions.insert(newDocumentFields(), parent, gx, gy));
   else if (kind === 'MEDIA') void media().then((m) => m.pickFiles()).then((files) => addFiles(files, { x: gx, y: gy }, parent));
   else actions.create({ type: kind }, parent, gx, gy);
 }

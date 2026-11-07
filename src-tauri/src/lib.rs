@@ -36,6 +36,8 @@ pub fn run() {
             media::import_media_file,
             media::save_media_bytes,
             media::import_media_url,
+            media::write_file,
+            media::print_window,
             links::link_preview,
         ])
         .run(tauri::generate_context!())
