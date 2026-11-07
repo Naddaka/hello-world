@@ -16,10 +16,13 @@ import {
   IconScript,
   IconTable,
   IconTasks,
+  IconSwatch,
   IconTrash,
 } from './icons';
+import { newLine } from '../canvas/LinesLayer';
+import { addSwatch } from '../canvas/SwatchCard';
 
-type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH';
 
 interface Tool {
   label: string;
@@ -38,7 +41,8 @@ const TOOLS: Tool[] = [
   { label: 'Медиа', Icon: IconMedia, kind: 'MEDIA' },
   { label: 'Таблица', Icon: IconTable, soon: 'этап 2' },
   { label: 'Сценарий', Icon: IconScript, soon: 'этап 4' },
-  { label: 'Линия', Icon: IconLine, soon: 'этап 1' },
+  { label: 'Линия', Icon: IconLine, kind: 'LINE' },
+  { label: 'Цвет', Icon: IconSwatch, kind: 'COLOR_SWATCH' },
   { label: 'Рисовать', Icon: IconDraw, soon: 'этап 2' },
 ];
 
@@ -48,6 +52,8 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
   const column = clientX !== undefined ? (document.elementFromPoint(clientX, clientY!) as HTMLElement | null)?.closest<HTMLElement>('[data-drop-column]')?.dataset.dropColumn : undefined;
   const parent = column && kind !== 'COLUMN' ? column : boardId;
   if (kind === 'LINK') addLink(null, { x: gx, y: gy }, parent);
+  else if (kind === 'LINE') actions.select([actions.insert(newLine({ elementId: null, x: gx, y: gy }, { elementId: null, x: gx + 24, y: gy }), boardId, 0, 0, 0)]);
+  else if (kind === 'COLOR_SWATCH') addSwatch({ x: gx, y: gy }, parent);
   else if (kind === 'MEDIA') void media().then((m) => m.pickFiles()).then((files) => addFiles(files, { x: gx, y: gy }, parent));
   else actions.create({ type: kind }, parent, gx, gy);
 }
@@ -82,7 +88,7 @@ export function Toolbar() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       setGhost(null);
-      const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : DEFAULT_WIDTH[kind]) / 2;
+      const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : kind === 'LINE' ? 12 : DEFAULT_WIDTH[kind]) / 2;
       if (!moved) {
         const c = viewportCentreGrid();
         create(kind, c.x - halfWidth, c.y - 6);

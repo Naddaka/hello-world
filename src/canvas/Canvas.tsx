@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { actions, canvasChildren, countChildren, DEFAULT_CAMERA, inboxChildren, useStore } from '../model/store';
 import { GRID } from '../model/types';
 import { ElementView } from './ElementView';
+import { LinesLayer } from './LinesLayer';
+import type { LineElement } from '../model/types';
 import { currentCamera, lastPointer, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
 import { useDrag } from './dnd';
 import { addFiles, addLink } from '../model/importing';
@@ -37,7 +39,9 @@ export function Canvas() {
   const [panning, setPanning] = useState(false);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
 
-  const children = useMemo(() => canvasChildren(elements, boardId), [elements, boardId]);
+  const all = useMemo(() => canvasChildren(elements, boardId), [elements, boardId]);
+  const lines = useMemo(() => all.filter((e): e is LineElement => e.type === 'LINE'), [all]);
+  const children = useMemo(() => all.filter((e) => e.type !== 'LINE'), [all]);
   const inboxCount = useMemo(() => inboxChildren(elements, boardId).length, [elements, boardId]);
   const inboxOpen = useStore((s) => s.panel === 'inbox');
   const overInbox = useDrag((s) => s.drop?.kind === 'inbox');
@@ -116,6 +120,7 @@ export function Canvas() {
       const b = screenToCanvas(m.x + m.w + rect.left, m.y + m.h + rect.top);
       const hit = canvasChildren(useStore.getState().elements, useStore.getState().boardId)
         .filter((el) => {
+          if (el.type === 'LINE') return false;
           const size = sizes.get(el.id) ?? { w: el.width * GRID, h: 80 };
           const ex = el.x * GRID;
           const ey = el.y * GRID;
@@ -203,6 +208,7 @@ export function Canvas() {
       }}
     >
       <div className="layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
+        <LinesLayer lines={lines} />
         {children.map((el) => (
           <ElementView key={el.id} element={el} count={el.type === 'BOARD' ? countChildren(elements, el.id) : 0} />
         ))}

@@ -407,3 +407,63 @@ figure.media-card { margin: 0; }
 .url-input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; font: 14px var(--font); color: var(--ink); outline: none; }
 .embed { width: 100%; background: #000; }
 .embed iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+/* ---------- stage 1: lines ---------- */
+:root {
+  --line-default: #8a93a3; --line-blue: #2f54eb; --line-red: #e5484d; --line-green: #30a46c; --line-orange: #f76b15; --line-purple: #8e4ec6;
+  --label-blue-bg: #e7eeff; --label-blue-fg: #2a44c4;
+  --label-orange-bg: #ffefe3; --label-orange-fg: #9a3412;
+  --label-green-bg: #e3f6ea; --label-green-fg: #166534;
+  --label-purple-bg: #f1eaff; --label-purple-fg: #6d28d9;
+  --label-pink-bg: #fde8f0; --label-pink-fg: #be185d;
+  --label-yellow-bg: #fff4cc; --label-yellow-fg: #854d0e;
+  --label-red-bg: #fde7e7; --label-red-fg: #b91c1c;
+  --label-gray-bg: #eef0f3; --label-gray-fg: #3b414c;
+}
+:root[data-theme='dark'] {
+  --line-default: #7d8594; --line-blue: #7b93ff; --line-red: #ff7a7f; --line-green: #5fd38d; --line-orange: #ff9b5a; --line-purple: #c4a9ff;
+  --label-blue-bg: #1e2643; --label-blue-fg: #9db0ff;
+  --label-orange-bg: #33231a; --label-orange-fg: #ffb07a;
+  --label-green-bg: #17291f; --label-green-fg: #7fd9a0;
+  --label-purple-bg: #261f3a; --label-purple-fg: #c4a9ff;
+  --label-pink-bg: #331d29; --label-pink-fg: #ff9cc4;
+  --label-yellow-bg: #312a15; --label-yellow-fg: #f5cf63;
+  --label-red-bg: #3a1d1f; --label-red-fg: #ff8f92;
+  --label-gray-bg: #23272e; --label-gray-fg: #c4c8d0;
+}
+svg.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.line-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+.line.selected .line-path { filter: drop-shadow(0 0 3px var(--accent)); }
+.line-handle { fill: var(--card); stroke: var(--accent); stroke-width: 2; pointer-events: all; cursor: grab; }
+.line-handle.mid { fill: var(--accent); stroke: var(--card); cursor: move; }
+.line-label-box { overflow: visible; pointer-events: none; }
+.line-label-wrap { display: flex; justify-content: center; align-items: center; height: 32px; }
+.line-label { pointer-events: all; padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 12px; color: var(--ink-2); white-space: nowrap; cursor: pointer; }
+.line-label-input { pointer-events: all; width: 180px; padding: 4px 10px; border-radius: 999px; border: 0; outline: 2px solid var(--accent); background: var(--card); font: 12px var(--font); color: var(--ink); text-align: center; }
+.line-from {
+  position: absolute; right: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--card);
+  border: 2px solid var(--accent); cursor: crosshair; touch-action: none;
+}
+.line-from::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+
+/* ---------- stage 1: labels ---------- */
+.label-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.label-chip { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.label-picker { position: fixed; z-index: 2100; width: 280px; padding: 8px; border-radius: 14px; }
+.label-query { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); font: 13px var(--font); color: var(--ink); outline: none; }
+.label-query:focus { border-color: var(--accent); }
+.label-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 300px; overflow-y: auto; }
+.label-row { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px; border-radius: 8px; }
+.label-row:hover { background: var(--hover); }
+.label-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+.label-dot { width: 12px; height: 12px; flex: 0 0 12px; border: 0; border-radius: 50%; cursor: pointer; padding: 0; }
+.label-name { flex: 1 1 auto; font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.label-rename { flex: 1 1 auto; min-width: 0; padding: 2px 6px; border: 0; border-radius: 6px; outline: 2px solid var(--accent); font: 13px var(--font); background: var(--card); color: var(--ink); }
+.label-usage { font: 11px var(--mono); color: var(--muted); }
+
+/* ---------- stage 1: colour swatches ---------- */
+.swatch-card { border-radius: 14px; background: var(--card); box-shadow: var(--shadow-card); overflow: hidden; }
+.swatch-card.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-card); }
+.swatch-color { aspect-ratio: 1 / 0.86; display: flex; align-items: flex-end; padding: 8px; }
+.swatch-value { font: 500 11px var(--mono); opacity: 0.9; }
+.swatch-name { padding: 6px 10px 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

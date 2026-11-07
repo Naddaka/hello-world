@@ -37,7 +37,7 @@ export async function runSuite(name, port, scenario) {
     check('no errors in the browser console', errors.length === 0, errors.join(' | '));
     await browser.close();
   } catch (error) {
-    check(`${name} scenario ran to the end`, false, String(error).split('\n')[0]);
+    check(`${name} scenario ran to the end`, false, String(error).split('\n').slice(0, process.env.E2E_VERBOSE ? 12 : 1).join('\n'));
   } finally {
     server.kill();
   }

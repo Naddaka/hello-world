@@ -5,6 +5,7 @@ import { elementText, textToDoc } from '../model/text';
 import { lastPointer, viewportCentreGrid } from '../canvas/runtime';
 import { asUrl } from '../model/embeds';
 import { addFiles, addLink } from '../model/importing';
+import { parseHex, setSwatchColor } from '../canvas/SwatchCard';
 
 const MARK = 'data-zadum-clipboard';
 
@@ -90,6 +91,14 @@ export function useClipboard() {
         return;
       }
       const text = e.clipboardData.getData('text/plain').trim();
+      // A colour value pasted onto a selected swatch recolours it.
+      const { selection, elements } = useStore.getState();
+      const hex = parseHex(text);
+      if (hex && selection.length === 1 && elements[selection[0]]?.type === 'COLOR_SWATCH') {
+        e.preventDefault();
+        setSwatchColor(selection[0], hex);
+        return;
+      }
       const url = asUrl(text);
       if (url) {
         e.preventDefault();

@@ -8,10 +8,13 @@ import { TaskListCard } from './TaskListCard';
 import { FileCard, ImageCard, LinkCard } from './MediaCards';
 import { media } from '../storage/media';
 import { loadLinkPreview } from '../model/importing';
-import { currentCamera, sizes } from './runtime';
+import { currentCamera, setSize, sizes } from './runtime';
 import { startElementDrag, useDrag } from './dnd';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
 import { copySelection } from '../ui/clipboard';
+import { startLineFrom } from './LinesLayer';
+import { SwatchCard } from './SwatchCard';
+import { LabelChips, openLabelPicker } from '../ui/Labels';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -19,7 +22,7 @@ import { copySelection } from '../ui/clipboard';
  */
 export type ViewMode = 'canvas' | 'list';
 
-function elementMenu(element: ZElement, ids: string[], mode: ViewMode): MenuEntry[] {
+function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: number; y: number }): MenuEntry[] {
   const { elements, boardId } = useStore.getState();
   const many = ids.length > 1;
   const items: MenuEntry[] = [];
@@ -29,6 +32,12 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode): MenuEntr
   }
   if (!many && ['CARD', 'COLUMN', 'TASK_LIST', 'LINK'].includes(element.type)) {
     items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : element.type === 'LINK' ? 'Изменить ссылку' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
+  }
+  if (!many && element.type === 'COLOR_SWATCH') {
+    items.push({ label: 'Изменить цвет', hint: 'двойной клик', run: () => document.querySelector<HTMLInputElement>(`[data-element-id="${element.id}"] input[type="color"]`)?.click() });
+    for (const [display, label] of [['hex', 'HEX'], ['rgb', 'RGB'], ['hsl', 'HSL'], ['none', 'Без подписи']] as const) {
+      items.push({ label: `${element.display === display ? '● ' : ''}Показывать: ${label}`, run: () => actions.update(element.id, { display }) });
+    }
   }
   if (!many && element.type === 'IMAGE') {
     items.push({ label: element.showCaption ? 'Скрыть подпись' : 'Подпись', run: () => (element.showCaption ? actions.update(element.id, { showCaption: false }) : actions.setEditing(element.id)) });
@@ -47,6 +56,7 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode): MenuEntr
       { label: 'Обновить превью', run: () => void loadLinkPreview(element.id, element.url) },
     );
   }
+  items.push({ label: 'Метки…', run: () => openLabelPicker(at.x, at.y, ids) });
   items.push(
     { label: 'Копировать', hint: '⌘C', run: () => copySelection(false) },
     { label: 'Вырезать', hint: '⌘X', run: () => copySelection(true) },
@@ -94,7 +104,7 @@ export function ElementView({
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node || mode !== 'canvas') return;
-    const measure = () => sizes.set(element.id, { w: node.offsetWidth, h: node.offsetHeight });
+    const measure = () => setSize(element.id, node.offsetWidth, node.offsetHeight);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(node);
@@ -154,7 +164,7 @@ export function ElementView({
     const { selection } = useStore.getState();
     const ids = selection.includes(element.id) ? selection : [element.id];
     if (!selection.includes(element.id)) actions.select(ids);
-    openMenu(e.clientX, e.clientY, elementMenu(element, ids, mode));
+    openMenu(e.clientX, e.clientY, elementMenu(element, ids, mode, { x: e.clientX, y: e.clientY }));
   };
 
   const onDoubleClick = (e: React.MouseEvent) => {
@@ -162,7 +172,7 @@ export function ElementView({
     if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
     else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
-    else if (!element.locked && element.type !== 'COLUMN' && element.type !== 'FILE') actions.setEditing(element.id);
+    else if (!element.locked && !['COLUMN', 'FILE', 'COLOR_SWATCH'].includes(element.type)) actions.setEditing(element.id);
   };
 
   const offset = drag ? `translate(${drag.dx / scale}px, ${drag.dy / scale}px)` : '';
@@ -171,6 +181,8 @@ export function ElementView({
       ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
       : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
   const resizable = mode === 'canvas' && element.type !== 'BOARD' && selected && !element.locked && !drag && !readOnly;
+  const soleSelected = useStore((s) => s.selection.length === 1 && s.selection[0] === element.id);
+  const lineHandle = mode === 'canvas' && soleSelected && !drag && !readOnly && !editing;
 
   return (
     <div
@@ -190,7 +202,10 @@ export function ElementView({
       {element.type === 'IMAGE' && <ImageCard element={element} selected={selected} editing={editing} />}
       {element.type === 'FILE' && <FileCard element={element} selected={selected} />}
       {element.type === 'LINK' && <LinkCard element={element} selected={selected} editing={editing} />}
+      {element.type === 'COLOR_SWATCH' && <SwatchCard element={element} selected={selected} />}
+      {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
+      {lineHandle && <span className="line-from" title="Потяните, чтобы провести линию" role="presentation" onPointerDown={(e) => startLineFrom(element.id, e)} />}
     </div>
   );
 }

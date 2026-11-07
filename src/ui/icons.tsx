@@ -55,3 +55,5 @@ export const IconInbox = make(<><path d="M4 13l3-8h10l3 8v6H4z" /><path d="M4 13
 export const IconFile = make(<><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /></>);
 export const IconPlay = make(<path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />);
 export const IconExternal = make(<><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" /></>, { stroke: 2 });
+export const IconSwatch = make(<><path d="M12 3a9 9 0 100 18c1.1 0 1.5-.9 1.2-1.7-.4-1 .3-2.3 1.5-2.3H17a4 4 0 004-4c0-5-4-10-9-10z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10.5" cy="7" r="1" /><circle cx="15" cy="7.5" r="1" /></>);
+export const IconTag = make(<><path d="M3 12V4h8l10 10-8 8z" /><circle cx="7.5" cy="8" r="1.5" /></>);

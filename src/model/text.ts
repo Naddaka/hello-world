@@ -32,6 +32,12 @@ export function elementText(e: ZElement): string {
       return e.name;
     case 'LINK':
       return [e.title, e.description, e.url].filter(Boolean).join('\n');
+    case 'LINE':
+      return e.label;
+    case 'COLOR_SWATCH':
+      return [e.name, e.hex].filter(Boolean).join(' ');
+    case 'LABEL':
+      return e.name;
   }
 }
 

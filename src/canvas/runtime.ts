@@ -1,8 +1,24 @@
+import { create } from 'zustand';
 import { GRID } from '../model/types';
 import { actions, DEFAULT_CAMERA, MAX_ZOOM, MIN_ZOOM, useStore, type Camera } from '../model/store';
 
 /** Rendered sizes of elements in canvas pixels, measured by the element views. */
 export const sizes = new Map<string, { w: number; h: number }>();
+
+/** Bumped (at most once per frame) when a size changes, so lines can follow. */
+export const useSizeVersion = create<{ v: number }>(() => ({ v: 0 }));
+let sizeFrame = 0;
+export function setSize(id: string, w: number, h: number) {
+  const old = sizes.get(id);
+  if (old && old.w === w && old.h === h) return;
+  sizes.set(id, { w, h });
+  if (!sizeFrame) {
+    sizeFrame = requestAnimationFrame(() => {
+      sizeFrame = 0;
+      useSizeVersion.setState((s) => ({ v: s.v + 1 }));
+    });
+  }
+}
 
 /** The canvas registers its viewport so commands outside it can convert coordinates. */
 let viewport: HTMLElement | null = null;
@@ -68,7 +84,9 @@ export function centreOn(gx: number, gy: number) {
 }
 
 /** Fits all canvas content of the current board into view. */
-export function zoomToFit(elements: { id: string; x: number; y: number; width: number }[]) {
+export function zoomToFit(all: { id: string; x: number; y: number; width: number; type?: string }[]) {
+  // Lines are positioned by their ends, not by x/y.
+  const elements = all.filter((e) => e.type !== 'LINE');
   if (!viewport || elements.length === 0) {
     setCamera(DEFAULT_CAMERA);
     return;

@@ -11,6 +11,7 @@ import { useShortcuts } from './ui/useShortcuts';
 import { useClipboard } from './ui/clipboard';
 import { InboxPanel, TrashPanel } from './ui/Panels';
 import { SearchPanel } from './ui/SearchPanel';
+import { LabelPicker } from './ui/Labels';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -94,6 +95,7 @@ export function App() {
       </div>
       {panel === 'search' && <SearchPanel />}
       <ContextMenu />
+      <LabelPicker />
     </div>
   );
 }

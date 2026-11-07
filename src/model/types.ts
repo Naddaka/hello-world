@@ -33,6 +33,8 @@ interface ElementBase {
   /** Stacking order on a canvas, or order inside a column / panel. */
   z: number;
   locked?: boolean;
+  /** Ids of labels (LABEL elements) attached to this element. */
+  labels?: string[];
   createdAt: number;
   updatedAt: number;
 }
@@ -113,7 +115,56 @@ export interface LinkElement extends ElementBase {
   status: 'empty' | 'loading' | 'ready' | 'error';
 }
 
-export type ZElement = CardElement | BoardElement | ColumnElement | TaskListElement | ImageElement | FileElement | LinkElement;
+/** One end of a line: attached to an element, or a free point in grid units. */
+export interface LineEnd {
+  elementId: string | null;
+  x: number;
+  y: number;
+}
+
+export type LineColor = 'default' | 'blue' | 'red' | 'green' | 'orange' | 'purple';
+
+export interface LineElement extends ElementBase {
+  type: 'LINE';
+  start: LineEnd;
+  end: LineEnd;
+  /** Sideways offset of the curve's middle, in canvas pixels (0 = straight). */
+  bend: number;
+  label: string;
+  color: LineColor;
+  weight: 1 | 2 | 3;
+  arrowStart: boolean;
+  arrowEnd: boolean;
+}
+
+export interface SwatchElement extends ElementBase {
+  type: 'COLOR_SWATCH';
+  /** #rrggbb */
+  hex: string;
+  name: string;
+  display: 'hex' | 'rgb' | 'hsl' | 'none';
+}
+
+/** A label definition. Labels live outside boards (parentId null). */
+export interface LabelElement extends ElementBase {
+  type: 'LABEL';
+  name: string;
+  color: LabelColor;
+}
+
+export type LabelColor = 'blue' | 'orange' | 'green' | 'purple' | 'pink' | 'yellow' | 'red' | 'gray';
+
+export type ZElement =
+  | CardElement
+  | BoardElement
+  | ColumnElement
+  | TaskListElement
+  | ImageElement
+  | FileElement
+  | LinkElement
+  | LineElement
+  | SwatchElement
+  | LabelElement;
 export type ElementType = ZElement['type'];
 
 type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
@@ -127,7 +178,10 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<TaskListElement, 'id' | 'type'>> &
   Partial<Omit<ImageElement, 'id' | 'type'>> &
   Partial<Omit<FileElement, 'id' | 'type'>> &
-  Partial<Omit<LinkElement, 'id' | 'type'>> & { color?: CardColor | BoardColor };
+  Partial<Omit<LinkElement, 'id' | 'type'>> &
+  Partial<Omit<LineElement, 'id' | 'type' | 'color'>> &
+  Partial<Omit<SwatchElement, 'id' | 'type'>> &
+  Partial<Omit<LabelElement, 'id' | 'type' | 'color'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -137,11 +191,14 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   IMAGE: 32,
   FILE: 40,
   LINK: 40,
+  LINE: 0,
+  COLOR_SWATCH: 12,
+  LABEL: 0,
 };
 
 /** Types that can be placed inside a column. */
 export function fitsInColumn(type: ElementType): boolean {
-  return type !== 'COLUMN';
+  return type !== 'COLUMN' && type !== 'LINE' && type !== 'LABEL';
 }
 
 export const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };

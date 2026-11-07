@@ -3,11 +3,11 @@ import { actions, boardPath, containingBoard, useStore } from '../model/store';
 import { HOME_ID, type ZElement } from '../model/types';
 import { elementText } from '../model/text';
 import { centreOn } from '../canvas/runtime';
-import { IconBoard, IconColumn, IconFile, IconLink, IconMedia, IconNote, IconSearch, IconTasks } from './icons';
+import { IconBoard, IconColumn, IconFile, IconLine, IconLink, IconMedia, IconNote, IconSearch, IconSwatch, IconTag, IconTasks } from './icons';
 
 type Sort = 'viewed' | 'modified';
 
-const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink } as const;
+const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink, LINE: IconLine, COLOR_SWATCH: IconSwatch, LABEL: IconTag } as const;
 
 /** Opens the board holding an element, selects it and scrolls it into view. */
 export function reveal(element: ZElement) {
@@ -58,8 +58,10 @@ export function SearchPanel() {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const live = Object.values(elements).filter((e) => e.section !== 'TRASH' && e.id !== HOME_ID && !isInTrash(elements, e));
-    const found = q ? live.filter((e) => elementText(e).toLowerCase().includes(q)) : live.filter((e) => e.type === 'BOARD');
+    const live = Object.values(elements).filter((e) => e.section !== 'TRASH' && e.id !== HOME_ID && e.type !== 'LABEL' && !isInTrash(elements, e));
+    // Items match by their text or by the names of their labels.
+    const labelText = (e: ZElement) => (e.labels ?? []).map((id) => (elements[id]?.type === 'LABEL' ? (elements[id] as { name: string }).name : '')).join(' ');
+    const found = q ? live.filter((e) => `${elementText(e)} ${labelText(e)}`.toLowerCase().includes(q)) : live.filter((e) => e.type === 'BOARD');
     const key = (e: ZElement) => (sort === 'viewed' ? (viewedAt[e.type === 'BOARD' ? e.id : (containingBoard(elements, e.id) ?? '')] ?? 0) : e.updatedAt);
     return found.sort((a, b) => key(b) - key(a) || b.updatedAt - a.updatedAt).slice(0, 60);
   }, [elements, query, sort, viewedAt]);
@@ -114,7 +116,7 @@ export function SearchPanel() {
                 <button type="button" className={`search-item${i === active ? ' on' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => open(e)}>
                   <Icon size={18} />
                   <span className="search-text">
-                    <span className="search-main">{snippet(elementText(e), query.trim())}</span>
+                    <span className="search-main">{snippet(elementText(e) || e.type, query.trim())}</span>
                     <span className="search-path">{path}</span>
                   </span>
                 </button>

@@ -12,6 +12,7 @@ import {
   type CardElement,
   type ElementFields,
   type ElementPatch,
+  type LabelElement,
   type ZElement,
 } from './types';
 import type { Repo } from '../storage/repo';
@@ -162,6 +163,12 @@ function applyHistory(tx: Transaction | null) {
   set({ elements, selection, editingId: null, canUndo: history.canUndo, canRedo: history.canRedo, toast: null });
   schedulePersist(changed, removed);
 }
+
+function makeBase(parentId: string | null, x: number, y: number, z: number, width: number) {
+  return { id: nanoid(), parentId, section: 'CANVAS' as const, x: Math.round(x), y: Math.round(y), width, z, createdAt: now(), updatedAt: now() };
+}
+
+const LABEL_COLORS: LabelElement['color'][] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow', 'red', 'gray'];
 
 type NewElement =
   | { type: 'CARD'; content?: JSONContent; color?: CardElement['color'] }
@@ -506,6 +513,57 @@ export const actions = {
     set({ selection: ids, editingId: null });
   },
 
+  // ----- labels -----
+  createLabel(name: string, applyTo: string[] = []): string {
+    const existing = allLabels(get().elements).length;
+    const element = {
+      ...makeBase(null, 0, 0, 0, 0),
+      type: 'LABEL' as const,
+      name: name.trim(),
+      color: LABEL_COLORS[existing % LABEL_COLORS.length],
+    };
+    const elements = get().elements;
+    const ops: Op[] = [{ kind: 'create', element }];
+    for (const id of applyTo) {
+      const e = elements[id];
+      if (e) ops.push(updateOp(e, { labels: [...(e.labels ?? []), element.id] }));
+    }
+    commit(ops);
+    return element.id;
+  },
+
+  /** Adds the label to all given elements, or removes it if they all have it already. */
+  toggleLabel(ids: string[], labelId: string) {
+    const elements = get().elements;
+    const targets = ids.map((id) => elements[id]).filter(Boolean);
+    const all = targets.every((e) => e.labels?.includes(labelId));
+    commit(
+      targets
+        .filter((e) => all || !e.labels?.includes(labelId))
+        .map((e) => updateOp(e, { labels: all ? (e.labels ?? []).filter((l) => l !== labelId) : [...(e.labels ?? []), labelId] })),
+    );
+  },
+
+  updateLabel(labelId: string, patch: { name?: string; color?: LabelElement['color'] }) {
+    if (get().elements[labelId]?.type !== 'LABEL') return;
+    const after: ElementPatch = {};
+    if (patch.name?.trim()) after.name = patch.name.trim();
+    if (patch.color) after.color = patch.color;
+    actions.update(labelId, after);
+  },
+
+  /** Deletes a label everywhere it is used. */
+  deleteLabel(labelId: string) {
+    const elements = get().elements;
+    const label = elements[labelId];
+    if (!label) return;
+    const ops: Op[] = Object.values(elements)
+      .filter((e) => e.labels?.includes(labelId))
+      .map((e) => updateOp(e, { labels: e.labels!.filter((l) => l !== labelId) }));
+    ops.push({ kind: 'delete', element: label });
+    commit(ops);
+  },
+
   // ----- navigation -----
   openBoard(id: string) {
     const { boardId, back, elements, viewedAt } = get();
@@ -578,11 +636,28 @@ export function trashChildren(elements: ElementMap, boardId: string): ZElement[]
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** All label definitions, alphabetically. */
+export function allLabels(elements: ElementMap): LabelElement[] {
+  return Object.values(elements)
+    .filter((e): e is LabelElement => e.type === 'LABEL')
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+}
+
+/** How many elements use each label. */
+export function labelUsage(elements: ElementMap): Record<string, number> {
+  const usage: Record<string, number> = {};
+  for (const e of Object.values(elements)) {
+    if (e.section === 'TRASH') continue;
+    for (const l of e.labels ?? []) usage[l] = (usage[l] ?? 0) + 1;
+  }
+  return usage;
+}
+
 /** Number of cards on a board, counting what is inside its columns. */
 export function countChildren(elements: ElementMap, boardId: string): number {
   let n = 0;
   for (const e of Object.values(elements)) {
-    if (e.section === 'TRASH') continue;
+    if (e.section === 'TRASH' || e.type === 'LINE') continue;
     if (e.parentId === boardId) n += e.type === 'COLUMN' ? 0 : 1;
     else if (elements[e.parentId ?? '']?.type === 'COLUMN' && elements[e.parentId ?? ''].parentId === boardId && elements[e.parentId ?? ''].section !== 'TRASH') n++;
   }
