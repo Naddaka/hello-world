@@ -10,6 +10,7 @@ import {
   IconColumn,
   IconDraw,
   IconFile,
+  IconSketch,
   IconLine,
   IconLink,
   IconMedia,
@@ -24,8 +25,10 @@ import { newLine } from '../canvas/LinesLayer';
 import { addSwatch } from '../canvas/SwatchCard';
 import { newTableFields, tableWidth } from '../table/TableCard';
 import { newDocumentFields, openDocument } from '../doc/DocumentView';
+import { startBoardDrawing } from '../draw/BoardDraw';
+import { newSketchFields, openSketchEditor } from '../draw/SketchEditor';
 
-type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH' | 'TABLE' | 'DOCUMENT';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH' | 'TABLE' | 'DOCUMENT' | 'SKETCH' | 'DRAW';
 
 interface Tool {
   label: string;
@@ -47,7 +50,8 @@ const TOOLS: Tool[] = [
   { label: 'Сценарий', Icon: IconScript, soon: 'этап 4' },
   { label: 'Линия', Icon: IconLine, kind: 'LINE' },
   { label: 'Цвет', Icon: IconSwatch, kind: 'COLOR_SWATCH' },
-  { label: 'Рисовать', Icon: IconDraw, soon: 'этап 2' },
+  { label: 'Скетч', Icon: IconSketch, kind: 'SKETCH' },
+  { label: 'Рисовать', Icon: IconDraw, kind: 'DRAW' },
 ];
 
 function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: number) {
@@ -58,6 +62,8 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
   if (kind === 'LINK') addLink(null, { x: gx, y: gy }, parent);
   else if (kind === 'LINE') actions.select([actions.insert(newLine({ elementId: null, x: gx, y: gy }, { elementId: null, x: gx + 24, y: gy }), boardId, 0, 0, 0)]);
   else if (kind === 'COLOR_SWATCH') addSwatch({ x: gx, y: gy }, parent);
+  else if (kind === 'DRAW') startBoardDrawing();
+  else if (kind === 'SKETCH') openSketchEditor(actions.insert(newSketchFields(), parent, gx, gy));
   else if (kind === 'TABLE') {
     const fields = newTableFields();
     const id = actions.insert(fields, parent, gx, gy, tableWidth(fields.colWidths));
@@ -97,7 +103,7 @@ export function Toolbar() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       setGhost(null);
-      const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : kind === 'LINE' ? 12 : DEFAULT_WIDTH[kind]) / 2;
+      const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : kind === 'LINE' || kind === 'DRAW' ? 12 : DEFAULT_WIDTH[kind]) / 2;
       if (!moved) {
         const c = viewportCentreGrid();
         create(kind, c.x - halfWidth, c.y - 6);

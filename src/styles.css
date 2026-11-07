@@ -528,3 +528,27 @@ svg.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
 .zt-capture { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; resize: none; pointer-events: none; }
 .doc-head .link-btn { align-self: center; }
 .mac-overlay .doc-head { padding-left: 84px; }
+
+/* ---------- stage 2: drawing ---------- */
+.draw-capture { position: absolute; inset: 0; z-index: 30; cursor: crosshair; touch-action: none; }
+.draw-bar-wrap { position: absolute; left: 0; right: 0; bottom: 20px; display: flex; justify-content: center; z-index: 40; pointer-events: none; }
+.draw-bar { pointer-events: all; display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 16px; }
+.pen-color { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+.pen-color.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+svg.drawing { display: block; overflow: visible; }
+svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; }
+.sketch-card .sketch-surface { position: relative; background: #ffffff; }
+.sketch-svg, .annotations { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sketch-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #8a93a3; }
+.sketch-overlay { position: fixed; inset: 0; z-index: 1250; background: var(--canvas); display: flex; flex-direction: column; }
+.sketch-title { font-size: 14px; font-weight: 600; }
+.aspect-pick { display: flex; gap: 2px; margin-left: 16px; }
+.sketch-stage { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding-bottom: 72px; }
+.sketch-paper { position: relative; background-color: #ffffff; background-size: cover; background-position: center; box-shadow: var(--shadow-pop); border-radius: 6px; cursor: crosshair; touch-action: none; overflow: hidden; }
+.sketch-paper svg { position: absolute; inset: 0; pointer-events: none; }
+
+/* ---------- stage 2: presentation ---------- */
+.present-bar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 16px; padding: 8px 10px 8px 16px; border-radius: 14px; font-size: 13px; }
+.present-bar label { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.present-bar input { accent-color: var(--accent); }
+.app.presenting .line-from, .app.presenting .resize { display: none; }

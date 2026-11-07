@@ -17,6 +17,9 @@ import { SwatchCard } from './SwatchCard';
 import { TableCard } from '../table/TableCard';
 import { convertNoteToDocument, DocumentTile, exportDocument, openDocument } from '../doc/DocumentView';
 import { LabelChips, openLabelPicker } from '../ui/Labels';
+import { DrawingView } from '../draw/BoardDraw';
+import { ASPECTS, openSketchEditor, SketchCard } from '../draw/SketchEditor';
+import { focusOn, usePresent } from '../ui/Presentation';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -52,7 +55,13 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       items.push({ label: `${element.display === display ? '● ' : ''}Показывать: ${label}`, run: () => actions.update(element.id, { display }) });
     }
   }
+  if (!many && element.type === 'SKETCH') {
+    items.push({ label: 'Рисовать', hint: 'двойной клик', run: () => openSketchEditor(element.id) });
+    for (const a of ASPECTS) items.push({ label: `${Math.abs(element.aspect - a.value) < 0.01 ? '● ' : ''}Формат ${a.label}`, run: () => actions.update(element.id, { aspect: a.value }) });
+  }
   if (!many && element.type === 'IMAGE') {
+    items.push({ label: 'Рисовать на изображении', run: () => openSketchEditor(element.id) });
+    if (element.annotations?.length) items.push({ label: 'Убрать рисунок', run: () => actions.update(element.id, { annotations: [] }) });
     items.push({ label: element.showCaption ? 'Скрыть подпись' : 'Подпись', run: () => (element.showCaption ? actions.update(element.id, { showCaption: false }) : actions.setEditing(element.id)) });
     items.push({ label: 'Открыть файл', run: async () => (await media()).openMedia(element.media) });
     items.push({ label: 'Показать в Finder', run: async () => (await media()).revealMedia(element.media) });
@@ -129,6 +138,15 @@ export function ElementView({
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    const present = usePresent.getState();
+    if (present.active) {
+      // Presenting: a click can enlarge the card; editing is optional.
+      if (present.focusOnClick) focusOn(element.id);
+      if (present.preventEdit) {
+        e.stopPropagation();
+        return;
+      }
+    }
     const state = useStore.getState();
     if (state.editingId === element.id && !readOnly) return; // the editor handles its own pointer
     e.stopPropagation();
@@ -173,7 +191,7 @@ export function ElementView({
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (readOnly) return;
+    if (readOnly || (usePresent.getState().active && usePresent.getState().preventEdit)) return;
     const { selection } = useStore.getState();
     const ids = selection.includes(element.id) ? selection : [element.id];
     if (!selection.includes(element.id)) actions.select(ids);
@@ -184,6 +202,8 @@ export function ElementView({
     e.stopPropagation();
     if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
+    else if (usePresent.getState().active && usePresent.getState().preventEdit) return;
+    else if (element.type === 'SKETCH') openSketchEditor(element.id);
     else if (element.type === 'DOCUMENT') openDocument(element.id);
     else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
     else if (!element.locked && !['COLUMN', 'FILE', 'COLOR_SWATCH'].includes(element.type)) actions.setEditing(element.id);
@@ -194,7 +214,7 @@ export function ElementView({
     mode === 'canvas'
       ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
       : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
-  const resizable = mode === 'canvas' && !['BOARD', 'TABLE', 'DOCUMENT'].includes(element.type) && selected && !element.locked && !drag && !readOnly;
+  const resizable = mode === 'canvas' && !['BOARD', 'TABLE', 'DOCUMENT', 'DRAWING'].includes(element.type) && selected && !element.locked && !drag && !readOnly;
   const soleSelected = useStore((s) => s.selection.length === 1 && s.selection[0] === element.id);
   const lineHandle = mode === 'canvas' && soleSelected && !drag && !readOnly && !editing;
 
@@ -219,6 +239,8 @@ export function ElementView({
       {element.type === 'COLOR_SWATCH' && <SwatchCard element={element} selected={selected} />}
       {element.type === 'TABLE' && <TableCard element={element} selected={selected} editing={editing} />}
       {element.type === 'DOCUMENT' && <DocumentTile element={element} selected={selected} />}
+      {element.type === 'DRAWING' && <DrawingView element={element} selected={selected} />}
+      {element.type === 'SKETCH' && <SketchCard element={element} selected={selected} />}
       {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
       {lineHandle && <span className="line-from" title="Потяните, чтобы провести линию" role="presentation" onPointerDown={(e) => startLineFrom(element.id, e)} />}

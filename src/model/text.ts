@@ -40,6 +40,10 @@ export function elementText(e: ZElement): string {
       return e.name;
     case 'TABLE':
       return e.cells.map((row) => row.filter(Boolean).join(' ')).filter(Boolean).join('\n');
+    case 'DRAWING':
+      return '';
+    case 'SKETCH':
+      return e.caption;
     case 'DOCUMENT':
       return [e.title, docText(e.content)].filter(Boolean).join('\n');
   }

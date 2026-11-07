@@ -90,6 +90,8 @@ export interface ImageElement extends ElementBase {
   naturalHeight: number;
   caption: string;
   showCaption: boolean;
+  /** Drawing over the image, in units of 1000 per image width. */
+  annotations?: Stroke[];
 }
 
 export interface FileElement extends ElementBase {
@@ -175,6 +177,30 @@ export interface DocumentElement extends ElementBase {
   preview: boolean;
 }
 
+/** A freehand stroke: flat [x0, y0, x1, y1, …] coordinates. */
+export interface Stroke {
+  color: string;
+  size: number;
+  points: number[];
+}
+
+/** Freehand drawing made directly on the board; points in pixels from its top-left. */
+export interface DrawingElement extends ElementBase {
+  type: 'DRAWING';
+  strokes: Stroke[];
+  /** Height in pixels (width is the element width). */
+  height: number;
+}
+
+/** A card to draw on (storyboard frames); points in units of 1000 per card width. */
+export interface SketchElement extends ElementBase {
+  type: 'SKETCH';
+  strokes: Stroke[];
+  /** Width divided by height. */
+  aspect: number;
+  caption: string;
+}
+
 /** A label definition. Labels live outside boards (parentId null). */
 export interface LabelElement extends ElementBase {
   type: 'LABEL';
@@ -196,7 +222,9 @@ export type ZElement =
   | SwatchElement
   | LabelElement
   | TableElement
-  | DocumentElement;
+  | DocumentElement
+  | DrawingElement
+  | SketchElement;
 export type ElementType = ZElement['type'];
 
 type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
@@ -215,7 +243,9 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<SwatchElement, 'id' | 'type'>> &
   Partial<Omit<LabelElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<TableElement, 'id' | 'type'>> &
-  Partial<Omit<DocumentElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
+  Partial<Omit<DocumentElement, 'id' | 'type'>> &
+  Partial<Omit<DrawingElement, 'id' | 'type'>> &
+  Partial<Omit<SketchElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -230,6 +260,8 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   LABEL: 0,
   TABLE: 46,
   DOCUMENT: 14,
+  DRAWING: 10,
+  SKETCH: 32,
 };
 
 /** Types that can be placed inside a column. */

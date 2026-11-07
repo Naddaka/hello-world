@@ -3,6 +3,8 @@ import { actions, canvasChildren, countChildren, DEFAULT_CAMERA, inboxChildren, 
 import { GRID } from '../model/types';
 import { ElementView } from './ElementView';
 import { LinesLayer } from './LinesLayer';
+import { BoardDrawOverlay, BoardDrawStrokes } from '../draw/BoardDraw';
+import { usePresent } from '../ui/Presentation';
 import type { LineElement } from '../model/types';
 import { currentCamera, lastPointer, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
 import { useDrag } from './dnd';
@@ -45,6 +47,8 @@ export function Canvas() {
   const inboxCount = useMemo(() => inboxChildren(elements, boardId).length, [elements, boardId]);
   const inboxOpen = useStore((s) => s.panel === 'inbox');
   const overInbox = useDrag((s) => s.drop?.kind === 'inbox');
+  const presenting = usePresent((s) => s.active);
+  const locked = usePresent((s) => s.active && s.preventEdit);
 
   useEffect(() => {
     registerViewport(ref.current);
@@ -147,6 +151,11 @@ export function Canvas() {
     }
     if (e.button !== 0) return;
     if (useStore.getState().editingId) actions.setEditing(null);
+    // While presenting without editing, dragging the background pans the board.
+    if (locked) {
+      startPan(e);
+      return;
+    }
     startMarquee(e);
   };
 
@@ -157,6 +166,7 @@ export function Canvas() {
 
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (locked) return;
     const { clientX, clientY } = e;
     const p = screenToCanvas(clientX, clientY);
     openMenu(clientX, clientY, [
@@ -182,7 +192,7 @@ export function Canvas() {
       aria-label="Холст доски"
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => {
-        if (e.target === ref.current || (e.target as HTMLElement).classList.contains('layer')) createNoteAt(e.clientX, e.clientY);
+        if (!locked && (e.target === ref.current || (e.target as HTMLElement).classList.contains('layer'))) createNoteAt(e.clientX, e.clientY);
       }}
       onContextMenu={onContextMenu}
       onPointerMove={(e) => {
@@ -209,12 +219,14 @@ export function Canvas() {
     >
       <div className="layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
         <LinesLayer lines={lines} />
+        <BoardDrawStrokes />
         {children.map((el) => (
           <ElementView key={el.id} element={el} count={el.type === 'BOARD' ? countChildren(elements, el.id) : 0} />
         ))}
       </div>
       {marquee && <div className="marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} />}
-      {!inboxOpen && (
+      <BoardDrawOverlay />
+      {!inboxOpen && !presenting && (
         <button
           type="button"
           className={`inbox-btn panel${overInbox ? ' drop' : ''}`}

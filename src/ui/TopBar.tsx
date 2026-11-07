@@ -2,6 +2,7 @@ import { actions, boardPath, useStore } from '../model/store';
 import { HOME_ID } from '../model/types';
 import { useDrag } from '../canvas/dnd';
 import { isTauri } from '../storage/repo';
+import { startPresenting } from './Presentation';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
@@ -61,7 +62,7 @@ export function TopBar() {
         <button type="button" className="ibtn" aria-label="Тёмная тема (⌘⇧D)" title={theme === 'dark' ? 'Светлая тема (⌘⇧D)' : 'Тёмная тема (⌘⇧D)'} onClick={() => actions.toggleTheme()}>
           {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
         </button>
-        <button type="button" className="ibtn" aria-label="Режим презентации" title="Режим презентации — появится, этап 2" disabled>
+        <button type="button" className="ibtn" aria-label="Режим презентации" title="Режим презентации" onClick={startPresenting}>
           <IconPresent size={17} />
         </button>
       </div>

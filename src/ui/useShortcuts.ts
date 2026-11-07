@@ -4,6 +4,9 @@ import { GRID, type CardElement } from '../model/types';
 import { setCamera, sizes, zoomAt, zoomToFit } from '../canvas/runtime';
 import { closeMenu, useMenu } from './ContextMenu';
 import { openDocument, useOpenDocument } from '../doc/DocumentView';
+import { startBoardDrawing, useBoardDraw } from '../draw/BoardDraw';
+import { useSketchEditor } from '../draw/SketchEditor';
+import { usePresent } from './Presentation';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -33,6 +36,8 @@ export function useShortcuts() {
         return;
       }
       if (isTyping(e.target) || useMenu.getState().items || useOpenDocument.getState().id) return;
+      // Drawing, sketching and presenting handle their own keys.
+      if (useBoardDraw.getState().active || useSketchEditor.getState().id || usePresent.getState().active) return;
 
       const state = useStore.getState();
       const selected = state.selection.map((id) => state.elements[id]).filter(Boolean);
@@ -79,6 +84,9 @@ export function useShortcuts() {
         if (el.parentId !== state.boardId) return;
         if (el.type === 'CARD' || el.type === 'TASK_LIST') actions.create({ type: el.type }, state.boardId, el.x, el.y + Math.ceil((size?.h ?? 120) / GRID) + 2, { width: el.width });
         else if (el.type === 'BOARD' || el.type === 'COLUMN') actions.create({ type: el.type }, state.boardId, el.x + Math.ceil((size?.w ?? 112) / GRID) + 2, el.y);
+      } else if (!mod && e.shiftKey && key === 'd') {
+        e.preventDefault();
+        startBoardDrawing();
       } else if (!mod && key === 'z') {
         e.preventDefault();
         zoomToFit(canvasChildren(state.elements, state.boardId));

@@ -13,6 +13,8 @@ import { InboxPanel, TrashPanel } from './ui/Panels';
 import { SearchPanel } from './ui/SearchPanel';
 import { LabelPicker } from './ui/Labels';
 import { DocumentOverlay } from './doc/DocumentView';
+import { SketchEditorOverlay } from './draw/SketchEditor';
+import { PresentBar, usePresent } from './ui/Presentation';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -32,6 +34,7 @@ export function App() {
   const ready = useStore((s) => s.ready);
   const theme = useStore((s) => s.theme);
   const panel = useStore((s) => s.panel);
+  const presenting = usePresent((s) => s.active);
   useShortcuts();
   useClipboard();
 
@@ -85,19 +88,21 @@ export function App() {
 
   if (!ready) return <div className="loading">Загрузка…</div>;
   return (
-    <div className="app">
-      <TopBar />
+    <div className={`app${presenting ? ' presenting' : ''}`}>
+      {!presenting && <TopBar />}
       <div style={{ position: 'relative', flex: '1 1 auto', display: 'flex', minHeight: 0 }}>
         <Canvas />
-        <Toolbar />
-        {panel === 'inbox' && <InboxPanel />}
-        {panel === 'trash' && <TrashPanel />}
+        {!presenting && <Toolbar />}
+        {!presenting && panel === 'inbox' && <InboxPanel />}
+        {!presenting && panel === 'trash' && <TrashPanel />}
+        <PresentBar />
         <Toast />
       </div>
       {panel === 'search' && <SearchPanel />}
       <ContextMenu />
       <LabelPicker />
       <DocumentOverlay />
+      <SketchEditorOverlay />
     </div>
   );
 }

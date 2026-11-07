@@ -5,6 +5,7 @@ import { media, useMediaSrc } from '../storage/media';
 import { asUrl, displayHost, embedFor } from '../model/embeds';
 import { loadLinkPreview } from '../model/importing';
 import { IconExternal, IconFile, IconLink, IconPlay } from '../ui/icons';
+import { StrokesSvg } from '../draw/SketchEditor';
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -46,6 +47,7 @@ export function ImageCard({ element, selected, editing }: { element: ImageElemen
     <figure className={`media-card${selected ? ' selected' : ''}`}>
       <div className="media-frame" style={{ aspectRatio: `${element.naturalWidth} / ${element.naturalHeight}` }}>
         {src ? <img src={src} alt={element.caption || element.name} draggable={false} /> : <div className="media-missing">{element.name}</div>}
+        {element.annotations && element.annotations.length > 0 && <StrokesSvg strokes={element.annotations} aspect={element.naturalWidth / element.naturalHeight} className="annotations" />}
       </div>
       {editing ? (
         <figcaption><CaptionInput element={element} /></figcaption>
