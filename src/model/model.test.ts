@@ -130,3 +130,78 @@ describe('store', () => {
     expect(canvasChildren(useStore.getState().elements, HOME_ID).some((e) => e.id === id)).toBe(true);
   });
 });
+
+describe('stage 1 organisation', () => {
+  let n = 0;
+  beforeEach(async () => {
+    __resetForTests();
+    useStore.setState({ elements: {}, boardId: HOME_ID, back: [], forward: [], selection: [], editingId: null, ready: false });
+    await actions.init(await IdbRepo.open(`stage1-${n++}`));
+  });
+
+  it('inserts cards into a column in order and takes them out again', async () => {
+    const { columnChildren } = await import('./store');
+    const col = actions.create({ type: 'COLUMN' }, HOME_ID, 0, 40);
+    const a = actions.createCard(HOME_ID, 0, 0, { edit: false });
+    const b = actions.createCard(HOME_ID, 0, 0, { edit: false });
+    actions.insertIntoColumn([a], col);
+    actions.insertIntoColumn([b], col, 0);
+    expect(columnChildren(useStore.getState().elements, col).map((e) => e.id)).toEqual([b, a]);
+    actions.placeOnCanvas(HOME_ID, [{ id: b, x: 60, y: 60 }]);
+    expect(useStore.getState().elements[b]).toMatchObject({ parentId: HOME_ID, x: 60, y: 60 });
+    expect(columnChildren(useStore.getState().elements, col).map((e) => e.id)).toEqual([a]);
+  });
+
+  it('refuses to put a column into a column', () => {
+    const outer = actions.create({ type: 'COLUMN' }, HOME_ID, 0, 40);
+    const inner = actions.create({ type: 'COLUMN' }, HOME_ID, 50, 40);
+    actions.insertIntoColumn([inner], outer);
+    expect(useStore.getState().elements[inner].parentId).toBe(HOME_ID);
+  });
+
+  it('groups selected cards into a new column, top to bottom', async () => {
+    const { columnChildren } = await import('./store');
+    const top = actions.createCard(HOME_ID, 10, 10, { edit: false });
+    const bottom = actions.createCard(HOME_ID, 10, 50, { edit: false });
+    actions.groupIntoColumn([bottom, top]);
+    const col = useStore.getState().selection[0];
+    expect(columnChildren(useStore.getState().elements, col).map((e) => e.id)).toEqual([top, bottom]);
+    actions.undo();
+    expect(useStore.getState().elements[top].parentId).toBe(HOME_ID);
+  });
+
+  it('moves elements dropped on a board into its Unsorted panel', async () => {
+    const { inboxChildren } = await import('./store');
+    const board = actions.createBoard(HOME_ID, 0, 40);
+    const note = actions.createCard(HOME_ID, 0, 0, { edit: false });
+    actions.moveToBoard([note], board);
+    expect(inboxChildren(useStore.getState().elements, board).map((e) => e.id)).toEqual([note]);
+  });
+
+  it('restores from the trash and empties it for good', async () => {
+    const { trashChildren } = await import('./store');
+    const a = actions.createCard(HOME_ID, 0, 0, { edit: false });
+    const b = actions.createBoard(HOME_ID, 0, 30);
+    actions.createCard(b, 0, 0, { edit: false });
+    actions.trash([a, b]);
+    expect(trashChildren(useStore.getState().elements, HOME_ID)).toHaveLength(2);
+    actions.restore([a]);
+    expect(useStore.getState().elements[a].section).toBe('CANVAS');
+    actions.emptyTrash(HOME_ID);
+    const { elements } = useStore.getState();
+    expect(elements[b]).toBeUndefined();
+    expect(Object.values(elements).some((e) => e.parentId === b)).toBe(false);
+  });
+
+  it('pastes copied elements with fresh ids, including board content', () => {
+    const board = actions.createBoard(HOME_ID, 5, 5);
+    actions.createCard(board, 0, 0, { edit: false });
+    const { elements } = useStore.getState();
+    const all = [elements[board], ...Object.values(elements).filter((e) => e.parentId === board)];
+    actions.paste([elements[board]], all, { x: 100, y: 100 });
+    const pasted = useStore.getState().selection[0];
+    expect(pasted).not.toBe(board);
+    expect(useStore.getState().elements[pasted]).toMatchObject({ x: 100, y: 100, parentId: HOME_ID });
+    expect(Object.values(useStore.getState().elements).filter((e) => e.parentId === pasted)).toHaveLength(1);
+  });
+});

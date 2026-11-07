@@ -5,11 +5,12 @@ import { applyTransaction, History, updateOp, type ElementMap, type Op, type Tra
 import {
   DEFAULT_WIDTH,
   EMPTY_DOC,
+  fitsInColumn,
   HOME_ID,
+  TRASH_RETENTION_DAYS,
   type BoardElement,
   type CardElement,
   type ElementPatch,
-  type Section,
   type ZElement,
 } from './types';
 import type { Repo } from '../storage/repo';
@@ -27,6 +28,7 @@ export const MAX_ZOOM = 3;
 export const DEFAULT_CAMERA: Camera = { x: 120, y: 40, zoom: 1 };
 
 export type Theme = 'light' | 'dark';
+export type Panel = 'inbox' | 'trash' | 'search' | null;
 
 interface State {
   ready: boolean;
@@ -37,7 +39,10 @@ interface State {
   selection: string[];
   editingId: string | null;
   cameras: Record<string, Camera>;
+  /** When each board was last opened (for "recently viewed" in search). */
+  viewedAt: Record<string, number>;
   theme: Theme;
+  panel: Panel;
   canUndo: boolean;
   canRedo: boolean;
   toast: string | null;
@@ -87,7 +92,7 @@ export async function flushPersist(): Promise<void> {
 // ---------- local preferences ----------
 const PREFS_KEY = 'zadum.prefs';
 
-function loadPrefs(): { theme?: Theme; cameras?: Record<string, Camera> } {
+function loadPrefs(): { theme?: Theme; cameras?: Record<string, Camera>; viewedAt?: Record<string, number> } {
   try {
     return JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
   } catch {
@@ -96,12 +101,18 @@ function loadPrefs(): { theme?: Theme; cameras?: Record<string, Camera> } {
 }
 
 function savePrefs() {
-  const { theme, cameras } = useStore.getState();
+  const { theme, cameras, viewedAt } = useStore.getState();
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ theme, cameras }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ theme, cameras, viewedAt }));
   } catch {
     /* storage unavailable: preferences are a convenience only */
   }
+}
+
+let prefsTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePrefs() {
+  if (prefsTimer) clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(savePrefs, 400);
 }
 
 function systemTheme(): Theme {
@@ -118,7 +129,9 @@ export const useStore = create<State>(() => ({
   selection: [],
   editingId: null,
   cameras: {},
+  viewedAt: {},
   theme: 'light',
+  panel: null,
   canUndo: false,
   canRedo: false,
   toast: null,
@@ -144,9 +157,45 @@ export function commit(tx: Transaction, record = true) {
 function applyHistory(tx: Transaction | null) {
   if (!tx) return;
   const { elements, changed, removed } = applyTransaction(get().elements, tx);
-  const selection = get().selection.filter((id) => elements[id] && elements[id].section === 'CANVAS');
+  const selection = get().selection.filter((id) => elements[id] && elements[id].section !== 'TRASH');
   set({ elements, selection, editingId: null, canUndo: history.canUndo, canRedo: history.canRedo, toast: null });
   schedulePersist(changed, removed);
+}
+
+type NewElement =
+  | { type: 'CARD'; content?: JSONContent; color?: CardElement['color'] }
+  | { type: 'BOARD'; title?: string }
+  | { type: 'COLUMN'; title?: string }
+  | { type: 'TASK_LIST'; title?: string };
+
+function makeElement(spec: NewElement, parentId: string, x: number, y: number, z: number, width?: number): ZElement {
+  const base = {
+    id: nanoid(),
+    parentId,
+    section: 'CANVAS' as const,
+    x: Math.round(x),
+    y: Math.round(y),
+    width: width ?? DEFAULT_WIDTH[spec.type],
+    z,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+  switch (spec.type) {
+    case 'CARD':
+      return { ...base, type: 'CARD', content: spec.content ?? EMPTY_DOC, color: spec.color ?? 'default' };
+    case 'BOARD':
+      return { ...base, type: 'BOARD', title: spec.title ?? 'Новая доска', color: nextBoardColor(parentId) };
+    case 'COLUMN':
+      return { ...base, type: 'COLUMN', title: spec.title ?? 'Новая колонка', collapsed: false };
+    case 'TASK_LIST':
+      return {
+        ...base,
+        type: 'TASK_LIST',
+        title: spec.title ?? 'Задачи',
+        showTitle: true,
+        items: [{ id: nanoid(), text: '', done: false, due: null, indent: 0 }],
+      };
+  }
 }
 
 export const actions = {
@@ -160,11 +209,17 @@ export const actions = {
     }
     const elements: ElementMap = {};
     for (const e of loaded) elements[e.id] = e;
+    // Items kept in the trash longer than the retention period are deleted for good.
+    const expired = Object.values(elements).filter((e) => e.section === 'TRASH' && now() - e.updatedAt > TRASH_RETENTION_DAYS * 86_400_000);
+    const purge = new Set(expired.flatMap((e) => [e.id, ...descendants(elements, e.id)]));
+    purge.forEach((id) => delete elements[id]);
+    if (purge.size) await r.save([], [...purge]);
     set({
       ready: true,
       elements,
       theme: prefs.theme ?? systemTheme(),
       cameras: prefs.cameras ?? {},
+      viewedAt: prefs.viewedAt ?? {},
     });
   },
 
@@ -177,44 +232,22 @@ export const actions = {
   },
 
   // ----- creation -----
-  createCard(boardId: string, x: number, y: number, opts: { edit?: boolean; content?: JSONContent; width?: number } = {}): string {
-    const element: CardElement = {
-      id: nanoid(),
-      type: 'CARD',
-      parentId: boardId,
-      section: 'CANVAS',
-      x: Math.round(x),
-      y: Math.round(y),
-      width: opts.width ?? DEFAULT_WIDTH.CARD,
-      z: topZ(boardId) + 1,
-      content: opts.content ?? EMPTY_DOC,
-      color: 'default',
-      createdAt: now(),
-      updatedAt: now(),
-    };
+  /** Creates an element on a board canvas (or at the end of a column) and starts editing it. */
+  create(spec: NewElement, parentId: string, x: number, y: number, opts: { edit?: boolean; width?: number } = {}): string {
+    const parent = get().elements[parentId];
+    const inColumn = parent?.type === 'COLUMN';
+    const element = makeElement(spec, parentId, x, y, (inColumn ? lastOrder(parentId) : topZ(parentId)) + 1, opts.width);
     commit([{ kind: 'create', element }]);
     set({ selection: [element.id], editingId: opts.edit === false ? null : element.id });
     return element.id;
   },
 
+  createCard(boardId: string, x: number, y: number, opts: { edit?: boolean; content?: JSONContent; width?: number } = {}): string {
+    return actions.create({ type: 'CARD', content: opts.content }, boardId, x, y, opts);
+  },
+
   createBoard(boardId: string, x: number, y: number): string {
-    const element: BoardElement = {
-      id: nanoid(),
-      type: 'BOARD',
-      parentId: boardId,
-      section: 'CANVAS',
-      x: Math.round(x),
-      y: Math.round(y),
-      width: DEFAULT_WIDTH.BOARD,
-      z: topZ(boardId) + 1,
-      title: 'Новая доска',
-      color: nextBoardColor(boardId),
-      createdAt: now(),
-      updatedAt: now(),
-    };
-    commit([{ kind: 'create', element }]);
-    set({ selection: [element.id], editingId: element.id });
-    return element.id;
+    return actions.create({ type: 'BOARD' }, boardId, x, y);
   },
 
   // ----- editing -----
@@ -225,18 +258,25 @@ export const actions = {
     if (changed) commit([updateOp(element, patch)]);
   },
 
-  /** Saves note text while typing without creating undo steps. */
-  setContentLive(id: string, content: JSONContent) {
+  /** Saves edits while typing without creating undo steps. */
+  setLive(id: string, patch: ElementPatch) {
     const element = get().elements[id];
-    if (!element || element.type !== 'CARD') return;
-    commit([updateOp(element, { content })], false);
+    if (element) commit([updateOp(element, patch)], false);
   },
 
-  /** Records the whole editing session of a note as one undo step. */
-  recordContentEdit(id: string, before: JSONContent, after: JSONContent) {
+  /** Records a whole editing session as one undo step. */
+  recordEdit(id: string, before: ElementPatch, after: ElementPatch) {
     if (JSON.stringify(before) === JSON.stringify(after)) return;
-    history.record([{ kind: 'update', id, before: { content: before }, after: { content: after } }]);
+    history.record([{ kind: 'update', id, before, after }]);
     set({ canUndo: history.canUndo, canRedo: history.canRedo });
+  },
+
+  setContentLive(id: string, content: JSONContent) {
+    actions.setLive(id, { content });
+  },
+
+  recordContentEdit(id: string, before: JSONContent, after: JSONContent) {
+    actions.recordEdit(id, { content: before }, { content: after });
   },
 
   /**
@@ -287,38 +327,80 @@ export const actions = {
     commit(tx);
   },
 
+  /**
+   * Puts elements on a board's canvas at the given positions, taking them out of
+   * columns or panels if needed.
+   */
+  placeOnCanvas(boardId: string, moves: { id: string; x: number; y: number }[]) {
+    const elements = get().elements;
+    let z = topZ(boardId);
+    const tx = moves
+      .filter((m) => elements[m.id] && !elements[m.id].locked)
+      .map((m) => {
+        const e = elements[m.id];
+        const patch: ElementPatch = { x: Math.round(m.x), y: Math.round(m.y) };
+        if (e.parentId !== boardId || e.section !== 'CANVAS') Object.assign(patch, { parentId: boardId, section: 'CANVAS', z: ++z });
+        return updateOp(e, patch);
+      });
+    commit(tx);
+  },
+
   nudge(dx: number, dy: number) {
     const { elements, selection } = get();
-    actions.moveTo(selection.map((id) => elements[id]).filter(Boolean).map((e) => ({ id: e.id, x: e.x + dx, y: e.y + dy })));
+    actions.moveTo(
+      selection
+        .map((id) => elements[id])
+        .filter((e) => e && elements[e.parentId ?? '']?.type !== 'COLUMN' && e.section === 'CANVAS')
+        .map((e) => ({ id: e.id, x: e.x + dx, y: e.y + dy })),
+    );
   },
 
   resize(id: string, width: number) {
     actions.update(id, { width: Math.max(12, Math.round(width)) });
   },
 
-  /** Moves elements into another board's canvas, cascading them from its top-left. */
+  /** Inserts elements into a column before the item at `index` (end if omitted). */
+  insertIntoColumn(ids: string[], columnId: string, index?: number) {
+    const elements = get().elements;
+    const items = columnChildren(elements, columnId).filter((e) => !ids.includes(e.id));
+    const at = index === undefined ? items.length : Math.max(0, Math.min(index, items.length));
+    const prev = at > 0 ? items[at - 1].z : (items[0]?.z ?? 1) - 1;
+    const next = at < items.length ? items[at].z : prev + ids.length + 1;
+    const movable = ids.filter((id) => elements[id] && fitsInColumn(elements[id].type) && !elements[id].locked);
+    const step = (next - prev) / (movable.length + 1);
+    commit(movable.map((id, i) => updateOp(elements[id], { parentId: columnId, section: 'CANVAS', z: prev + step * (i + 1) })));
+    if (movable.length < ids.length) set({ toast: 'Колонку нельзя положить в колонку' });
+  },
+
+  /** Moves elements into the Unsorted panel of a board. */
+  moveToInbox(ids: string[], boardId: string) {
+    const elements = get().elements;
+    let z = lastInboxOrder(boardId);
+    commit(ids.filter((id) => elements[id] && id !== boardId).map((id) => updateOp(elements[id], { parentId: boardId, section: 'INBOX', z: ++z })));
+    set({ selection: [], editingId: null });
+  },
+
+  /** Moves elements into another board; like the reference app, they land in its Unsorted panel. */
   moveToBoard(ids: string[], targetId: string) {
     const elements = get().elements;
     const target = elements[targetId];
     if (!target || target.type !== 'BOARD') return;
     const movable = ids.filter((id) => id !== targetId && elements[id] && !isAncestor(elements, id, targetId));
     if (movable.length === 0) return;
-    let z = topZ(targetId);
-    const tx = movable.map((id, i) => updateOp(elements[id], { parentId: targetId, section: 'CANVAS', x: 4 + i * 3, y: 4 + i * 3, z: ++z }));
-    commit(tx);
-    set({ selection: [], editingId: null, toast: `Перемещено в «${target.title}»: ${movable.length}` });
+    actions.moveToInbox(movable, targetId);
+    set({ toast: `Перемещено в «${target.title}» → Неразобранное: ${movable.length}` });
   },
 
   bringToFront() {
     const { elements, selection, boardId } = get();
     let z = topZ(boardId);
-    commit(sortByZ(selection.map((id) => elements[id]).filter(Boolean)).map((e) => updateOp(e, { z: ++z })));
+    commit(sortByZ(selection.map((id) => elements[id]).filter((e) => e?.parentId === boardId)).map((e) => updateOp(e, { z: ++z })));
   },
 
   sendToBack() {
     const { elements, selection, boardId } = get();
     let z = bottomZ(boardId);
-    commit(sortByZ(selection.map((id) => elements[id]).filter(Boolean)).reverse().map((e) => updateOp(e, { z: --z })));
+    commit(sortByZ(selection.map((id) => elements[id]).filter((e) => e?.parentId === boardId)).reverse().map((e) => updateOp(e, { z: --z })));
   },
 
   setLocked(ids: string[], locked: boolean) {
@@ -326,34 +408,78 @@ export const actions = {
     commit(ids.map((id) => elements[id]).filter(Boolean).map((e) => updateOp(e, { locked })));
   },
 
-  /** Copies elements (boards with all their content), offset by dx/dy grid units. */
+  /** Copies elements (boards and columns with all their content), offset by dx/dy grid units. */
   duplicate(ids: string[], dx = 2, dy = 2) {
     const elements = get().elements;
     const tx: Op[] = [];
     const newIds: string[] = [];
-    let z = topZ(get().boardId);
     for (const id of ids) {
       const original = elements[id];
       if (!original) continue;
-      const copyId = copyTree(elements, original, original.parentId, tx, { x: Math.round(original.x + dx), y: Math.round(original.y + dy), z: ++z });
-      newIds.push(copyId);
+      const inColumn = elements[original.parentId ?? '']?.type === 'COLUMN';
+      const overrides = inColumn ? { z: original.z + 0.5 / (newIds.length + 1) } : { x: Math.round(original.x + dx), y: Math.round(original.y + dy), z: topZ(original.parentId ?? '') + newIds.length + 1 };
+      newIds.push(copyTree(elements, original, original.parentId, tx, overrides));
     }
     commit(tx);
     set({ selection: newIds, editingId: null });
   },
 
-  /** Moves elements to the board's trash (they can be restored later). */
+  /** Wraps the given canvas elements into a new column placed where the first one was. */
+  groupIntoColumn(ids: string[]) {
+    const { elements, boardId } = get();
+    const items = ids.map((id) => elements[id]).filter((e) => e && fitsInColumn(e.type) && e.parentId === boardId);
+    if (items.length === 0) return;
+    items.sort((a, b) => a.y - b.y || a.x - b.x);
+    const column = makeElement({ type: 'COLUMN' }, boardId, Math.min(...items.map((e) => e.x)), Math.min(...items.map((e) => e.y)), topZ(boardId) + 1);
+    const tx: Op[] = [{ kind: 'create', element: column }, ...items.map((e, i) => updateOp(e, { parentId: column.id, section: 'CANVAS', z: i + 1 }))];
+    commit(tx);
+    set({ selection: [column.id], editingId: column.id });
+  },
+
+  /** Moves elements to the trash (they can be restored later). */
   trash(ids: string[]) {
     const elements = get().elements;
-    commit(ids.map((id) => elements[id]).filter(Boolean).map((e) => updateOp(e, { section: 'TRASH' as Section })));
+    commit(ids.map((id) => elements[id]).filter((e) => e && !e.locked && e.id !== HOME_ID).map((e) => updateOp(e, { section: 'TRASH' })));
     set({ selection: [], editingId: null });
+  },
+
+  /** Brings trashed elements back to where they were. */
+  restore(ids: string[]) {
+    const elements = get().elements;
+    commit(ids.map((id) => elements[id]).filter((e) => e?.section === 'TRASH').map((e) => updateOp(e, { section: 'CANVAS' })));
+    set({ selection: ids, toast: 'Восстановлено' });
+  },
+
+  /** Permanently deletes everything in a board's trash. */
+  emptyTrash(boardId: string) {
+    const elements = get().elements;
+    const ops: Op[] = [];
+    for (const e of trashChildren(elements, boardId)) {
+      for (const id of [...descendants(elements, e.id), e.id]) ops.push({ kind: 'delete', element: elements[id] });
+    }
+    commit(ops);
+  },
+
+  /** Recreates copied elements (with all their content) at a grid position on the current board. */
+  paste(roots: ZElement[], all: ZElement[], at: { x: number; y: number }) {
+    const { boardId } = get();
+    const byId: ElementMap = {};
+    for (const e of all) byId[e.id] = e;
+    const minX = Math.min(...roots.map((e) => e.x));
+    const minY = Math.min(...roots.map((e) => e.y));
+    const tx: Op[] = [];
+    let z = topZ(boardId);
+    const ids = roots.map((root) => copyTree(byId, root, boardId, tx, { x: Math.round(at.x + root.x - minX), y: Math.round(at.y + root.y - minY), z: ++z, section: 'CANVAS' }));
+    commit(tx);
+    set({ selection: ids, editingId: null });
   },
 
   // ----- navigation -----
   openBoard(id: string) {
-    const { boardId, back, elements } = get();
+    const { boardId, back, elements, viewedAt } = get();
     if (id === boardId || !elements[id] || elements[id].type !== 'BOARD') return;
-    set({ boardId: id, back: [...back, boardId], forward: [], selection: [], editingId: null });
+    set({ boardId: id, back: [...back, boardId], forward: [], selection: [], editingId: null, viewedAt: { ...viewedAt, [id]: now() } });
+    schedulePrefs();
   },
 
   goBack() {
@@ -382,6 +508,10 @@ export const actions = {
     schedulePrefs();
   },
 
+  setPanel(panel: Panel) {
+    set({ panel: get().panel === panel ? null : panel });
+  },
+
   toggleTheme() {
     set({ theme: get().theme === 'dark' ? 'light' : 'dark' });
     savePrefs();
@@ -396,40 +526,78 @@ export const actions = {
   },
 };
 
-let prefsTimer: ReturnType<typeof setTimeout> | null = null;
-function schedulePrefs() {
-  if (prefsTimer) clearTimeout(prefsTimer);
-  prefsTimer = setTimeout(savePrefs, 400);
-}
-
-// ---------- helpers ----------
+// ---------- queries ----------
 export function canvasChildren(elements: ElementMap, boardId: string): ZElement[] {
   return sortByZ(Object.values(elements).filter((e) => e.parentId === boardId && e.section === 'CANVAS'));
 }
 
+export function columnChildren(elements: ElementMap, columnId: string): ZElement[] {
+  return sortByZ(Object.values(elements).filter((e) => e.parentId === columnId && e.section !== 'TRASH'));
+}
+
+export function inboxChildren(elements: ElementMap, boardId: string): ZElement[] {
+  return sortByZ(Object.values(elements).filter((e) => e.parentId === boardId && e.section === 'INBOX'));
+}
+
+/** Trashed elements that belonged to this board, directly or inside its columns. */
+export function trashChildren(elements: ElementMap, boardId: string): ZElement[] {
+  return Object.values(elements)
+    .filter((e) => e.section === 'TRASH' && (e.parentId === boardId || (elements[e.parentId ?? '']?.type === 'COLUMN' && elements[e.parentId ?? ''].parentId === boardId)))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Number of cards on a board, counting what is inside its columns. */
 export function countChildren(elements: ElementMap, boardId: string): number {
   let n = 0;
-  for (const e of Object.values(elements)) if (e.parentId === boardId && e.section !== 'TRASH') n++;
+  for (const e of Object.values(elements)) {
+    if (e.section === 'TRASH') continue;
+    if (e.parentId === boardId) n += e.type === 'COLUMN' ? 0 : 1;
+    else if (elements[e.parentId ?? '']?.type === 'COLUMN' && elements[e.parentId ?? ''].parentId === boardId && elements[e.parentId ?? ''].section !== 'TRASH') n++;
+  }
   return n;
+}
+
+/** The board an element is shown on (walking up through columns). */
+export function containingBoard(elements: ElementMap, id: string): string | null {
+  let parent = elements[id]?.parentId ?? null;
+  while (parent && elements[parent]?.type === 'COLUMN') parent = elements[parent].parentId;
+  return parent;
 }
 
 /** Board ids from home down to `boardId`. */
 export function boardPath(elements: ElementMap, boardId: string): BoardElement[] {
   const path: BoardElement[] = [];
   let current: ZElement | undefined = elements[boardId];
-  while (current && current.type === 'BOARD') {
-    path.unshift(current);
+  while (current) {
+    if (current.type === 'BOARD') path.unshift(current);
     current = current.parentId ? elements[current.parentId] : undefined;
   }
   return path;
+}
+
+/** All ids contained in an element (boards and columns), recursively. */
+export function descendants(elements: ElementMap, id: string): string[] {
+  const out: string[] = [];
+  const stack = [id];
+  const all = Object.values(elements);
+  while (stack.length) {
+    const current = stack.pop()!;
+    for (const e of all) {
+      if (e.parentId === current) {
+        out.push(e.id);
+        stack.push(e.id);
+      }
+    }
+  }
+  return out;
 }
 
 function sortByZ(list: ZElement[]): ZElement[] {
   return list.slice().sort((a, b) => a.z - b.z);
 }
 
-function topZ(boardId: string): number {
-  const list = canvasChildren(get().elements, boardId);
+function topZ(parentId: string): number {
+  const list = canvasChildren(get().elements, parentId);
   return list.length ? list[list.length - 1].z : 0;
 }
 
@@ -438,9 +606,19 @@ function bottomZ(boardId: string): number {
   return list.length ? list[0].z : 0;
 }
 
+function lastOrder(columnId: string): number {
+  const list = columnChildren(get().elements, columnId);
+  return list.length ? list[list.length - 1].z : 0;
+}
+
+function lastInboxOrder(boardId: string): number {
+  const list = inboxChildren(get().elements, boardId);
+  return list.length ? list[list.length - 1].z : 0;
+}
+
 const BOARD_COLORS: BoardElement['color'][] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow'];
-function nextBoardColor(boardId: string): BoardElement['color'] {
-  const boards = Object.values(get().elements).filter((e) => e.parentId === boardId && e.type === 'BOARD').length;
+function nextBoardColor(parentId: string): BoardElement['color'] {
+  const boards = Object.values(get().elements).filter((e) => e.parentId === parentId && e.type === 'BOARD').length;
   return BOARD_COLORS[boards % BOARD_COLORS.length];
 }
 
@@ -457,8 +635,9 @@ function isAncestor(elements: ElementMap, ancestorId: string, id: string): boole
 function copyTree(elements: ElementMap, original: ZElement, parentId: string | null, tx: Op[], overrides: Partial<ZElement> = {}): string {
   const id = nanoid();
   const copy = { ...structuredClone(original), ...overrides, id, parentId, createdAt: now(), updatedAt: now() } as ZElement;
+  if (copy.type === 'TASK_LIST') copy.items = copy.items.map((item) => ({ ...item, id: nanoid() }));
   tx.push({ kind: 'create', element: copy });
-  if (original.type === 'BOARD') {
+  if (original.type === 'BOARD' || original.type === 'COLUMN') {
     for (const child of Object.values(elements)) {
       if (child.parentId === original.id && child.section !== 'TRASH') copyTree(elements, child, id, tx);
     }

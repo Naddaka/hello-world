@@ -1,18 +1,5 @@
-import { create } from 'zustand';
 import { GRID } from '../model/types';
 import { actions, DEFAULT_CAMERA, MAX_ZOOM, MIN_ZOOM, useStore, type Camera } from '../model/store';
-
-/** Live drag of elements on the canvas (not persisted until drop). */
-interface DragState {
-  ids: string[];
-  /** Offset in canvas pixels. */
-  dx: number;
-  dy: number;
-  /** Board tile or breadcrumb under the pointer, if any. */
-  dropTarget: string | null;
-}
-
-export const useDrag = create<DragState>(() => ({ ids: [], dx: 0, dy: 0, dropTarget: null }));
 
 /** Rendered sizes of elements in canvas pixels, measured by the element views. */
 export const sizes = new Map<string, { w: number; h: number }>();
@@ -67,6 +54,17 @@ export function zoomAt(factor: number, clientX?: number, clientY?: number) {
 
 export function setCamera(cam: Camera) {
   actions.setCamera(useStore.getState().boardId, cam);
+}
+
+/** Last pointer position over the canvas, in grid units (where pasted content goes). */
+export const lastPointer = { x: 0, y: 0, valid: false };
+
+/** Centres the view on a point given in grid units. */
+export function centreOn(gx: number, gy: number) {
+  if (!viewport) return;
+  const r = viewport.getBoundingClientRect();
+  const cam = currentCamera();
+  setCamera({ ...cam, x: r.width / 2 - gx * GRID * cam.zoom, y: r.height / 3 - gy * GRID * cam.zoom });
 }
 
 /** Fits all canvas content of the current board into view. */

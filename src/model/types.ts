@@ -5,7 +5,10 @@ export const GRID = 8;
 
 export const HOME_ID = 'home';
 
-/** Where an element lives inside its parent board. */
+/** Days an element stays in the trash before it is deleted for good. */
+export const TRASH_RETENTION_DAYS = 90;
+
+/** Where an element lives inside its parent (a board or a column). */
 export type Section = 'CANVAS' | 'INBOX' | 'TRASH';
 
 /** Card background colors, stored as theme-independent keys. */
@@ -16,15 +19,18 @@ export type BoardColor = 'blue' | 'orange' | 'green' | 'purple' | 'pink' | 'yell
 
 interface ElementBase {
   id: string;
-  /** Parent board id; null only for the home board. */
+  /**
+   * Parent board or column id; null only for the home board. Items inside a
+   * column have the column as parent and are ordered by `z`.
+   */
   parentId: string | null;
   section: Section;
-  /** Position of the top-left corner, in grid units. */
+  /** Position of the top-left corner, in grid units (ignored inside columns). */
   x: number;
   y: number;
   /** Width in grid units (height grows with content). */
   width: number;
-  /** Stacking order within the board; larger is on top. */
+  /** Stacking order on a canvas, or order inside a column / panel. */
   z: number;
   locked?: boolean;
   createdAt: number;
@@ -44,16 +50,48 @@ export interface BoardElement extends ElementBase {
   color: BoardColor;
 }
 
-export type ZElement = CardElement | BoardElement;
+export interface ColumnElement extends ElementBase {
+  type: 'COLUMN';
+  title: string;
+  collapsed: boolean;
+}
+
+export interface TaskItem {
+  id: string;
+  text: string;
+  done: boolean;
+  /** Due date as a timestamp (ms), or null. */
+  due: number | null;
+  /** 0 for top level, 1 for a sub-task. */
+  indent: number;
+}
+
+export interface TaskListElement extends ElementBase {
+  type: 'TASK_LIST';
+  title: string;
+  showTitle: boolean;
+  items: TaskItem[];
+}
+
+export type ZElement = CardElement | BoardElement | ColumnElement | TaskListElement;
 export type ElementType = ZElement['type'];
 
 /** Fields that an update operation may change. */
 export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
-  Partial<Omit<BoardElement, 'id' | 'type' | 'color'>> & { color?: CardColor | BoardColor };
+  Partial<Omit<BoardElement, 'id' | 'type' | 'color'>> &
+  Partial<Omit<ColumnElement, 'id' | 'type'>> &
+  Partial<Omit<TaskListElement, 'id' | 'type'>> & { color?: CardColor | BoardColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
   BOARD: 14,
+  COLUMN: 36,
+  TASK_LIST: 40,
 };
+
+/** Types that can be placed inside a column. */
+export function fitsInColumn(type: ElementType): boolean {
+  return type !== 'COLUMN';
+}
 
 export const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };

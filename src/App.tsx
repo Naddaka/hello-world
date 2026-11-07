@@ -6,6 +6,9 @@ import { TopBar } from './ui/TopBar';
 import { Toolbar } from './ui/Toolbar';
 import { ContextMenu } from './ui/ContextMenu';
 import { useShortcuts } from './ui/useShortcuts';
+import { useClipboard } from './ui/clipboard';
+import { InboxPanel, TrashPanel } from './ui/Panels';
+import { SearchPanel } from './ui/SearchPanel';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -24,7 +27,9 @@ function Toast() {
 export function App() {
   const ready = useStore((s) => s.ready);
   const theme = useStore((s) => s.theme);
+  const panel = useStore((s) => s.panel);
   useShortcuts();
+  useClipboard();
 
   useEffect(() => {
     openRepo()
@@ -65,8 +70,11 @@ export function App() {
       <div style={{ position: 'relative', flex: '1 1 auto', display: 'flex', minHeight: 0 }}>
         <Canvas />
         <Toolbar />
+        {panel === 'inbox' && <InboxPanel />}
+        {panel === 'trash' && <TrashPanel />}
         <Toast />
       </div>
+      {panel === 'search' && <SearchPanel />}
       <ContextMenu />
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, type ComponentType } from 'react';
 import { actions, useStore } from '../model/store';
 import { DEFAULT_WIDTH, GRID } from '../model/types';
 import { isOverViewport, screenToCanvas, viewportCentreGrid } from '../canvas/runtime';
+import { useDrag } from '../canvas/dnd';
 import {
   IconBoard,
   IconColumn,
@@ -16,7 +17,7 @@ import {
   IconTrash,
 } from './icons';
 
-type Kind = 'CARD' | 'BOARD';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST';
 
 interface Tool {
   label: string;
@@ -29,8 +30,8 @@ interface Tool {
 const TOOLS: Tool[] = [
   { label: 'Заметка', Icon: IconNote, kind: 'CARD' },
   { label: 'Доска', Icon: IconBoard, kind: 'BOARD' },
-  { label: 'Колонка', Icon: IconColumn, soon: 'этап 1' },
-  { label: 'Задачи', Icon: IconTasks, soon: 'этап 1' },
+  { label: 'Колонка', Icon: IconColumn, kind: 'COLUMN' },
+  { label: 'Задачи', Icon: IconTasks, kind: 'TASK_LIST' },
   { label: 'Ссылка', Icon: IconLink, soon: 'этап 1' },
   { label: 'Медиа', Icon: IconMedia, soon: 'этап 1' },
   { label: 'Таблица', Icon: IconTable, soon: 'этап 2' },
@@ -39,10 +40,23 @@ const TOOLS: Tool[] = [
   { label: 'Рисовать', Icon: IconDraw, soon: 'этап 2' },
 ];
 
-function create(kind: Kind, gx: number, gy: number) {
+function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: number) {
   const boardId = useStore.getState().boardId;
-  if (kind === 'CARD') actions.createCard(boardId, gx, gy);
-  else actions.createBoard(boardId, gx, gy);
+  // Dropped onto a column: add it there instead of on the canvas.
+  const column = clientX !== undefined ? (document.elementFromPoint(clientX, clientY!) as HTMLElement | null)?.closest<HTMLElement>('[data-drop-column]')?.dataset.dropColumn : undefined;
+  if (column && kind !== 'COLUMN') actions.create({ type: kind }, column, 0, 0);
+  else actions.create({ type: kind }, boardId, gx, gy);
+}
+
+function TrashButton() {
+  const open = useStore((s) => s.panel === 'trash');
+  const over = useDrag((s) => s.drop?.kind === 'trash');
+  return (
+    <button type="button" className={`tool${open ? ' on' : ''}${over ? ' drop' : ''}`} data-drop-trash title="Корзина: перетащите сюда, чтобы удалить; нажмите, чтобы открыть" aria-pressed={open} onClick={() => actions.setPanel('trash')}>
+      <IconTrash size={20} />
+      Корзина
+    </button>
+  );
 }
 
 /** Drag a tool onto the canvas to place it, or click to add it in the middle of the view. */
@@ -70,7 +84,7 @@ export function Toolbar() {
         create(kind, c.x - halfWidth, c.y - 6);
       } else if (isOverViewport(ev.clientX, ev.clientY) && !(document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest('.toolbar')) {
         const p = screenToCanvas(ev.clientX, ev.clientY);
-        create(kind, p.x / GRID - halfWidth, p.y / GRID - 3);
+        create(kind, p.x / GRID - halfWidth, p.y / GRID - 3, ev.clientX, ev.clientY);
       }
     };
     window.addEventListener('pointermove', onMove);
@@ -94,10 +108,7 @@ export function Toolbar() {
           </button>
         ))}
         <div className="tool-sep" aria-hidden="true" />
-        <button type="button" className="tool" disabled title="Корзина — появится, этап 1">
-          <IconTrash size={20} />
-          Корзина
-        </button>
+        <TrashButton />
       </nav>
       {ghost && <div className="ghost" style={{ left: ghost.x, top: ghost.y }}>{ghost.label}</div>}
     </>

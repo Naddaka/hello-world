@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { actions } from '../model/store';
 import type { BoardElement } from '../model/types';
 import { IconBoard } from '../ui/icons';
-
-function plural(n: number) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return 'карточка';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'карточки';
-  return 'карточек';
-}
+import { plural } from '../ui/plural';
 
 function TitleInput({ element }: { element: BoardElement }) {
   const [value, setValue] = useState(element.title);
@@ -39,8 +32,22 @@ function TitleInput({ element }: { element: BoardElement }) {
   );
 }
 
-export function BoardTile({ element, selected, editing, dropActive, count }: { element: BoardElement; selected: boolean; editing: boolean; dropActive: boolean; count: number }) {
+export function BoardTile({ element, selected, editing, dropActive, count, compact = false }: { element: BoardElement; selected: boolean; editing: boolean; dropActive: boolean; count: number; compact?: boolean }) {
   const c = element.color;
+  if (compact) {
+    // Inside a column or panel: a horizontal row instead of a large tile.
+    return (
+      <div className={`tile-row${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
+        <span className="tile-row-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)` }}>
+          <IconBoard size={20} strokeWidth={1.8} />
+        </span>
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          {editing ? <TitleInput element={element} /> : <span className="tile-row-title">{element.title}</span>}
+          <span className="tile-meta" style={{ marginTop: 0 }}>{count} {plural(count)}</span>
+        </span>
+      </div>
+    );
+  }
   return (
     <div className={`tile${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
       <div className="tile-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)`, boxShadow: `inset 0 0 0 1px var(--board-${c}-ring)` }}>

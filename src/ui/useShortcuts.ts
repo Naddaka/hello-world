@@ -26,6 +26,11 @@ export function useShortcuts() {
         actions.toggleTheme();
         return;
       }
+      if (mod && key === 'f') {
+        e.preventDefault();
+        actions.setPanel('search');
+        return;
+      }
       if (isTyping(e.target) || useMenu.getState().items) return;
 
       const state = useStore.getState();
@@ -70,19 +75,21 @@ export function useShortcuts() {
         e.preventDefault();
         const el = selected[0];
         const size = sizes.get(el.id);
-        if (el.type === 'CARD') actions.createCard(state.boardId, el.x, el.y + Math.ceil((size?.h ?? 120) / GRID) + 2, { width: el.width });
-        else actions.createBoard(state.boardId, el.x + Math.ceil((size?.w ?? 112) / GRID) + 2, el.y);
+        if (el.parentId !== state.boardId) return;
+        if (el.type === 'CARD' || el.type === 'TASK_LIST') actions.create({ type: el.type }, state.boardId, el.x, el.y + Math.ceil((size?.h ?? 120) / GRID) + 2, { width: el.width });
+        else actions.create({ type: el.type }, state.boardId, el.x + Math.ceil((size?.w ?? 112) / GRID) + 2, el.y);
       } else if (!mod && key === 'z') {
         e.preventDefault();
         zoomToFit(canvasChildren(state.elements, state.boardId));
       } else if (e.key === 'Escape') {
         closeMenu();
-        actions.clearSelection();
+        if (state.panel) actions.setPanel(state.panel);
+        else actions.clearSelection();
       } else if (e.key === 'Enter' && selected.length === 1) {
         e.preventDefault();
         const el = selected[0];
         if (el.type === 'BOARD') actions.openBoard(el.id);
-        else if (!el.locked) actions.setEditing(el.id);
+        else if (!el.locked && el.section !== 'TRASH') actions.setEditing(el.id);
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length > 0) {
         e.preventDefault();
         // As in the reference app, notes with text are only deleted from the menu,

@@ -51,3 +51,4 @@ export const IconCode = make(<path d="M9 8l-4 4 4 4M15 8l4 4-4 4" />, { stroke: 
 export const IconCenter = make(<path d="M5 6h14M8 10h8M5 14h14M8 18h8" />, { stroke: 2 });
 export const IconLock = make(<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></>, { stroke: 2 });
 export const IconPresent = make(<><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M12 16v4M8 20h8" /></>, { stroke: 2 });
+export const IconInbox = make(<><path d="M4 13l3-8h10l3 8v6H4z" /><path d="M4 13h5l1 2h4l1-2h5" /></>, { stroke: 2 });

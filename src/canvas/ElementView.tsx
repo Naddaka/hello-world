@@ -3,53 +3,75 @@ import { actions, useStore } from '../model/store';
 import { GRID, type ZElement } from '../model/types';
 import { BoardTile } from './BoardTile';
 import { NoteCard } from './NoteCard';
-import { currentCamera, sizes, useDrag } from './runtime';
+import { ColumnView } from './ColumnView';
+import { TaskListCard } from './TaskListCard';
+import { currentCamera, sizes } from './runtime';
+import { startElementDrag, useDrag } from './dnd';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
+import { copySelection } from '../ui/clipboard';
 
-const DRAG_THRESHOLD = 4;
+/**
+ * Where an element is drawn: absolutely positioned on the canvas, or in the
+ * flow of a list (a column, the Unsorted panel, the trash).
+ */
+export type ViewMode = 'canvas' | 'list';
 
-/** Board tile or breadcrumb under a screen point, ignoring the dragged elements. */
-function dropTargetAt(x: number, y: number, dragged: string[]): string | null {
-  const el = document.elementFromPoint(x, y) as HTMLElement | null;
-  const target = el?.closest<HTMLElement>('[data-drop-board]')?.dataset.dropBoard ?? el?.closest<HTMLElement>('[data-crumb-board]')?.dataset.crumbBoard;
-  if (!target || dragged.includes(target) || target === useStore.getState().boardId) return null;
-  return target;
-}
-
-function elementMenu(element: ZElement, ids: string[]): MenuEntry[] {
+function elementMenu(element: ZElement, ids: string[], mode: ViewMode): MenuEntry[] {
+  const { elements, boardId } = useStore.getState();
   const many = ids.length > 1;
   const items: MenuEntry[] = [];
   if (!many && element.type === 'BOARD') {
     items.push({ label: 'Открыть', hint: '↵', run: () => actions.openBoard(element.id) });
     items.push({ label: 'Переименовать', run: () => actions.setEditing(element.id) });
   }
-  if (!many && element.type === 'CARD') items.push({ label: 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
+  if (!many && element.type !== 'BOARD') items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
   items.push(
+    { label: 'Копировать', hint: '⌘C', run: () => copySelection(false) },
+    { label: 'Вырезать', hint: '⌘X', run: () => copySelection(true) },
     { label: 'Дублировать', hint: '⌥ + перетащить', run: () => actions.duplicate(ids) },
-    'sep',
-    { label: 'На передний план', hint: '⌘⇧↑', run: () => actions.bringToFront() },
-    { label: 'На задний план', hint: '⌘⇧↓', run: () => actions.sendToBack() },
-    element.locked
-      ? { label: 'Открепить', run: () => actions.setLocked(ids, false) }
-      : { label: 'Закрепить на месте', run: () => actions.setLocked(ids, true) },
-    'sep',
-    { label: 'Удалить', danger: true, disabled: Boolean(element.locked), run: () => actions.trash(ids) },
   );
+  const groupable = ids.filter((id) => elements[id] && elements[id].type !== 'COLUMN' && elements[id].parentId === boardId);
+  if (groupable.length > 0 && mode === 'canvas') items.push({ label: 'Сгруппировать в колонку', run: () => actions.groupIntoColumn(groupable) });
+  items.push({ label: 'В «Неразобранное»', run: () => actions.moveToInbox(ids, boardId) });
+  if (mode === 'canvas') {
+    items.push(
+      'sep',
+      { label: 'На передний план', hint: '⌘⇧↑', run: () => actions.bringToFront() },
+      { label: 'На задний план', hint: '⌘⇧↓', run: () => actions.sendToBack() },
+      element.locked ? { label: 'Открепить', run: () => actions.setLocked(ids, false) } : { label: 'Закрепить на месте', run: () => actions.setLocked(ids, true) },
+    );
+  }
+  items.push('sep', { label: 'Удалить', danger: true, disabled: Boolean(element.locked), run: () => actions.trash(ids) });
   return items;
 }
 
-export function ElementView({ element, count }: { element: ZElement; count: number }) {
+export function ElementView({
+  element,
+  count = 0,
+  mode = 'canvas',
+  readOnly = false,
+  inLayer = mode === 'canvas',
+}: {
+  element: ZElement;
+  count?: number;
+  mode?: ViewMode;
+  readOnly?: boolean;
+  /** True when drawn inside the zoomed canvas layer (also for items in a column). */
+  inLayer?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const selected = useStore((s) => s.selection.includes(element.id));
-  const editing = useStore((s) => s.editingId === element.id);
+  const editing = useStore((s) => s.editingId === element.id) && !readOnly;
   const zoom = useStore((s) => (s.cameras[s.boardId] ?? currentCamera()).zoom);
   const drag = useDrag((s) => (s.ids.includes(element.id) ? s : null));
-  const dropActive = useDrag((s) => s.dropTarget === element.id);
+  const dropActive = useDrag((s) => s.drop?.kind === 'board' && s.drop.id === element.id);
   const [liveWidth, setLiveWidth] = useState<number | null>(null);
+  // Elements inside the canvas layer are scaled by the zoom; panels are not.
+  const scale = inLayer ? zoom : 1;
 
   useLayoutEffect(() => {
     const node = ref.current;
-    if (!node) return;
+    if (!node || mode !== 'canvas') return;
     const measure = () => sizes.set(element.id, { w: node.offsetWidth, h: node.offsetHeight });
     measure();
     const ro = new ResizeObserver(measure);
@@ -58,12 +80,12 @@ export function ElementView({ element, count }: { element: ZElement; count: numb
       ro.disconnect();
       sizes.delete(element.id);
     };
-  }, [element.id]);
+  }, [element.id, mode]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     const state = useStore.getState();
-    if (state.editingId === element.id) return; // let the editor handle text selection
+    if (state.editingId === element.id && !readOnly) return; // the editor handles its own pointer
     e.stopPropagation();
     if (e.shiftKey || e.metaKey) {
       actions.toggleSelect(element.id);
@@ -77,38 +99,10 @@ export function ElementView({ element, count }: { element: ZElement; count: numb
     } else if (state.editingId) {
       actions.setEditing(null);
     }
-    const movable = ids.filter((id) => !state.elements[id]?.locked);
-    const start = { x: e.clientX, y: e.clientY };
-    const { zoom: z } = currentCamera();
-    let dragging = false;
-
-    const onMove = (ev: PointerEvent) => {
-      const dx = (ev.clientX - start.x) / z;
-      const dy = (ev.clientY - start.y) / z;
-      if (!dragging && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < DRAG_THRESHOLD) return;
-      if (movable.length === 0) return;
-      dragging = true;
-      useDrag.setState({ ids: movable, dx, dy, dropTarget: dropTargetAt(ev.clientX, ev.clientY, movable) });
-    };
-    const onUp = (ev: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      const { dx, dy, dropTarget } = useDrag.getState();
-      useDrag.setState({ ids: [], dx: 0, dy: 0, dropTarget: null });
-      if (!dragging) {
-        // A second click on a selected note starts editing it.
-        if (wasSoleSelection && element.type === 'CARD' && !element.locked) actions.setEditing(element.id);
-        return;
-      }
-      const gdx = Math.round(dx / GRID);
-      const gdy = Math.round(dy / GRID);
-      const elements = useStore.getState().elements;
-      if (dropTarget) actions.moveToBoard(movable, dropTarget);
-      else if (ev.altKey) actions.duplicate(movable, gdx, gdy);
-      else actions.moveTo(movable.map((id) => ({ id, x: elements[id].x + gdx, y: elements[id].y + gdy })));
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+    startElementDrag(e, ids, () => {
+      // A second click on a selected note or task list starts editing it.
+      if (!readOnly && wasSoleSelection && (element.type === 'CARD' || element.type === 'TASK_LIST') && !element.locked) actions.setEditing(element.id);
+    });
   };
 
   const onResizeDown = (e: React.PointerEvent) => {
@@ -116,10 +110,9 @@ export function ElementView({ element, count }: { element: ZElement; count: numb
     e.preventDefault();
     const startX = e.clientX;
     const startW = element.width;
-    const { zoom: z } = currentCamera();
     let w = startW;
     const onMove = (ev: PointerEvent) => {
-      w = Math.max(12, Math.round(startW + (ev.clientX - startX) / z / GRID));
+      w = Math.max(12, Math.round(startW + (ev.clientX - startX) / scale / GRID));
       setLiveWidth(w);
     };
     const onUp = () => {
@@ -135,38 +128,42 @@ export function ElementView({ element, count }: { element: ZElement; count: numb
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (readOnly) return;
     const { selection } = useStore.getState();
     const ids = selection.includes(element.id) ? selection : [element.id];
     if (!selection.includes(element.id)) actions.select(ids);
-    openMenu(e.clientX, e.clientY, elementMenu(element, ids));
+    openMenu(e.clientX, e.clientY, elementMenu(element, ids, mode));
   };
 
   const onDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
-    else if (!element.locked) actions.setEditing(element.id);
+    else if (!element.locked && element.type !== 'COLUMN') actions.setEditing(element.id);
   };
 
-  const width = (liveWidth ?? element.width) * GRID;
-  const x = element.x * GRID + (drag ? drag.dx : 0);
-  const y = element.y * GRID + (drag ? drag.dy : 0);
-  const resizable = element.type === 'CARD' && selected && !element.locked && !drag;
+  const offset = drag ? `translate(${drag.dx / scale}px, ${drag.dy / scale}px)` : '';
+  const style: React.CSSProperties =
+    mode === 'canvas'
+      ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
+      : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
+  const resizable = mode === 'canvas' && (element.type === 'CARD' || element.type === 'COLUMN' || element.type === 'TASK_LIST') && selected && !element.locked && !drag && !readOnly;
 
   return (
     <div
       ref={ref}
-      className={`el${drag ? ' dragging' : ''}`}
+      className={`el${drag ? ' dragging' : ''}${mode === 'list' ? ' in-list' : ''}`}
       data-element-id={element.id}
-      style={{ transform: `translate(${x}px, ${y}px)`, width, zIndex: editing ? 99999 : element.z }}
+      data-col-item={mode === 'list' ? element.id : undefined}
+      style={style}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
     >
-      {element.type === 'CARD' ? (
-        <NoteCard element={element} selected={selected} editing={editing} zoom={zoom} />
-      ) : (
-        <BoardTile element={element} selected={selected} editing={editing} dropActive={dropActive} count={count} />
-      )}
+      {element.type === 'CARD' && <NoteCard element={element} selected={selected} editing={editing} zoom={scale} />}
+      {element.type === 'BOARD' && <BoardTile element={element} selected={selected} editing={editing} dropActive={dropActive} count={count} compact={mode === 'list'} />}
+      {element.type === 'COLUMN' && <ColumnView element={element} selected={selected} editing={editing} />}
+      {element.type === 'TASK_LIST' && <TaskListCard element={element} selected={selected} editing={editing} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
     </div>
   );

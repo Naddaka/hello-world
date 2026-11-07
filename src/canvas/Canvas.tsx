@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { actions, canvasChildren, countChildren, DEFAULT_CAMERA, useStore } from '../model/store';
+import { actions, canvasChildren, countChildren, DEFAULT_CAMERA, inboxChildren, useStore } from '../model/store';
 import { GRID } from '../model/types';
 import { ElementView } from './ElementView';
-import { currentCamera, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
+import { currentCamera, lastPointer, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
+import { useDrag } from './dnd';
 import { openMenu } from '../ui/ContextMenu';
-import { IconMinus, IconPlus } from '../ui/icons';
+import { IconInbox, IconMinus, IconPlus } from '../ui/icons';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -28,6 +29,9 @@ export function Canvas() {
   const [marquee, setMarquee] = useState<Marquee | null>(null);
 
   const children = useMemo(() => canvasChildren(elements, boardId), [elements, boardId]);
+  const inboxCount = useMemo(() => inboxChildren(elements, boardId).length, [elements, boardId]);
+  const inboxOpen = useStore((s) => s.panel === 'inbox');
+  const overInbox = useDrag((s) => s.drop?.kind === 'inbox');
 
   useEffect(() => {
     registerViewport(ref.current);
@@ -167,6 +171,13 @@ export function Canvas() {
         if (e.target === ref.current || (e.target as HTMLElement).classList.contains('layer')) createNoteAt(e.clientX, e.clientY);
       }}
       onContextMenu={onContextMenu}
+      onPointerMove={(e) => {
+        const p = screenToCanvas(e.clientX, e.clientY);
+        lastPointer.x = Math.round(p.x / GRID);
+        lastPointer.y = Math.round(p.y / GRID);
+        lastPointer.valid = true;
+      }}
+      onPointerLeave={() => (lastPointer.valid = false)}
     >
       <div className="layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
         {children.map((el) => (
@@ -174,6 +185,20 @@ export function Canvas() {
         ))}
       </div>
       {marquee && <div className="marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} />}
+      {!inboxOpen && (
+        <button
+          type="button"
+          className={`inbox-btn panel${overInbox ? ' drop' : ''}`}
+          data-drop-inbox
+          onPointerDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onClick={() => actions.setPanel('inbox')}
+        >
+          <IconInbox size={15} />
+          Неразобранное
+          {inboxCount > 0 && <span className="badge">{inboxCount}</span>}
+        </button>
+      )}
       <div className="zoom panel" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <button type="button" className="ibtn" aria-label="Уменьшить (⌘−)" title="Уменьшить (⌘−)" onClick={() => zoomAt(1 / 1.25)}>
           <IconMinus size={15} />

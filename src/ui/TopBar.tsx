@@ -1,6 +1,6 @@
 import { actions, boardPath, useStore } from '../model/store';
 import { HOME_ID } from '../model/types';
-import { useDrag } from '../canvas/runtime';
+import { useDrag } from '../canvas/dnd';
 import { isTauri } from '../storage/repo';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 
@@ -12,7 +12,7 @@ export function TopBar() {
   const canUndo = useStore((s) => s.canUndo);
   const canRedo = useStore((s) => s.canRedo);
   const theme = useStore((s) => s.theme);
-  const dropTarget = useDrag((s) => s.dropTarget);
+  const dropTarget = useDrag((s) => (s.drop?.kind === 'board' ? s.drop.id : null));
   const path = boardPath(elements, boardId);
 
   return (
@@ -44,12 +44,11 @@ export function TopBar() {
         })}
       </nav>
       <div className="spacer" data-tauri-drag-region />
-      <label className="search" title="Поиск появится на этапе 1">
+      <button type="button" className="search" onClick={() => actions.setPanel('search')}>
         <IconSearch size={15} />
-        <span className="sr-only">Поиск по доскам</span>
-        <input type="search" placeholder="Поиск по всем доскам" disabled />
+        <span style={{ flex: '1 1 auto', textAlign: 'left' }}>Поиск по всем доскам</span>
         <span className="kbd">⌘F</span>
-      </label>
+      </button>
       <div style={{ display: 'flex', gap: 2 }}>
         <button type="button" className="ibtn" aria-label="Отменить (⌘Z)" title="Отменить (⌘Z)" disabled={!canUndo} onClick={() => actions.undo()}>
           <IconUndo size={17} />
