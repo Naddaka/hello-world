@@ -73,20 +73,70 @@ export interface TaskListElement extends ElementBase {
   items: TaskItem[];
 }
 
-export type ZElement = CardElement | BoardElement | ColumnElement | TaskListElement;
+/** A file stored in the local media library. */
+export interface MediaRef {
+  id: string;
+  ext: string;
+}
+
+export interface ImageElement extends ElementBase {
+  type: 'IMAGE';
+  media: MediaRef;
+  name: string;
+  /** Natural size in pixels, for the aspect ratio. */
+  naturalWidth: number;
+  naturalHeight: number;
+  caption: string;
+  showCaption: boolean;
+}
+
+export interface FileElement extends ElementBase {
+  type: 'FILE';
+  media: MediaRef;
+  name: string;
+  size: number;
+  mime: string;
+  autoplay: boolean;
+  loop: boolean;
+}
+
+export interface LinkElement extends ElementBase {
+  type: 'LINK';
+  url: string;
+  title: string;
+  description: string;
+  siteName: string;
+  /** Preview image saved locally, so it works offline. */
+  image: MediaRef | null;
+  showImage: boolean;
+  showDescription: boolean;
+  status: 'empty' | 'loading' | 'ready' | 'error';
+}
+
+export type ZElement = CardElement | BoardElement | ColumnElement | TaskListElement | ImageElement | FileElement | LinkElement;
 export type ElementType = ZElement['type'];
+
+type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
+/** The type-specific fields of an element (distributes over the element union). */
+export type ElementFields<E extends ZElement = ZElement> = E extends ZElement ? Omit<E, BaseKeys> : never;
 
 /** Fields that an update operation may change. */
 export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<BoardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<ColumnElement, 'id' | 'type'>> &
-  Partial<Omit<TaskListElement, 'id' | 'type'>> & { color?: CardColor | BoardColor };
+  Partial<Omit<TaskListElement, 'id' | 'type'>> &
+  Partial<Omit<ImageElement, 'id' | 'type'>> &
+  Partial<Omit<FileElement, 'id' | 'type'>> &
+  Partial<Omit<LinkElement, 'id' | 'type'>> & { color?: CardColor | BoardColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
   BOARD: 14,
   COLUMN: 36,
   TASK_LIST: 40,
+  IMAGE: 32,
+  FILE: 40,
+  LINK: 40,
 };
 
 /** Types that can be placed inside a column. */

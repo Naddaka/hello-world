@@ -3,6 +3,8 @@ import { actions, descendants, useStore } from '../model/store';
 import type { ZElement } from '../model/types';
 import { elementText, textToDoc } from '../model/text';
 import { lastPointer, viewportCentreGrid } from '../canvas/runtime';
+import { asUrl } from '../model/embeds';
+import { addFiles, addLink } from '../model/importing';
 
 const MARK = 'data-zadum-clipboard';
 
@@ -81,7 +83,19 @@ export function useClipboard() {
         }
         return;
       }
+      const files = [...e.clipboardData.files];
+      if (files.length) {
+        e.preventDefault();
+        void addFiles(files, at);
+        return;
+      }
       const text = e.clipboardData.getData('text/plain').trim();
+      const url = asUrl(text);
+      if (url) {
+        e.preventDefault();
+        addLink(url, at);
+        return;
+      }
       if (text) {
         e.preventDefault();
         actions.createCard(useStore.getState().boardId, at.x, at.y, { content: textToDoc(text), edit: false });

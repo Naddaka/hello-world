@@ -1,3 +1,6 @@
+mod links;
+mod media;
+
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 /// Database file inside the app's data directory.
@@ -26,6 +29,15 @@ pub fn run() {
                 .add_migrations(DB_URL, migrations())
                 .build(),
         )
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            media::media_location,
+            media::import_media_file,
+            media::save_media_bytes,
+            media::import_media_url,
+            links::link_preview,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Zadum");
 }

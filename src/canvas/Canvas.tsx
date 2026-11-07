@@ -4,12 +4,21 @@ import { GRID } from '../model/types';
 import { ElementView } from './ElementView';
 import { currentCamera, lastPointer, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
 import { useDrag } from './dnd';
+import { addFiles, addLink } from '../model/importing';
+import { asUrl } from '../model/embeds';
 import { openMenu } from '../ui/ContextMenu';
 import { IconInbox, IconMinus, IconPlus } from '../ui/icons';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
   return Boolean(el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
+}
+
+/** Grid point and parent (board or column under the pointer) for something dropped at a screen point. */
+export function dropPoint(clientX: number, clientY: number): { point: { x: number; y: number }; parent: string } {
+  const p = screenToCanvas(clientX, clientY);
+  const column = (document.elementFromPoint(clientX, clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-drop-column]')?.dataset.dropColumn;
+  return { point: { x: Math.round(p.x / GRID) - 4, y: Math.round(p.y / GRID) - 4 }, parent: column ?? useStore.getState().boardId };
 }
 
 interface Marquee {
@@ -178,6 +187,20 @@ export function Canvas() {
         lastPointer.valid = true;
       }}
       onPointerLeave={() => (lastPointer.valid = false)}
+      onDragOver={(e) => {
+        if ([...e.dataTransfer.types].some((t) => t === 'Files' || t === 'text/uri-list')) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        // Browser drops (the desktop app receives file paths through Tauri instead).
+        e.preventDefault();
+        const { point, parent } = dropPoint(e.clientX, e.clientY);
+        const files = [...e.dataTransfer.files];
+        if (files.length) void addFiles(files, point, parent);
+        else {
+          const url = asUrl(e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'));
+          if (url) addLink(url, point, parent);
+        }
+      }}
     >
       <div className="layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
         {children.map((el) => (

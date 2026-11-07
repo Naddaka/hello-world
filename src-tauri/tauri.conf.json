@@ -19,16 +19,25 @@
         "minHeight": 600,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob: asset: https:; media-src 'self' blob: asset: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; frame-src https:"
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost https:; media-src 'self' blob: asset: http://asset.localhost https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; frame-src https:",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPDATA/media/**"
+        ]
+      }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "category": "Productivity",
     "shortDescription": "Visual boards for ideas and video production",
     "icon": [
@@ -44,7 +53,9 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:zadum.db"]
+      "preload": [
+        "sqlite:zadum.db"
+      ]
     }
   }
 }

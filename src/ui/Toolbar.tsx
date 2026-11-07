@@ -3,6 +3,8 @@ import { actions, useStore } from '../model/store';
 import { DEFAULT_WIDTH, GRID } from '../model/types';
 import { isOverViewport, screenToCanvas, viewportCentreGrid } from '../canvas/runtime';
 import { useDrag } from '../canvas/dnd';
+import { addFiles, addLink } from '../model/importing';
+import { media } from '../storage/media';
 import {
   IconBoard,
   IconColumn,
@@ -17,7 +19,7 @@ import {
   IconTrash,
 } from './icons';
 
-type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA';
 
 interface Tool {
   label: string;
@@ -32,8 +34,8 @@ const TOOLS: Tool[] = [
   { label: 'Доска', Icon: IconBoard, kind: 'BOARD' },
   { label: 'Колонка', Icon: IconColumn, kind: 'COLUMN' },
   { label: 'Задачи', Icon: IconTasks, kind: 'TASK_LIST' },
-  { label: 'Ссылка', Icon: IconLink, soon: 'этап 1' },
-  { label: 'Медиа', Icon: IconMedia, soon: 'этап 1' },
+  { label: 'Ссылка', Icon: IconLink, kind: 'LINK' },
+  { label: 'Медиа', Icon: IconMedia, kind: 'MEDIA' },
   { label: 'Таблица', Icon: IconTable, soon: 'этап 2' },
   { label: 'Сценарий', Icon: IconScript, soon: 'этап 4' },
   { label: 'Линия', Icon: IconLine, soon: 'этап 1' },
@@ -44,8 +46,10 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
   const boardId = useStore.getState().boardId;
   // Dropped onto a column: add it there instead of on the canvas.
   const column = clientX !== undefined ? (document.elementFromPoint(clientX, clientY!) as HTMLElement | null)?.closest<HTMLElement>('[data-drop-column]')?.dataset.dropColumn : undefined;
-  if (column && kind !== 'COLUMN') actions.create({ type: kind }, column, 0, 0);
-  else actions.create({ type: kind }, boardId, gx, gy);
+  const parent = column && kind !== 'COLUMN' ? column : boardId;
+  if (kind === 'LINK') addLink(null, { x: gx, y: gy }, parent);
+  else if (kind === 'MEDIA') void media().then((m) => m.pickFiles()).then((files) => addFiles(files, { x: gx, y: gy }, parent));
+  else actions.create({ type: kind }, parent, gx, gy);
 }
 
 function TrashButton() {
@@ -78,7 +82,7 @@ export function Toolbar() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       setGhost(null);
-      const halfWidth = DEFAULT_WIDTH[kind] / 2;
+      const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : DEFAULT_WIDTH[kind]) / 2;
       if (!moved) {
         const c = viewportCentreGrid();
         create(kind, c.x - halfWidth, c.y - 6);

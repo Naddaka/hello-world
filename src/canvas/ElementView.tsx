@@ -5,6 +5,9 @@ import { BoardTile } from './BoardTile';
 import { NoteCard } from './NoteCard';
 import { ColumnView } from './ColumnView';
 import { TaskListCard } from './TaskListCard';
+import { FileCard, ImageCard, LinkCard } from './MediaCards';
+import { media } from '../storage/media';
+import { loadLinkPreview } from '../model/importing';
 import { currentCamera, sizes } from './runtime';
 import { startElementDrag, useDrag } from './dnd';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
@@ -24,7 +27,26 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode): MenuEntr
     items.push({ label: 'Открыть', hint: '↵', run: () => actions.openBoard(element.id) });
     items.push({ label: 'Переименовать', run: () => actions.setEditing(element.id) });
   }
-  if (!many && element.type !== 'BOARD') items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
+  if (!many && ['CARD', 'COLUMN', 'TASK_LIST', 'LINK'].includes(element.type)) {
+    items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : element.type === 'LINK' ? 'Изменить ссылку' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
+  }
+  if (!many && element.type === 'IMAGE') {
+    items.push({ label: element.showCaption ? 'Скрыть подпись' : 'Подпись', run: () => (element.showCaption ? actions.update(element.id, { showCaption: false }) : actions.setEditing(element.id)) });
+    items.push({ label: 'Открыть файл', run: async () => (await media()).openMedia(element.media) });
+    items.push({ label: 'Показать в Finder', run: async () => (await media()).revealMedia(element.media) });
+  }
+  if (!many && element.type === 'FILE' && /^(video|audio)\//.test(element.mime)) {
+    items.push({ label: element.autoplay ? 'Выключить автозапуск' : 'Автозапуск', run: () => actions.update(element.id, { autoplay: !element.autoplay }) });
+    items.push({ label: element.loop ? 'Выключить повтор' : 'Повтор', run: () => actions.update(element.id, { loop: !element.loop }) });
+  }
+  if (!many && element.type === 'LINK' && element.url) {
+    items.push(
+      { label: 'Открыть в браузере', run: async () => (await media()).openUrl(element.url) },
+      { label: element.showImage ? 'Скрыть картинку' : 'Показать картинку', run: () => actions.update(element.id, { showImage: !element.showImage }) },
+      { label: element.showDescription ? 'Скрыть описание' : 'Показать описание', run: () => actions.update(element.id, { showDescription: !element.showDescription }) },
+      { label: 'Обновить превью', run: () => void loadLinkPreview(element.id, element.url) },
+    );
+  }
   items.push(
     { label: 'Копировать', hint: '⌘C', run: () => copySelection(false) },
     { label: 'Вырезать', hint: '⌘X', run: () => copySelection(true) },
@@ -139,7 +161,8 @@ export function ElementView({
     e.stopPropagation();
     if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
-    else if (!element.locked && element.type !== 'COLUMN') actions.setEditing(element.id);
+    else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
+    else if (!element.locked && element.type !== 'COLUMN' && element.type !== 'FILE') actions.setEditing(element.id);
   };
 
   const offset = drag ? `translate(${drag.dx / scale}px, ${drag.dy / scale}px)` : '';
@@ -147,7 +170,7 @@ export function ElementView({
     mode === 'canvas'
       ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
       : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
-  const resizable = mode === 'canvas' && (element.type === 'CARD' || element.type === 'COLUMN' || element.type === 'TASK_LIST') && selected && !element.locked && !drag && !readOnly;
+  const resizable = mode === 'canvas' && element.type !== 'BOARD' && selected && !element.locked && !drag && !readOnly;
 
   return (
     <div
@@ -164,6 +187,9 @@ export function ElementView({
       {element.type === 'BOARD' && <BoardTile element={element} selected={selected} editing={editing} dropActive={dropActive} count={count} compact={mode === 'list'} />}
       {element.type === 'COLUMN' && <ColumnView element={element} selected={selected} editing={editing} />}
       {element.type === 'TASK_LIST' && <TaskListCard element={element} selected={selected} editing={editing} />}
+      {element.type === 'IMAGE' && <ImageCard element={element} selected={selected} editing={editing} />}
+      {element.type === 'FILE' && <FileCard element={element} selected={selected} />}
+      {element.type === 'LINK' && <LinkCard element={element} selected={selected} editing={editing} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
     </div>
   );

@@ -77,7 +77,7 @@ export function useShortcuts() {
         const size = sizes.get(el.id);
         if (el.parentId !== state.boardId) return;
         if (el.type === 'CARD' || el.type === 'TASK_LIST') actions.create({ type: el.type }, state.boardId, el.x, el.y + Math.ceil((size?.h ?? 120) / GRID) + 2, { width: el.width });
-        else actions.create({ type: el.type }, state.boardId, el.x + Math.ceil((size?.w ?? 112) / GRID) + 2, el.y);
+        else if (el.type === 'BOARD' || el.type === 'COLUMN') actions.create({ type: el.type }, state.boardId, el.x + Math.ceil((size?.w ?? 112) / GRID) + 2, el.y);
       } else if (!mod && key === 'z') {
         e.preventDefault();
         zoomToFit(canvasChildren(state.elements, state.boardId));

@@ -10,6 +10,7 @@ import {
   TRASH_RETENTION_DAYS,
   type BoardElement,
   type CardElement,
+  type ElementFields,
   type ElementPatch,
   type ZElement,
 } from './types';
@@ -240,6 +241,37 @@ export const actions = {
     commit([{ kind: 'create', element }]);
     set({ selection: [element.id], editingId: opts.edit === false ? null : element.id });
     return element.id;
+  },
+
+  /**
+   * Adds a fully described element (media, links) to a board canvas or, if the
+   * parent is a column, at its end. Returns the new id.
+   */
+  insert(fields: ElementFields, parentId: string, x: number, y: number, width?: number): string {
+    const inColumn = get().elements[parentId]?.type === 'COLUMN';
+    const element = {
+      ...fields,
+      id: nanoid(),
+      parentId,
+      section: 'CANVAS',
+      x: Math.round(x),
+      y: Math.round(y),
+      width: width ?? DEFAULT_WIDTH[fields.type],
+      z: (inColumn ? lastOrder(parentId) : topZ(parentId)) + 1,
+      createdAt: now(),
+      updatedAt: now(),
+    } as unknown as ZElement;
+    commit([{ kind: 'create', element }]);
+    return element.id;
+  },
+
+  /** Removes an element without leaving an undo step if its creation is the latest one. */
+  discard(id: string) {
+    const element = get().elements[id];
+    if (!element) return;
+    const forgotten = history.forgetCreate(id);
+    commit([{ kind: 'delete', element }], !forgotten);
+    set({ selection: get().selection.filter((s) => s !== id), editingId: get().editingId === id ? null : get().editingId, canUndo: history.canUndo });
   },
 
   createCard(boardId: string, x: number, y: number, opts: { edit?: boolean; content?: JSONContent; width?: number } = {}): string {

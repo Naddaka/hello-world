@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { actions, flushPersist, useStore } from './model/store';
 import { openRepo, isTauri } from './storage/repo';
-import { Canvas } from './canvas/Canvas';
+import { Canvas, dropPoint } from './canvas/Canvas';
+import { isOverViewport } from './canvas/runtime';
+import { addFiles } from './model/importing';
 import { TopBar } from './ui/TopBar';
 import { Toolbar } from './ui/Toolbar';
 import { ContextMenu } from './ui/ContextMenu';
@@ -43,7 +45,22 @@ export function App() {
     window.addEventListener('beforeunload', flush);
     document.addEventListener('visibilitychange', onHidden);
     let unlisten: (() => void) | undefined;
+    let unlistenDrop: (() => void) | undefined;
     if (isTauri()) {
+      // Files dragged in from Finder arrive as paths, so large videos are copied natively.
+      import('@tauri-apps/api/webview').then(({ getCurrentWebview }) =>
+        getCurrentWebview()
+          .onDragDropEvent((event) => {
+            if (event.payload.type !== 'drop' || event.payload.paths.length === 0) return;
+            const ratio = window.devicePixelRatio || 1;
+            const x = event.payload.position.x / ratio;
+            const y = event.payload.position.y / ratio;
+            if (!isOverViewport(x, y)) return;
+            const { point, parent } = dropPoint(x, y);
+            void addFiles(event.payload.paths, point, parent);
+          })
+          .then((fn) => (unlistenDrop = fn)),
+      );
       import('@tauri-apps/api/window').then(({ getCurrentWindow }) =>
         getCurrentWindow()
           .onCloseRequested(async () => {
@@ -56,6 +73,7 @@ export function App() {
       window.removeEventListener('beforeunload', flush);
       document.removeEventListener('visibilitychange', onHidden);
       unlisten?.();
+      unlistenDrop?.();
     };
   }, []);
 
