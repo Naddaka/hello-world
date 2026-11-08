@@ -118,6 +118,18 @@ export interface ImageElement extends ElementBase {
   annotations?: Stroke[];
 }
 
+export type MarkerColor = 'blue' | 'red' | 'green' | 'yellow' | 'purple';
+
+/** A review comment at a moment of a video or audio file. */
+export interface VideoMarker {
+  id: string;
+  /** Seconds from the start. */
+  time: number;
+  text: string;
+  color: MarkerColor;
+  done: boolean;
+}
+
 export interface FileElement extends ElementBase {
   type: 'FILE';
   media: MediaRef;
@@ -126,6 +138,10 @@ export interface FileElement extends ElementBase {
   mime: string;
   autoplay: boolean;
   loop: boolean;
+  /** Review comments by timecode (video and audio). */
+  markers?: VideoMarker[];
+  /** Frame rate used for timecodes and exports. */
+  fps?: number;
 }
 
 export interface LinkElement extends ElementBase {

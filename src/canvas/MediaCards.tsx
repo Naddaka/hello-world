@@ -62,14 +62,37 @@ export function ImageCard({ element, selected, editing }: { element: ImageElemen
 export function FileCard({ element, selected }: { element: FileElement; selected: boolean }) {
   const src = useMediaSrc(element.media);
   const kind = element.mime.startsWith('video/') ? 'video' : element.mime.startsWith('audio/') ? 'audio' : 'file';
+  const [duration, setDuration] = useState(0);
+  const markers = element.markers ?? [];
+  const openCount = markers.filter((m) => !m.done).length;
   const open = async () => (await media()).openMedia(element.media);
   const reveal = async () => (await media()).revealMedia(element.media);
   return (
     <div className={`media-card file-card${selected ? ' selected' : ''}`}>
       {kind === 'video' && src && (
-        <video className="media-video" src={src} controls preload="metadata" autoPlay={element.autoplay} muted={element.autoplay} loop={element.loop} onPointerDown={stop} />
+        <video
+          className="media-video"
+          src={src}
+          controls
+          preload="metadata"
+          autoPlay={element.autoplay}
+          muted={element.autoplay}
+          loop={element.loop}
+          onPointerDown={stop}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+        />
       )}
-      {kind === 'audio' && src && <audio className="media-audio" src={src} controls preload="metadata" autoPlay={element.autoplay} loop={element.loop} onPointerDown={stop} />}
+      {kind === 'audio' && src && <audio className="media-audio" src={src} controls preload="metadata" autoPlay={element.autoplay} loop={element.loop} onPointerDown={stop} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)} />}
+      {kind !== 'file' && markers.length > 0 && (
+        <div className="file-markers" title="Комментарии по таймкоду — двойной клик, чтобы открыть ревью">
+          <div className="file-marker-strip">
+            {duration > 0 && markers.map((m) => <span key={m.id} className={`vr-pin small c-${m.color}${m.done ? ' done' : ''}`} style={{ left: `${(m.time / duration) * 100}%` }} />)}
+          </div>
+          <span className="file-marker-count">
+            {markers.length} комм.{openCount ? ` · открыто ${openCount}` : ' · всё исправлено'}
+          </span>
+        </div>
+      )}
       <div className="file-row">
         <span className="file-icon" aria-hidden="true">
           <IconFile size={20} />

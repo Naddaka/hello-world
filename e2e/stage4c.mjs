@@ -1,0 +1,75 @@
+// Stage 4c: video review with timecoded comments, marker export, frame grabs.
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { OUT, runSuite } from './harness.mjs';
+
+const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
+  const chooser = page.waitForEvent('filechooser');
+  await page.click('.tool:has-text("Медиа")');
+  await (await chooser).setFiles(path.resolve('e2e/fixtures/clip.webm'));
+  await page.waitForSelector('.layer .file-card video');
+  check('a video lands on the board', true);
+
+  await page.locator('.layer .file-card .file-name').dblclick();
+  await page.waitForSelector('.vr-overlay video');
+  await page.waitForFunction(() => document.querySelector('.vr-overlay video').readyState >= 2);
+  check('double-clicking a video opens the review', await page.isVisible('.vr-tc:has-text("00:00:06:00")'), await page.locator('.vr-tc').last().textContent());
+
+  const tc = () => page.locator('.vr-tc').first().textContent();
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  check('arrow keys step by frames and seconds', (await tc()) === '00:00:02:01', await tc());
+  await page.keyboard.press('m');
+  await page.keyboard.type('Пересветить небо');
+  await page.keyboard.press('Enter');
+  await page.locator('.vr-overlay').click({ position: { x: 5, y: 80 } });
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.click('.vr-dot[aria-label="Красный"]');
+  await page.keyboard.press('m');
+  await page.keyboard.type('Звук громче');
+  await page.keyboard.press('Enter');
+  const items = await page.locator('.vr-item .vr-time small').allTextContents();
+  check('comments are pinned to timecodes', items.join(' ') === '00:00:02:01 00:00:03:01', items.join(' '));
+  check('comments show on the timeline', (await page.locator('.vr-timeline .vr-pin').count()) === 2 && (await page.locator('.vr-timeline .vr-pin.c-red').count()) === 1);
+
+  await page.locator('.vr-overlay').click({ position: { x: 5, y: 80 } });
+  await page.keyboard.press('[');
+  check('[ jumps to the previous comment', (await tc()) === '00:00:02:01', await tc());
+
+  await page.locator('.vr-item').first().locator('input[type="checkbox"]').check();
+  await page.check('.vr-filter input');
+  check('fixed comments can be hidden', (await page.locator('.vr-item').count()) === 1);
+  await page.uncheck('.vr-filter input');
+  await page.screenshot({ path: `${OUT}/84-video-review.png` });
+
+  // Export to DaVinci Resolve and YouTube.
+  await page.click('.vr-overlay >> text=Экспорт маркеров');
+  let download = page.waitForEvent('download');
+  await page.click('.menu-item:has-text("DaVinci Resolve")');
+  const edl = readFileSync(await (await download).path(), 'utf8');
+  check('markers export as a Resolve EDL', edl.includes('01:00:02:01 01:00:02:02') && edl.includes('|C:ResolveColorRed |M:Звук громче |D:1'), edl.slice(0, 200));
+  await page.click('.vr-overlay >> text=Экспорт маркеров');
+  download = page.waitForEvent('download');
+  await page.click('.menu-item:has-text("Главы YouTube")');
+  const chapters = readFileSync(await (await download).path(), 'utf8');
+  check('and as YouTube chapters', chapters === '0:00 Начало\n0:02 Пересветить небо\n0:03 Звук громче\n', JSON.stringify(chapters));
+
+  // Frame grab.
+  await page.click('.vr-overlay >> text=Стоп-кадр в карточку');
+  await page.waitForSelector('.toast:has-text("Стоп-кадр 00:00:02:01")');
+  await page.click('.vr-overlay >> text=← К доске');
+  const grab = page.locator('.layer .media-card', { hasText: 'clip.webm · 00:00:02:01' });
+  check('a frame grab becomes an image card next to the video', (await grab.count()) === 1);
+  const size = await grab.locator('img').evaluate((img) => [img.naturalWidth, img.naturalHeight]);
+  check('the grab has the video resolution', size[0] === 640 && size[1] === 360, String(size));
+  check('the video card shows its comments', await page.isVisible('.file-card .file-marker-count:has-text("2 комм. · открыто 1")'));
+  await page.screenshot({ path: `${OUT}/85-video-card.png` });
+
+  await page.waitForTimeout(700);
+  await page.reload();
+  await page.waitForSelector('text=Добро пожаловать в Zadum');
+  check('comments survive a reload', await page.isVisible('.file-card .file-marker-count:has-text("2 комм.")'));
+});
+
+process.exit(failed ? 1 : 0);

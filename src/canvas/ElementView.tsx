@@ -26,6 +26,7 @@ import { exportScript } from '../script/print';
 import { addFrameAfter, emptyShot, framesOn, makeShotList } from '../script/storyboard';
 import { openShotDialog } from '../draw/ShotDialog';
 import { exportTableCsv } from '../table/csv';
+import { isReviewable, openReview } from '../video/VideoReview';
 import { descendants } from '../model/store';
 
 /**
@@ -119,7 +120,8 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
     items.push({ label: 'Открыть файл', run: async () => (await media()).openMedia(element.media) });
     items.push({ label: 'Показать в Finder', run: async () => (await media()).revealMedia(element.media) });
   }
-  if (!many && element.type === 'FILE' && /^(video|audio)\//.test(element.mime)) {
+  if (!many && element.type === 'FILE' && isReviewable(element)) {
+    items.push({ label: 'Ревью: комментарии по таймкоду', hint: 'двойной клик', run: () => openReview(element.id) });
     items.push({ label: element.autoplay ? 'Выключить автозапуск' : 'Автозапуск', run: () => actions.update(element.id, { autoplay: !element.autoplay }) });
     items.push({ label: element.loop ? 'Выключить повтор' : 'Повтор', run: () => actions.update(element.id, { loop: !element.loop }) });
   }
@@ -267,6 +269,7 @@ export function ElementView({
     else if (element.type === 'SKETCH') openSketchEditor(element.id);
     else if (element.type === 'DOCUMENT') openDocument(element.id);
     else if (element.type === 'SCRIPT') openScript(element.id);
+    else if (isReviewable(element)) openReview(element.id);
     else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
     else if (!element.locked && !['COLUMN', 'FILE', 'COLOR_SWATCH'].includes(element.type)) actions.setEditing(element.id);
   };

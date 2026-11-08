@@ -36,6 +36,8 @@ export function useShortcuts() {
         return;
       }
       if (isTyping(e.target) || useMenu.getState().items || useOpenDocument.getState().id) return;
+      // Full-screen editors (script, video review) and dialogs handle their own keys.
+      if (document.querySelector('.doc-overlay, .sketch-overlay, .modal-backdrop')) return;
       // Drawing, sketching and presenting handle their own keys.
       if (useBoardDraw.getState().active || useSketchEditor.getState().id || usePresent.getState().active) return;
 

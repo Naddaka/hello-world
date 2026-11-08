@@ -18,6 +18,7 @@ import { PresentBar, usePresent } from './ui/Presentation';
 import { MilanoteImportDialog } from './import/MilanoteImport';
 import { ScriptOverlay } from './script/ScriptEditor';
 import { ShotDialog } from './draw/ShotDialog';
+import { VideoReviewOverlay } from './video/VideoReview';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -108,6 +109,7 @@ export function App() {
       <SketchEditorOverlay />
       <ScriptOverlay />
       <ShotDialog />
+      <VideoReviewOverlay />
       <MilanoteImportDialog />
     </div>
   );
