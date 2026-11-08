@@ -5,6 +5,7 @@ import { GRID, type DrawingElement, type Stroke } from '../model/types';
 import { screenToCanvas } from '../canvas/runtime';
 import { bounds, handleDrawKey, hitsStroke, PEN_SIZES, strokePath, useDrawTool } from './strokes';
 import { DrawToolbar } from './DrawToolbar';
+import { shortcutKey } from '../ui/keys';
 
 interface BoardDrawState {
   active: boolean;
@@ -64,8 +65,8 @@ export function BoardDrawOverlay() {
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (e.key === 'Escape' || k === 'v' || k === 'м') {
+      const k = shortcutKey(e);
+      if (e.key === 'Escape' || k === 'v') {
         e.preventDefault();
         finishBoardDrawing();
       } else if (handleDrawKey(e)) e.preventDefault();

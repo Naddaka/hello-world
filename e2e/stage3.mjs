@@ -68,7 +68,8 @@ const failed = await runSuite(
     await page.locator('.layer .tile', { hasText: 'Milanote' }).dblclick();
     check('the import survives a reload', await page.isVisible('.layer .note:has-text("Северный ветер")'));
   },
-  { ignoreErrors: [/Failed to load resource/] },
+  // The unreachable image: refused by the CSP in the browser build (the app downloads through Rust).
+  { ignoreErrors: [/Failed to load resource/, /media\.invalid/] },
 );
 
 process.exit(failed ? 1 : 0);

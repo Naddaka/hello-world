@@ -3,6 +3,7 @@ import { actions, useStore } from '../model/store';
 import { GRID, type CardColor, type CellFormat, type CellKind, type TableElement } from '../model/types';
 import { colName, computeTable, FUNCTION_NAMES, type Value } from './formula';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
+import { shortcutKey } from '../ui/keys';
 
 const num = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 10 });
 const money = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 });
@@ -213,10 +214,10 @@ function TableGrid({ element, editing }: { element: TableElement; editing: boole
       const cells = current.current.cells.map((row) => row.slice());
       each((r, c) => (cells[r][c] = ''));
       save({ cells });
-    } else if (mod && e.key.toLowerCase() === 'b') {
+    } else if (mod && shortcutKey(e) === 'b') {
       e.preventDefault();
       formatRange({ bold: !current.current.formats[key(active.r, active.c)]?.bold });
-    } else if (mod && e.key.toLowerCase() === 'z') {
+    } else if (mod && shortcutKey(e) === 'z') {
       // Leave table editing first so the session is recorded, then undo it.
       e.preventDefault();
       actions.setEditing(null);

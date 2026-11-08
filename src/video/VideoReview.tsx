@@ -7,6 +7,7 @@ import { media, useMediaSrc } from '../storage/media';
 import { fileName, saveFile } from '../storage/files';
 import { isTauri } from '../storage/repo';
 import { DEFAULT_FPS, FRAME_RATES, clock, frameMiddle, frameOf, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
+import { shortcutKey } from '../ui/keys';
 
 /** Which video or audio file is open for review. */
 export const useReview = create<{ id: string | null }>(() => ({ id: null }));
@@ -124,16 +125,17 @@ function Review({ file }: { file: FileElement }) {
       }
       if (typing) return;
       const t = video.current?.currentTime ?? 0;
+      const k = shortcutKey(e);
       if (e.key === ' ') toggle();
       else if (e.key === 'ArrowLeft') step(e.shiftKey ? -Math.round(fps) : -1);
       else if (e.key === 'ArrowRight') step(e.shiftKey ? Math.round(fps) : 1);
-      else if (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'ь') {
+      else if (k === 'm') {
         video.current?.pause();
         input.current?.focus();
-      } else if (e.key === '[') {
+      } else if (k === '[') {
         const prev = [...markers].reverse().find((m) => m.time < t - 0.01);
         if (prev) seek(prev.time);
-      } else if (e.key === ']') {
+      } else if (k === ']') {
         const next = markers.find((m) => m.time > t + 0.01);
         if (next) seek(next.time);
       } else return;

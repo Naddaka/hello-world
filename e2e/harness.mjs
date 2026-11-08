@@ -2,13 +2,19 @@
 // it in Chromium with the Playwright installed on the machine.
 import { createRequire } from 'node:module';
 import { execSync, spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 
 export const OUT = path.resolve('e2e/out');
+
+/**
+ * The packaged app's Content Security Policy. Pages are served with it so the
+ * checks fail where the desktop app would (e.g. a fetch the CSP forbids).
+ */
+export const CSP = JSON.parse(readFileSync(path.resolve('src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
 
 /**
  * Runs `scenario` against a fresh app and exits with a non-zero code if any check failed.
@@ -34,6 +40,10 @@ export async function runSuite(name, port, scenario, { ignoreErrors = [] } = {})
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('console', (m) => m.type() === 'error' && !ignoreErrors.some((re) => re.test(m.text())) && errors.push(m.text()));
+    await page.route(`http://localhost:${port}/`, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': CSP } });
+    });
     await page.goto(`http://localhost:${port}/`);
     await page.waitForSelector('text=Добро пожаловать в Zadum');
     await scenario({ page, check });

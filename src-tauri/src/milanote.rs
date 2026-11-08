@@ -49,11 +49,18 @@ pub async fn milanote_open(app: AppHandle) -> Result<(), String> {
         return window.set_focus().map_err(|e| e.to_string());
     }
     let url = start_url().parse().map_err(|e| format!("{e}"))?;
-    WebviewWindowBuilder::new(&app, WINDOW, WebviewUrl::External(url))
+    let window = WebviewWindowBuilder::new(&app, WINDOW, WebviewUrl::External(url))
         .title("Milanote — войдите, затем вернитесь в Zadum")
         .inner_size(1180.0, 820.0)
         .build()
         .map_err(|e| e.to_string())?;
+    // Tell the import dialog when the user closes the window, so it does not offer to start an export.
+    let handle = app.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, tauri::WindowEvent::Destroyed) {
+            let _ = handle.emit_to("main", "milanote-export", ExportEvent { kind: "closed".into(), data: String::new() });
+        }
+    });
     Ok(())
 }
 

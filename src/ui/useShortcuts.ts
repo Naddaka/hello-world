@@ -7,6 +7,7 @@ import { openDocument, useOpenDocument } from '../doc/DocumentView';
 import { startBoardDrawing, useBoardDraw } from '../draw/BoardDraw';
 import { useSketchEditor } from '../draw/SketchEditor';
 import { usePresent } from './Presentation';
+import { shortcutKey } from './keys';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -22,7 +23,7 @@ export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      const key = e.key.toLowerCase();
+      const key = shortcutKey(e);
 
       // Theme toggle works everywhere, even while typing.
       if (mod && e.shiftKey && key === 'd') {
@@ -54,10 +55,10 @@ export function useShortcuts() {
       } else if (mod && key === 'a') {
         e.preventDefault();
         actions.selectAll();
-      } else if (mod && e.key === '[') {
+      } else if (mod && key === '[') {
         e.preventDefault();
         actions.goBack();
-      } else if (mod && e.key === ']') {
+      } else if (mod && key === ']') {
         e.preventDefault();
         actions.goForward();
       } else if (mod && key === 'u') {

@@ -52,14 +52,17 @@ export function MilanoteImportDialog() {
     let alive = true;
     void import('@tauri-apps/api/event').then(({ listen }) =>
       listen<{ kind: string; data: string }>('milanote-export', async ({ payload }) => {
-        if (payload.kind === 'progress') setStep({ kind: 'exporting', text: payload.data });
+        if (payload.kind === 'closed') {
+          setWindowOpen(false);
+          // Closed in the middle of an export: say so instead of waiting forever.
+          setStep((s) => (s.kind === 'exporting' ? { kind: 'error', message: 'Окно Milanote закрыто до конца экспорта. Откройте его снова и запустите импорт.' } : s));
+        } else if (payload.kind === 'progress') setStep({ kind: 'exporting', text: payload.data });
         else if (payload.kind === 'error') setStep({ kind: 'error', message: payload.data });
         else if (payload.kind === 'done') {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             const data = parseExport(await invoke<string>('milanote_read_export'));
             void invoke('milanote_close');
-            setWindowOpen(false);
             setStep({ kind: 'confirm', data });
           } catch (error) {
             setStep({ kind: 'error', message: error instanceof Error ? error.message : String(error) });

@@ -2,6 +2,7 @@ import { commit, useStore } from '../model/store';
 import type { Op } from '../model/ops';
 import { HOME_ID, type ZElement } from '../model/types';
 import { media } from '../storage/media';
+import { dataUrlToBlob } from '../storage/dataUrl';
 import { convertMilanote, finalizeImport, MN_PREFIX, type ImportReport, type MediaJob, type MilanoteExport, type StoredMedia } from './milanote';
 
 export interface ImportProgress {
@@ -20,7 +21,7 @@ async function storeJob(job: MediaJob): Promise<StoredMedia | null> {
     if (job.svg) return await lib.importFile(new File([job.svg], job.name, { type: 'image/svg+xml' }));
     if (!job.url) return null;
     if (job.url.startsWith('data:')) {
-      const blob = await (await fetch(job.url)).blob();
+      const blob = dataUrlToBlob(job.url);
       return await lib.importFile(new File([blob], job.name, { type: blob.type }));
     }
     return await lib.download(job.url, job.name);

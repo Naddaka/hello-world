@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Stroke } from '../model/types';
+import { shortcutKey } from '../ui/keys';
 
 /** Pen widths for sizes 1–4 (in the units of the surface being drawn on). */
 export const PEN_SIZES = [2, 4, 8, 14];
@@ -63,11 +64,11 @@ export function setColor(color: string) {
 
 /** Keys of the reference app while drawing: D pen, E eraser, X previous colour, 1–4 size. */
 export function handleDrawKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
-  const k = e.key.toLowerCase();
+  const k = shortcutKey(e);
   if (e.metaKey || e.ctrlKey || e.altKey) return false;
-  if (k === 'd' || k === 'в') useDrawTool.setState({ tool: 'pen' });
-  else if (k === 'e' || k === 'у') useDrawTool.setState({ tool: 'eraser' });
-  else if (k === 'x' || k === 'ч') {
+  if (k === 'd') useDrawTool.setState({ tool: 'pen' });
+  else if (k === 'e') useDrawTool.setState({ tool: 'eraser' });
+  else if (k === 'x') {
     const { color, previousColor } = useDrawTool.getState();
     useDrawTool.setState({ color: previousColor, previousColor: color, tool: 'pen' });
   } else if (['1', '2', '3', '4'].includes(k)) useDrawTool.setState({ size: Number(k) });

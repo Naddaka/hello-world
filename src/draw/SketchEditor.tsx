@@ -6,6 +6,7 @@ import { useMediaSrc } from '../storage/media';
 import { handleDrawKey, hitsStroke, PEN_SIZES, strokePath, useDrawTool } from './strokes';
 import { DrawToolbar } from './DrawToolbar';
 import { shotNumber, sizeShort } from '../script/storyboard';
+import { shortcutKey } from '../ui/keys';
 
 /** Sketch and image strokes use 1000 units across the width. */
 const UNITS = 1000;
@@ -80,7 +81,7 @@ function Editor({ element }: { element: SketchElement | ImageElement }) {
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      } else if ((e.metaKey || e.ctrlKey) && shortcutKey(e) === 'z') {
         e.preventDefault();
         setStrokes((s) => s.slice(0, -1));
       } else if (handleDrawKey(e)) e.preventDefault();

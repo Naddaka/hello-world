@@ -32,6 +32,12 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Reopen the main window where and as big as it was left.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_denylist(&[milanote::WINDOW])
+                .build(),
+        )
         .manage(milanote::ExportState::default())
         .invoke_handler(tauri::generate_handler![
             media::media_location,
