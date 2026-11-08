@@ -1,3 +1,4 @@
+import { plainText as scriptPlain } from '../script/print';
 import { toPng } from 'html-to-image';
 import { zipSync } from 'fflate';
 import { generateHTML } from '@tiptap/core';
@@ -42,6 +43,10 @@ function blockOf(e: ZElement, depth: number): Block[] {
       return [{ md: toMarkdown(e.content).trim(), html: html(e.content), text: docText(e.content) }];
     case 'DOCUMENT':
       return [{ md: `## ${e.title}\n\n${toMarkdown(e.content).trim()}`, html: `<h2>${esc(e.title)}</h2>${html(e.content)}`, text: `${e.title}\n${docText(e.content)}` }];
+    case 'SCRIPT': {
+      const text = scriptPlain(e);
+      return [{ md: `## ${e.title}\n\n\`\`\`\n${text}\n\`\`\``, html: `<h2>${esc(e.title)}</h2><pre style="font-family:'Courier New',monospace">${esc(text)}</pre>`, text: `${e.title}\n\n${text}` }];
+    }
     case 'BOARD':
       return [{ md: `**Доска «${e.title}»** — ${countChildren(elements, e.id)} карт.`, html: `<p><b>Доска «${esc(e.title)}»</b></p>`, text: `Доска «${e.title}»` }];
     case 'ALIAS': {

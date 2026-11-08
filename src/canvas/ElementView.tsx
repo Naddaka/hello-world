@@ -21,6 +21,8 @@ import { DrawingView } from '../draw/BoardDraw';
 import { ASPECTS, openSketchEditor, SketchCard } from '../draw/SketchEditor';
 import { focusOn, usePresent } from '../ui/Presentation';
 import { CommentCard, CommentMarkers } from './Comments';
+import { ScriptTile, openScript, scenesToBoard } from '../script/ScriptEditor';
+import { exportScript } from '../script/print';
 import { descendants } from '../model/store';
 
 /**
@@ -64,6 +66,15 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       { label: 'Экспорт в PDF', run: () => void exportDocument(element, 'pdf') },
       { label: 'Экспорт в Word', run: () => void exportDocument(element, 'doc') },
       { label: 'Экспорт в Markdown', run: () => void exportDocument(element, 'md') },
+    );
+  }
+  if (!many && element.type === 'SCRIPT') {
+    items.push(
+      { label: 'Открыть', hint: '↵', run: () => openScript(element.id) },
+      { label: 'Сцены на доску', run: () => (scenesToBoard(element) ? undefined : actions.showToast('В сценарии пока нет сцен')) },
+      { label: 'Экспорт в PDF', run: () => void exportScript(element, 'pdf') },
+      { label: 'Экспорт в Final Draft (.fdx)', run: () => void exportScript(element, 'fdx') },
+      { label: 'Экспорт в Fountain', run: () => void exportScript(element, 'fountain') },
     );
   }
   if (!many && element.type === 'TABLE') items.push({ label: 'Редактировать таблицу', hint: '↵', run: () => actions.setEditing(element.id) });
@@ -231,6 +242,7 @@ export function ElementView({
     else if (usePresent.getState().active && usePresent.getState().preventEdit) return;
     else if (element.type === 'SKETCH') openSketchEditor(element.id);
     else if (element.type === 'DOCUMENT') openDocument(element.id);
+    else if (element.type === 'SCRIPT') openScript(element.id);
     else if (element.type === 'LINK' && element.url && !e.altKey) void media().then((m) => m.openUrl(element.url));
     else if (!element.locked && !['COLUMN', 'FILE', 'COLOR_SWATCH'].includes(element.type)) actions.setEditing(element.id);
   };
@@ -240,7 +252,7 @@ export function ElementView({
     mode === 'canvas'
       ? { transform: `translate(${element.x * GRID}px, ${element.y * GRID}px) ${offset}`, width: (liveWidth ?? element.width) * GRID, zIndex: editing ? 99999 : element.z }
       : { position: 'relative', transform: offset || undefined, zIndex: drag || editing ? 10 : undefined };
-  const resizable = mode === 'canvas' && !['BOARD', 'TABLE', 'DOCUMENT', 'DRAWING'].includes(element.type) && selected && !element.locked && !drag && !readOnly;
+  const resizable = mode === 'canvas' && !['BOARD', 'TABLE', 'DOCUMENT', 'DRAWING', 'SCRIPT'].includes(element.type) && selected && !element.locked && !drag && !readOnly;
   const soleSelected = useStore((s) => s.selection.length === 1 && s.selection[0] === element.id);
   const lineHandle = mode === 'canvas' && soleSelected && !drag && !readOnly && !editing;
 
@@ -265,6 +277,7 @@ export function ElementView({
       {element.type === 'COLOR_SWATCH' && <SwatchCard element={element} selected={selected} />}
       {element.type === 'TABLE' && <TableCard element={element} selected={selected} editing={editing} />}
       {element.type === 'DOCUMENT' && <DocumentTile element={element} selected={selected} />}
+      {element.type === 'SCRIPT' && <ScriptTile element={element} selected={selected} />}
       {element.type === 'DRAWING' && <DrawingView element={element} selected={selected} />}
       {element.type === 'SKETCH' && <SketchCard element={element} selected={selected} />}
       {element.type === 'COMMENT' && <CommentCard element={element} selected={selected} />}

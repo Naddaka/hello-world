@@ -29,8 +29,9 @@ import { newDocumentFields, openDocument } from '../doc/DocumentView';
 import { startBoardDrawing } from '../draw/BoardDraw';
 import { newCommentFields } from '../canvas/Comments';
 import { newSketchFields, openSketchEditor } from '../draw/SketchEditor';
+import { newScriptFields, openScript } from '../script/ScriptEditor';
 
-type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH' | 'TABLE' | 'DOCUMENT' | 'SKETCH' | 'DRAW' | 'COMMENT';
+type Kind = 'CARD' | 'BOARD' | 'COLUMN' | 'TASK_LIST' | 'LINK' | 'MEDIA' | 'LINE' | 'COLOR_SWATCH' | 'TABLE' | 'DOCUMENT' | 'SCRIPT' | 'SKETCH' | 'DRAW' | 'COMMENT';
 
 interface Tool {
   label: string;
@@ -49,7 +50,7 @@ const TOOLS: Tool[] = [
   { label: 'Медиа', Icon: IconMedia, kind: 'MEDIA' },
   { label: 'Таблица', Icon: IconTable, kind: 'TABLE' },
   { label: 'Документ', Icon: IconFile, kind: 'DOCUMENT' },
-  { label: 'Сценарий', Icon: IconScript, soon: 'этап 4' },
+  { label: 'Сценарий', Icon: IconScript, kind: 'SCRIPT' },
   { label: 'Линия', Icon: IconLine, kind: 'LINE' },
   { label: 'Цвет', Icon: IconSwatch, kind: 'COLOR_SWATCH' },
   { label: 'Скетч', Icon: IconSketch, kind: 'SKETCH' },
@@ -73,6 +74,7 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
     const id = actions.insert(fields, parent, gx, gy, tableWidth(fields.colWidths));
     actions.setEditing(id);
   } else if (kind === 'DOCUMENT') openDocument(actions.insert(newDocumentFields(), parent, gx, gy));
+  else if (kind === 'SCRIPT') openScript(actions.insert(newScriptFields(), parent, gx, gy));
   else if (kind === 'MEDIA') void media().then((m) => m.pickFiles()).then((files) => addFiles(files, { x: gx, y: gy }, parent));
   else actions.create({ type: kind }, parent, gx, gy);
 }

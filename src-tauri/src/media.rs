@@ -285,3 +285,13 @@ pub async fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> 
 pub fn print_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.print().map_err(|e| e.to_string())
 }
+
+/// Reads a text file the user dropped or picked (screenplays in Fountain or Final Draft format).
+#[tauri::command]
+pub async fn read_text_file(path: String) -> Result<String, String> {
+    let size = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+    if size > 20 * 1024 * 1024 {
+        return Err("Файл слишком большой для сценария".into());
+    }
+    std::fs::read_to_string(&path).map_err(|e| format!("Не удалось прочитать файл: {e}"))
+}

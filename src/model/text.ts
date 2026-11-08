@@ -50,6 +50,8 @@ export function elementText(e: ZElement): string {
       return e.messages.map((m) => m.text).join('\n');
     case 'DOCUMENT':
       return [e.title, docText(e.content)].filter(Boolean).join('\n');
+    case 'SCRIPT':
+      return [e.title, ...e.blocks.map((b) => b.text)].filter(Boolean).join('\n');
   }
 }
 

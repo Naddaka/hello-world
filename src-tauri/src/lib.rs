@@ -39,6 +39,7 @@ pub fn run() {
             media::save_media_bytes,
             media::import_media_url,
             media::download_media,
+            media::read_text_file,
             media::write_file,
             media::print_window,
             links::link_preview,

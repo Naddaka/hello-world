@@ -4,6 +4,9 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/500.css';
+import '@fontsource/cousine/400.css';
+import '@fontsource/cousine/700.css';
+import '@fontsource/cousine/400-italic.css';
 import './styles.css';
 import { App } from './App';
 

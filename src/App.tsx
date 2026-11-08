@@ -16,6 +16,7 @@ import { DocumentOverlay } from './doc/DocumentView';
 import { SketchEditorOverlay } from './draw/SketchEditor';
 import { PresentBar, usePresent } from './ui/Presentation';
 import { MilanoteImportDialog } from './import/MilanoteImport';
+import { ScriptOverlay } from './script/ScriptEditor';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -104,6 +105,7 @@ export function App() {
       <LabelPicker />
       <DocumentOverlay />
       <SketchEditorOverlay />
+      <ScriptOverlay />
       <MilanoteImportDialog />
     </div>
   );

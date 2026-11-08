@@ -629,3 +629,54 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .mn-report td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .mn-note { padding: 0; margin: 4px 0; }
 .mn-failed { max-height: 160px; overflow: auto; margin: 6px 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+
+/* ---------- screenplay editor ---------- */
+.script-icon { position: relative; }
+.script-badge { position: absolute; right: 8px; bottom: 8px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--card); color: var(--muted); font: 600 10px/18px var(--font); text-align: center; box-shadow: 0 0 0 1px var(--line); }
+.sp-head { gap: 10px; }
+.sp-head .doc-count { margin-left: 0; white-space: nowrap; }
+.sp-title-input { flex: 1 1 160px; min-width: 120px; border: 0; background: transparent; font: 600 15px var(--font); color: var(--ink); outline: none; }
+.sp-select, .sp-kind select { height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: 13px var(--font); padding: 0 6px; }
+.sp-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.sp-body { flex: 1 1 auto; display: flex; min-height: 0; }
+.sp-side { flex: 0 0 260px; border-right: 1px solid var(--line); background: var(--app); overflow: auto; }
+.sp-tabs { display: flex; gap: 4px; padding: 10px 10px 6px; position: sticky; top: 0; background: var(--app); }
+.sp-tabs button { flex: 1; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: 500 12px var(--font); cursor: pointer; }
+.sp-tabs button.on { background: var(--field); color: var(--ink); }
+.sp-scenes { list-style: none; margin: 0; padding: 0 6px 12px; }
+.sp-scenes button { display: grid; grid-template-columns: 24px 1fr; gap: 2px 6px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font: 12px var(--font); }
+.sp-scenes button:hover { background: var(--hover); }
+.sp-scene-no { grid-row: span 2; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sp-scene-h { font-weight: 600; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-scene-meta { color: var(--muted); font-size: 11px; }
+.sp-chars { padding: 0 14px 14px; font-size: 12px; }
+.sp-chars table { width: 100%; border-collapse: collapse; }
+.sp-chars td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.sp-chars td:not(:first-child) { text-align: right; color: var(--muted); padding-left: 8px; white-space: nowrap; }
+.sp-chars h3 { margin: 16px 0 6px; font: 600 12px var(--font); color: var(--muted); }
+.sp-chars ul { margin: 0; padding-left: 16px; }
+.sp-scroll { flex: 1 1 auto; overflow: auto; padding: 32px 24px 120px; }
+.sp-paper {
+  box-sizing: border-box; margin: 0 auto; min-height: 11in; background: var(--card); color: var(--ink); border-radius: 4px;
+  box-shadow: var(--shadow-card); font: 12pt/calc(1in / 6) 'Courier New', Cousine, 'Courier Prime', Courier, monospace;
+}
+.sp-paper .ProseMirror { outline: none; counter-reset: scene; }
+.sp-paper .sl { position: relative; margin-bottom: 0; min-height: calc(1in / 6); white-space: pre-wrap; overflow-wrap: break-word; }
+.sp-paper .ProseMirror > .sl:first-child, .sp-paper .sp-break + .sl { margin-top: 0 !important; }
+.sp-paper .sl[data-kind='scene'], .sp-paper .sl[data-kind='character'], .sp-paper .sl[data-kind='transition'], .sp-paper .sl[data-kind='shot'] { text-transform: uppercase; }
+.sp-paper .sl[data-kind='parenthetical']:not(.is-empty)::before { content: '('; }
+.sp-paper .sl[data-kind='parenthetical']:not(.is-empty)::after { content: ')'; }
+.sp-paper .sl[data-kind='character'][data-dual]::after { content: ' ⇄'; color: var(--accent); }
+.sp-numbers .sl[data-kind='scene'] { counter-increment: scene; }
+.sp-numbers-margins .sl[data-kind='scene']:not(.is-empty)::before { content: counter(scene); position: absolute; left: -0.75in; }
+.sp-numbers-margins .sl[data-kind='scene']:not(.is-empty)::after { content: counter(scene); position: absolute; right: -0.75in; }
+.sp-numbers-prefix .sl[data-kind='scene']:not(.is-empty)::before { content: counter(scene) '. '; }
+.sp-paper .sl.is-empty::before { content: attr(data-placeholder); color: var(--faint); float: left; height: 0; pointer-events: none; text-transform: none; }
+.sp-break { position: relative; height: 0; margin: 0.3in 0; border-top: 1px dashed var(--line); }
+.sp-break span { position: absolute; right: 0; top: -0.75em; padding-left: 8px; background: var(--card); color: var(--muted); font: 11px var(--font); }
+.sp-foot { display: flex; align-items: center; gap: 14px; height: 44px; padding: 0 20px; border-top: 1px solid var(--line); background: var(--app); font-size: 12px; color: var(--muted); }
+.sp-suggest { position: fixed; z-index: 1300; min-width: 180px; max-width: 360px; margin: 0; padding: 4px; list-style: none; border-radius: 10px; font: 13px var(--font); }
+.sp-suggest li { padding: 6px 10px; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+.sp-suggest li.on { background: var(--accent-soft); color: var(--accent); }
+.sp-field { display: flex; flex-direction: column; gap: 4px; margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.sp-field input, .sp-field textarea { border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 14px var(--font); padding: 7px 10px; resize: vertical; }

@@ -1,3 +1,4 @@
+import { isScriptFileName, newScriptFields, parseScriptFile } from '../script/ScriptEditor';
 import { actions, useStore } from './store';
 import { DEFAULT_WIDTH, GRID, type ElementFields, type FileElement, type ImageElement, type LinkElement } from './types';
 import { media, type MediaInfo } from '../storage/media';
@@ -29,6 +30,16 @@ export async function addFiles(items: (string | File)[], at: { x: number; y: num
   let x = at.x;
   for (const item of items) {
     try {
+      const name = typeof item === 'string' ? (item.split('/').pop() ?? '') : item.name;
+      if (isScriptFileName(name)) {
+        // Screenplays become script cards instead of plain files.
+        const text = typeof item === 'string' ? await (await import('@tauri-apps/api/core')).invoke<string>('read_text_file', { path: item }) : await item.text();
+        const parsed = parseScriptFile(name, text);
+        const title = parsed.titlePage.title || name.replace(/\.[^.]+$/, '');
+        ids.push(actions.insert(newScriptFields(parsed.blocks, parsed.titlePage, title), parentId, x, at.y));
+        x += DEFAULT_WIDTH.SCRIPT + 3;
+        continue;
+      }
       const info = typeof item === 'string' ? await lib.importPath(item) : await lib.importFile(item);
       const fields = cardFor(info);
       const width = fields.type === 'IMAGE' ? imageWidth(info) : DEFAULT_WIDTH.FILE;

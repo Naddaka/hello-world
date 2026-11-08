@@ -8,6 +8,7 @@ const COMMANDS: &[&str] = &[
     "save_media_bytes",
     "import_media_url",
     "download_media",
+    "read_text_file",
     "write_file",
     "print_window",
     "link_preview",

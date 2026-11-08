@@ -225,6 +225,40 @@ export interface SketchElement extends ElementBase {
   caption: string;
 }
 
+/** Kinds of screenplay paragraphs (the standard set used by Final Draft and Fountain). */
+export type ScriptBlockType = 'scene' | 'action' | 'character' | 'parenthetical' | 'dialogue' | 'transition' | 'shot' | 'centered';
+
+export interface ScriptBlock {
+  id: string;
+  type: ScriptBlockType;
+  /** Plain text; parentheticals are stored without their brackets. */
+  text: string;
+  /** On a character line: this speech runs beside the previous one (dual dialogue). */
+  dual?: boolean;
+}
+
+/** Page layouts: Hollywood (US Letter), European A4, Russian A4. */
+export type ScriptFormat = 'hollywood' | 'a4' | 'russian';
+
+export interface ScriptTitlePage {
+  title: string;
+  credit: string;
+  authors: string;
+  source: string;
+  draftDate: string;
+  contact: string;
+}
+
+/** A screenplay, shown on the board as a tile and edited full screen. */
+export interface ScriptElement extends ElementBase {
+  type: 'SCRIPT';
+  title: string;
+  blocks: ScriptBlock[];
+  format: ScriptFormat;
+  titlePage: ScriptTitlePage;
+  sceneNumbers: boolean;
+}
+
 /** A label definition. Labels live outside boards (parentId null). */
 export interface LabelElement extends ElementBase {
   type: 'LABEL';
@@ -250,7 +284,8 @@ export type ZElement =
   | DrawingElement
   | SketchElement
   | AliasElement
-  | CommentElement;
+  | CommentElement
+  | ScriptElement;
 export type ElementType = ZElement['type'];
 
 type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
@@ -273,7 +308,8 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<DrawingElement, 'id' | 'type'>> &
   Partial<Omit<SketchElement, 'id' | 'type'>> &
   Partial<Omit<AliasElement, 'id' | 'type'>> &
-  Partial<Omit<CommentElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
+  Partial<Omit<CommentElement, 'id' | 'type'>> &
+  Partial<Omit<ScriptElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -292,6 +328,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   SKETCH: 32,
   ALIAS: 14,
   COMMENT: 34,
+  SCRIPT: 14,
 };
 
 /** Types that can be placed inside a column. */

@@ -9,10 +9,11 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs && node e2e/stage2c.mjs && node e2e/stage3.mjs",
+    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs && node e2e/stage2c.mjs && node e2e/stage3.mjs && node e2e/stage4a.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
+    "@fontsource/cousine": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@formulajs/formulajs": "^4.6.1",

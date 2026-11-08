@@ -7,7 +7,7 @@ import { IconBoard, IconColumn, IconComment, IconFile, IconLine, IconLink, IconM
 
 type Sort = 'viewed' | 'modified';
 
-const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink, LINE: IconLine, COLOR_SWATCH: IconSwatch, LABEL: IconTag, TABLE: IconTable, DOCUMENT: IconScript, DRAWING: IconDraw, SKETCH: IconDraw, ALIAS: IconBoard, COMMENT: IconComment } as const;
+const ICONS = { CARD: IconNote, BOARD: IconBoard, COLUMN: IconColumn, TASK_LIST: IconTasks, IMAGE: IconMedia, FILE: IconFile, LINK: IconLink, LINE: IconLine, COLOR_SWATCH: IconSwatch, LABEL: IconTag, TABLE: IconTable, DOCUMENT: IconScript, DRAWING: IconDraw, SKETCH: IconDraw, ALIAS: IconBoard, COMMENT: IconComment, SCRIPT: IconScript } as const;
 
 /** Opens the board holding an element, selects it and scrolls it into view. */
 export function reveal(element: ZElement) {
