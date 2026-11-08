@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoMarker } from '../model/types';
-import { canDropFrame, clock, frameMiddle, framesToTimecode, snapFps, youtubeChapterProblems, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
+import { canDropFrame, nearestStandardFps, clock, frameMiddle, framesToTimecode, snapFps, youtubeChapterProblems, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
 
 const m = (time: number, text: string, extra: Partial<VideoMarker> = {}): VideoMarker => ({ id: `m${time}`, time, text, color: 'blue', done: false, ...extra });
 const markers = [m(65.48, 'Пересветить небо', { color: 'red' }), m(2, 'Начать раньше'), m(3600 + 0.04, 'Титры', { done: true })];
@@ -67,6 +67,10 @@ describe('frame rates and drop-frame timecode', () => {
     expect(snapFps(30.0004)).toBe(30);
     expect(snapFps(23.976023)).toBe(23.976);
     expect(snapFps(12.5)).toBe(12.5);
+    // Variable-rate files: the nearest rate editing software uses.
+    expect(nearestStandardFps(30.246)).toBe(30);
+    expect(nearestStandardFps(60.525)).toBe(60);
+    expect(nearestStandardFps(29.563)).toBe(29.97);
     expect(canDropFrame(29.97)).toBe(true);
     expect(canDropFrame(30)).toBe(false);
   });

@@ -40,6 +40,14 @@ export async function runSuite(name, port, scenario, { ignoreErrors = [] } = {})
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('console', (m) => m.type() === 'error' && !ignoreErrors.some((re) => re.test(m.text())) && errors.push(m.text()));
+    // The desktop web view answers window.confirm with true without asking: the app must never use it.
+    await page.addInitScript(() => {
+      for (const name of ['confirm', 'alert', 'prompt']) {
+        window[name] = () => {
+          throw new Error(`window.${name} is not allowed: use the app's own dialog`);
+        };
+      }
+    });
     await page.route(`http://localhost:${port}/`, async (route) => {
       const response = await route.fetch();
       await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': CSP } });

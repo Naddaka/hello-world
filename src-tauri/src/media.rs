@@ -342,7 +342,7 @@ fn library_name(file: &str) -> Result<(), String> {
 
 /// Frame rate of a video in the library, read from its container (None if unknown).
 #[tauri::command]
-pub async fn media_frame_rate(app: AppHandle, file: String) -> Result<Option<f64>, String> {
+pub async fn media_frame_rate(app: AppHandle, file: String) -> Result<Option<crate::video::FrameRate>, String> {
     library_name(&file)?;
     let path = media_dir(&app)?.join(&file);
     tauri::async_runtime::spawn_blocking(move || crate::video::frame_rate(&path)).await.map_err(|e| e.to_string())

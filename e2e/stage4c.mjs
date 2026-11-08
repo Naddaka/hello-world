@@ -60,12 +60,15 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   await page.click('.vr-overlay >> text=Экспорт маркеров');
   download = page.waitForEvent('download');
   // Chapters at 0:02 and 0:03 break YouTube's rules: the app says so and lets you save anyway.
-  let warning = '';
-  page.once('dialog', (d) => {
-    warning = d.message();
-    void d.accept();
-  });
   await page.click('.menu-item:has-text("Главы YouTube")');
+  await page.waitForSelector('.confirm-dialog');
+  const warning = await page.locator('.confirm-dialog').textContent();
+  // Escape answers the dialog only: the review stays open.
+  await page.keyboard.press('Escape');
+  check('Escape cancels the question, not the review', (await page.locator('.confirm-dialog').count()) === 0 && (await page.locator('.vr-overlay').count()) === 1);
+  await page.click('.vr-overlay >> text=Экспорт маркеров');
+  await page.click('.menu-item:has-text("Главы YouTube")');
+  await page.click('.confirm-dialog >> text=Сохранить всё равно');
   const chapters = readFileSync(await (await download).path(), 'utf8');
   check('YouTube chapter rules are checked', warning.includes('короче 10 секунд'), warning);
   check('and as YouTube chapters', chapters === '0:00 Начало\n0:02 Пересветить небо\n0:03 Звук громче\n', JSON.stringify(chapters));

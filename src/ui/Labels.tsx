@@ -1,3 +1,4 @@
+import { confirmDialog } from './Confirm';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { actions, allLabels, labelUsage, useStore } from '../model/store';
@@ -107,8 +108,9 @@ export function LabelPicker() {
               className="task-del"
               aria-label={`Удалить метку ${l.name}`}
               title="Удалить метку отовсюду"
-              onClick={() => {
-                if (window.confirm(`Удалить метку «${l.name}» со всех карточек?`)) actions.deleteLabel(l.id);
+              onClick={async () => {
+                const ok = await confirmDialog({ title: `Удалить метку «${l.name}»?`, message: `Она исчезнет со всех карточек (${usage[l.id] ?? 0}).`, confirm: 'Удалить', danger: true });
+                if (ok) actions.deleteLabel(l.id);
               }}
             >
               ✕

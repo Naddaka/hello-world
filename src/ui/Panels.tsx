@@ -1,3 +1,4 @@
+import { confirmDialog } from './Confirm';
 import { useMemo } from 'react';
 import { actions, countChildren, inboxChildren, trashChildren, useStore } from '../model/store';
 import { ElementView } from '../canvas/ElementView';
@@ -54,7 +55,12 @@ export function TrashPanel() {
             type="button"
             className="danger-btn"
             onClick={() => {
-              if (window.confirm(`Удалить навсегда ${items.length} эл.? Это нельзя отменить после закрытия приложения.`)) actions.emptyTrash(boardId);
+              void confirmDialog({
+                title: 'Очистить корзину?',
+                message: `${items.length} эл. будут удалены навсегда. Отменить это можно только до закрытия приложения.`,
+                confirm: 'Удалить навсегда',
+                danger: true,
+              }).then((ok) => ok && actions.emptyTrash(boardId));
             }}
           >
             <IconTrash size={15} /> Очистить корзину

@@ -9,6 +9,7 @@ import { DEFAULT_WIDTH, type BreakdownCategory, type BreakdownItem, type ScriptB
 import { IconScript } from '../ui/icons';
 import { TileTitle } from '../canvas/TileTitle';
 import { freeSpot } from '../canvas/placement';
+import { confirmDialog } from '../ui/Confirm';
 import { FORMATS, characterName, eighthsLabel, paginate, parseHeading, scriptLanguage, scriptStats, type FormatSpec } from './layout';
 import { EMPTY_TITLE_PAGE, parseFdx, parseFountain, type ParsedScript } from './formats';
 import { exportScript, type ScriptExportFormat } from './print';
@@ -349,7 +350,7 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
     try {
       const parsed = parseScriptFile(file.name, await file.text());
       const hasText = blocks.some((b) => b.text.trim());
-      if (hasText && !window.confirm(`Заменить текст сценария содержимым «${file.name}»?`)) return;
+      if (hasText && !(await confirmDialog({ title: 'Заменить текст сценария?', message: `Текущий текст будет заменён содержимым «${file.name}». Вернуть его можно через ⌘Z после закрытия редактора.`, confirm: 'Заменить', danger: true }))) return;
       editor.commands.setContent(blocksToDoc(parsed.blocks), { emitUpdate: true });
       const titlePage = { ...latest.current.titlePage, ...Object.fromEntries(Object.entries(parsed.titlePage).filter(([, v]) => v)) } as ScriptTitlePage;
       const name = parsed.titlePage.title || title;

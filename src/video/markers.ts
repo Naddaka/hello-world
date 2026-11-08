@@ -17,6 +17,10 @@ export function snapFps(raw: number): number {
   return Math.abs(nearest - raw) / nearest < 0.0005 ? nearest : Math.round(raw * 1000) / 1000;
 }
 
+/** Rates editing software works in; a variable-rate video is treated as the nearest one. */
+const EDIT_RATES = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
+export const nearestStandardFps = (raw: number) => EDIT_RATES.reduce((best, r) => (Math.abs(r - raw) < Math.abs(best - raw) ? r : best));
+
 /** Drop-frame timecode exists only for the NTSC rates 29.97 and 59.94. */
 export const canDropFrame = (fps: number) => Math.abs(fps - 29.97) < 0.01 || Math.abs(fps - 59.94) < 0.01;
 

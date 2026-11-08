@@ -6,9 +6,10 @@ import type { FileElement, MarkerColor, VideoMarker } from '../model/types';
 import { media, useMediaSrc } from '../storage/media';
 import { fileName, saveFile } from '../storage/files';
 import { isTauri } from '../storage/repo';
-import { DEFAULT_FPS, FRAME_RATES, canDropFrame, clock, frameMiddle, frameOf, snapFps, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters, youtubeChapterProblems } from './markers';
+import { DEFAULT_FPS, FRAME_RATES, canDropFrame, nearestStandardFps, clock, frameMiddle, frameOf, snapFps, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters, youtubeChapterProblems } from './markers';
 import { shortcutKey } from '../ui/keys';
 import { freeSpot } from '../canvas/placement';
+import { confirmDialog } from '../ui/Confirm';
 
 /** Which video or audio file is open for review. */
 export const useReview = create<{ id: string | null }>(() => ({ id: null }));
@@ -47,7 +48,7 @@ async function exportMarkers(file: FileElement, kind: ExportKind, duration: numb
       return saveFile(fileName(`${base} — комментарии`, 'csv'), toMarkersCsv(markers, fps, df), 'text/csv', { name: 'CSV', extensions: ['csv'] });
     case 'youtube': {
       const problems = youtubeChapterProblems(markers, duration);
-      if (problems.length && !window.confirm(`YouTube не покажет эти главы: ${problems.join('; ')}. Сохранить всё равно?`)) return false;
+      if (problems.length && !(await confirmDialog({ title: 'YouTube не покажет эти главы', message: `Причина: ${problems.join('; ')}. Нужно не меньше трёх глав, первая — с 0:00, каждая не короче 10 секунд.`, confirm: 'Сохранить всё равно' }))) return false;
       return saveFile(fileName(`${base} — главы`, 'txt'), toYoutubeChapters(markers), 'text/plain', { name: 'Текст', extensions: ['txt'] });
     }
   }
@@ -99,10 +100,11 @@ function Review({ file }: { file: FileElement }) {
   useEffect(() => {
     if (file.fps != null || !isVideo) return;
     let cancelled = false;
-    const found = (raw: number) => {
+    const found = (raw: number, variable: boolean) => {
       if (cancelled || !Number.isFinite(raw) || raw < 1 || raw > 240) return;
       if (useStore.getState().elements[file.id]?.type === 'FILE' && (useStore.getState().elements[file.id] as FileElement).fps == null) {
-        actions.setLive(file.id, { fps: snapFps(raw), fpsDetected: true });
+        // Editing software works with standard rates: a variable-rate file gets the nearest one.
+        actions.setLive(file.id, { fps: variable ? nearestStandardFps(raw) : snapFps(raw), fpsDetected: true, fpsVariable: variable });
       }
     };
     const measure = () => {
@@ -116,15 +118,15 @@ function Review({ file }: { file: FileElement }) {
         else {
           // The shortest steady gap between presented frames is one frame.
           const gaps = times.slice(1).map((t, i) => t - times[i]).filter((g) => g > 0).sort((a, b) => a - b);
-          if (gaps.length) found(1 / gaps[Math.floor(gaps.length / 3)]);
+          if (gaps.length) found(1 / gaps[Math.floor(gaps.length / 3)], gaps[gaps.length - 1] > gaps[0] * 1.5);
         }
       };
       v.requestVideoFrameCallback(onFrame);
     };
     if (isTauri()) {
       void import('@tauri-apps/api/core')
-        .then(({ invoke }) => invoke<number | null>('media_frame_rate', { file: `${file.media.id}.${file.media.ext}` }))
-        .then((raw) => (raw ? found(raw) : measure()))
+        .then(({ invoke }) => invoke<{ fps: number; variable: boolean } | null>('media_frame_rate', { file: `${file.media.id}.${file.media.ext}` }))
+        .then((rate) => (rate ? found(rate.fps, rate.variable) : measure()))
         .catch(measure);
     } else measure();
     return () => {
@@ -211,15 +213,23 @@ function Review({ file }: { file: FileElement }) {
           <select
             className="sp-select"
             value={fps}
-            title={file.fpsDetected ? 'Определено по файлу' : file.fps == null ? 'Не определено — выберите частоту' : 'Выбрано вручную'}
-            onChange={(e) => actions.update(file.id, { fps: Number(e.target.value), fpsDetected: false })}
+            title={
+              file.fpsVariable
+                ? 'У файла переменная частота кадров: взята ближайшая стандартная, с которой работают монтажные программы'
+                : file.fpsDetected
+                  ? 'Определено по файлу'
+                  : file.fps == null
+                    ? 'Не определено — выберите частоту'
+                    : 'Выбрано вручную'
+            }
+            onChange={(e) => actions.update(file.id, { fps: Number(e.target.value), fpsDetected: false, fpsVariable: false })}
           >
             {[...new Set([...FRAME_RATES, fps])]
               .sort((a, b) => a - b)
               .map((r) => (
                 <option key={r} value={r}>
                   {r}
-                  {file.fpsDetected && r === fps ? ' (по файлу)' : ''}
+                  {file.fpsDetected && r === fps ? (file.fpsVariable ? ' — переменная частота' : ' (по файлу)') : ''}
                 </option>
               ))}
           </select>

@@ -95,8 +95,9 @@ const failed = await runSuite('stage 1c', 4333, async ({ page, check }) => {
   await page.keyboard.press('Control+Shift+d');
   await welcome.click({ button: 'right' });
   await page.click('.ctxmenu >> text=Метки…');
-  page.once('dialog', (dlg) => dlg.accept());
   await page.locator('.label-row', { hasText: 'свет и тень' }).locator('.task-del').click();
+  check('deleting a label asks first', await page.isVisible('.confirm-dialog >> text=Удалить метку «свет и тень»?'));
+  await page.click('.confirm-dialog >> button:has-text("Удалить")');
   await page.mouse.click(1250, 820);
   check('deleting a label removes it from every card', (await page.locator('.label-chip').count()) === 0);
 });

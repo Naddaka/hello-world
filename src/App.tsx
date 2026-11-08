@@ -19,6 +19,7 @@ import { MilanoteImportDialog } from './import/MilanoteImport';
 import { ScriptOverlay } from './script/ScriptEditor';
 import { ShotDialog } from './draw/ShotDialog';
 import { VideoReviewOverlay } from './video/VideoReview';
+import { ConfirmDialog } from './ui/Confirm';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -110,6 +111,7 @@ export function App() {
       <ScriptOverlay />
       <ShotDialog />
       <VideoReviewOverlay />
+      <ConfirmDialog />
       <MilanoteImportDialog />
     </div>
   );

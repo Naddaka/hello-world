@@ -80,8 +80,9 @@ const failed = await runSuite('stage 1a', 4331, async ({ page, check }) => {
   await page.mouse.click(1300, 820);
   await page.locator('.layer .tasklist').click();
   await page.keyboard.press('Delete');
-  page.once('dialog', (d) => d.accept());
   await page.click('.danger-btn');
+  check('emptying the trash asks first', await page.isVisible('.confirm-dialog >> text=Очистить корзину?'));
+  await page.click('.confirm-dialog >> text=Удалить навсегда');
   check('emptying the trash removes items for good', await page.isVisible('.side-panel >> text=Корзина пуста'));
   await page.keyboard.press('Escape');
 

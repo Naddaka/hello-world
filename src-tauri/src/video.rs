@@ -7,8 +7,17 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
+/// Frame rate of the first video track. Variable frame rate files (screen
+/// recordings, messenger videos) report their highest steady rate: that is
+/// the rate they were recorded at, and the one editing software works with.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
+pub struct FrameRate {
+    pub fps: f64,
+    pub variable: bool,
+}
+
 /// Frames per second of the first video track, if the container says.
-pub fn frame_rate(path: &Path) -> Option<f64> {
+pub fn frame_rate(path: &Path) -> Option<FrameRate> {
     let mut file = File::open(path).ok()?;
     let mut magic = [0u8; 12];
     file.read_exact(&mut magic).ok()?;
@@ -40,18 +49,19 @@ fn boxes(data: &[u8]) -> Vec<(&[u8], &[u8])> {
         let Some(size32) = be32(data, at) else { break };
         let kind = &data[at + 4..at + 8];
         let (header, size) = match size32 {
-            1 => match be64(data, at + 8) {
-                Some(s) => (16usize, s as usize),
+            1 => match be64(data, at + 8).and_then(|s| usize::try_from(s).ok()) {
+                Some(s) => (16usize, s),
                 None => break,
             },
             0 => (8, data.len() - at),
             s => (8, s as usize),
         };
-        if size < header || at + size > data.len() {
+        let Some(end) = at.checked_add(size) else { break };
+        if size < header || end > data.len() {
             break;
         }
-        out.push((kind, &data[at + header..at + size]));
-        at += size;
+        out.push((kind, &data[at + header..end]));
+        at = end;
     }
     out
 }
@@ -90,12 +100,12 @@ fn read_moov(file: &mut File) -> Option<Vec<u8>> {
             file.read_exact(&mut moov).ok()?;
             return Some(moov);
         }
-        at += size;
+        at = at.checked_add(size)?;
     }
     None
 }
 
-fn mp4_frame_rate(file: &mut File) -> Option<f64> {
+fn mp4_frame_rate(file: &mut File) -> Option<FrameRate> {
     let moov = read_moov(file)?;
     for (kind, trak) in boxes(&moov) {
         if kind != b"trak" {
@@ -110,23 +120,31 @@ fn mp4_frame_rate(file: &mut File) -> Option<f64> {
         let timescale = if mdhd.first() == Some(&1) { be32(mdhd, 20)? } else { be32(mdhd, 12)? };
         let stts = child(child(child(mdia, b"minf")?, b"stbl")?, b"stts")?;
         let entries = be32(stts, 4)? as usize;
-        // The most common sample duration (variable frame rate phone videos have a few odd ones).
-        let mut best = (0u64, 0u32);
-        let mut total = (0u64, 0u64);
+        let mut runs: Vec<(u64, u32)> = Vec::with_capacity(entries.min(100_000));
         for i in 0..entries {
             let count = be32(stts, 8 + i * 8)? as u64;
             let delta = be32(stts, 12 + i * 8)?;
-            total = (total.0 + count, total.1 + count * delta as u64);
-            if count > best.0 && delta > 0 {
-                best = (count, delta);
+            if count > 0 && delta > 0 {
+                runs.push((count, delta));
             }
         }
-        if timescale == 0 || best.1 == 0 {
+        let total: u64 = runs.iter().map(|r| r.0).sum();
+        if timescale == 0 || total == 0 {
             return None;
         }
-        // If most frames share one duration use it; otherwise the average.
-        let fps = if best.0 * 2 >= total.0 { timescale as f64 / best.1 as f64 } else { timescale as f64 * total.0 as f64 / total.1 as f64 };
-        return Some(fps);
+        // Frames per sample duration.
+        let mut by_delta: std::collections::BTreeMap<u32, u64> = std::collections::BTreeMap::new();
+        for (count, delta) in &runs {
+            *by_delta.entry(*delta).or_default() += count;
+        }
+        let (&dominant, &share) = by_delta.iter().max_by_key(|(_, c)| **c)?;
+        // Constant rate: nearly all frames last the same (a few odd ones are normal).
+        if share * 10 >= total * 9 {
+            return Some(FrameRate { fps: timescale as f64 / dominant as f64, variable: false });
+        }
+        // Variable rate: the shortest duration that a real share of the frames have.
+        let shortest = by_delta.iter().find(|(_, c)| **c * 50 >= total && **c >= 2).map(|(d, _)| *d).unwrap_or(dominant);
+        return Some(FrameRate { fps: timescale as f64 / shortest as f64, variable: true });
     }
     None
 }
@@ -173,7 +191,7 @@ const TRACK_ENTRY: u64 = 0xAE;
 const TRACK_TYPE: u64 = 0x83;
 const DEFAULT_DURATION: u64 = 0x23_E383;
 
-fn matroska_frame_rate(file: &mut File) -> Option<f64> {
+fn matroska_frame_rate(file: &mut File) -> Option<FrameRate> {
     // The track list sits before the clusters, near the start of the file.
     let mut head = Vec::new();
     file.take(8 * 1024 * 1024).read_to_end(&mut head).ok()?;
@@ -188,7 +206,7 @@ fn matroska_frame_rate(file: &mut File) -> Option<f64> {
         let duration = fields.iter().find(|(id, _)| *id == DEFAULT_DURATION).map(|(_, v)| uint(v));
         if let (true, Some(ns)) = (video, duration) {
             if ns > 0 {
-                return Some(1e9 / ns as f64);
+                return Some(FrameRate { fps: 1e9 / ns as f64, variable: false });
             }
         }
     }
@@ -200,6 +218,10 @@ mod tests {
     use super::*;
 
     fn fps(name: &str) -> Option<f64> {
+        rate(name).map(|r| r.fps)
+    }
+
+    fn rate(name: &str) -> Option<FrameRate> {
         frame_rate(&Path::new(env!("CARGO_MANIFEST_DIR")).join("test-data").join(name))
     }
 
@@ -210,6 +232,15 @@ mod tests {
         assert!(close(fps("r23976.mov"), 23.976), "{:?}", fps("r23976.mov"));
         assert!(close(fps("r2997-moovatend.mp4"), 29.97), "{:?}", fps("r2997-moovatend.mp4"));
         assert!(close(fps("r25.webm"), 25.0), "{:?}", fps("r25.webm"));
+        assert!(!rate("r30.mp4").unwrap().variable);
+    }
+
+    #[test]
+    fn variable_rate_files_report_the_rate_they_were_recorded_at() {
+        // 60 fps with many frames dropped: about 27 fps on average.
+        let r = rate("vfr60.mp4").expect("a rate");
+        assert!(r.variable);
+        assert!((r.fps - 60.0).abs() < 0.01, "{r:?}");
     }
 
     #[test]

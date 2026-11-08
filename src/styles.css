@@ -763,3 +763,8 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .sp-bd-name:focus { border-color: var(--accent); background: var(--field); outline: none; }
 .shot-row .sp-field { min-width: 0; }
 .shot-row .sp-field input { width: 100%; min-width: 0; box-sizing: border-box; }
+.confirm-backdrop { z-index: 2000; }
+.confirm-dialog { width: min(420px, 100%); }
+.confirm-title { margin: 14px 0 4px; font: 600 16px var(--font); }
+.btn-danger { background: var(--danger); color: #fff; }
+.sp-bd-count { white-space: nowrap; }
