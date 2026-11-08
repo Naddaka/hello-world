@@ -5,12 +5,14 @@ import { TextSelection } from '@tiptap/pm/state';
 import { nanoid } from 'nanoid';
 import { actions, commit, useStore } from '../model/store';
 import type { Op } from '../model/ops';
-import { DEFAULT_WIDTH, type ScriptBlock, type ScriptBlockType, type ScriptElement, type ScriptFormat, type ScriptTitlePage } from '../model/types';
+import { DEFAULT_WIDTH, type BreakdownCategory, type BreakdownItem, type ScriptBlock, type ScriptBlockType, type ScriptElement, type ScriptFormat, type ScriptTitlePage } from '../model/types';
 import { IconScript } from '../ui/icons';
 import { FORMATS, characterName, eighthsLabel, paginate, parseHeading, scriptLanguage, scriptStats, type FormatSpec } from './layout';
 import { EMPTY_TITLE_PAGE, parseFdx, parseFountain, type ParsedScript } from './formats';
 import { exportScript, type ScriptExportFormat } from './print';
-import { KIND_LABELS, KIND_ORDER, NEXT_ON_ENTER, TAB_NEXT, blocksToDoc, currentLine, docToBlocks, scriptExtensions, setKind, showPageBreaks, toggleDual } from './schema';
+import { KIND_LABELS, KIND_ORDER, NEXT_ON_ENTER, TAB_NEXT, blocksToDoc, currentLine, docToBlocks, scriptExtensions, setKind, showBreakdown, showPageBreaks, toggleDual } from './schema';
+import { CATEGORIES, addItem, itemSceneCounts } from './breakdown';
+import { makeBreakdownTable, makeStoryboard } from './storyboard';
 
 export function newScriptFields(blocks?: ScriptBlock[], titlePage?: ScriptTitlePage, title = 'Новый сценарий') {
   return {
@@ -187,19 +189,22 @@ function formatCss(): string {
 }
 const FORMAT_CSS = formatCss();
 
-type Side = 'scenes' | 'characters';
+type Side = 'scenes' | 'characters' | 'breakdown';
 
 function ScriptEditorView({ element }: { element: ScriptElement }) {
   const [title, setTitle] = useState(element.title);
   const [blocks, setBlocks] = useState(element.blocks);
-  const [menu, setMenu] = useState<'export' | null>(null);
+  const [menu, setMenu] = useState<'export' | 'board' | null>(null);
+  const [selText, setSelText] = useState('');
+  const [category, setCategory] = useState<BreakdownCategory>('props');
+  const [newItem, setNewItem] = useState('');
   const [titleOpen, setTitleOpen] = useState(false);
   const [side, setSide] = useState<Side>('scenes');
   const [kind, setKindState] = useState<ScriptBlockType>('scene');
   const [suggest, setSuggest] = useState<Suggest | null>(null);
   const suggestRef = useRef<Suggest | null>(null);
   suggestRef.current = suggest;
-  const start = useRef({ title: element.title, blocks: element.blocks, titlePage: element.titlePage, format: element.format, sceneNumbers: element.sceneNumbers });
+  const start = useRef({ title: element.title, blocks: element.blocks, titlePage: element.titlePage, format: element.format, sceneNumbers: element.sceneNumbers, breakdown: element.breakdown ?? [] });
   const latest = useRef({ ...start.current });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -259,6 +264,8 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
     if (!editor) return;
     const update = () => {
       setKindState(currentLine(editor).kind);
+      const { from, to } = editor.state.selection;
+      setSelText(from === to ? '' : editor.state.doc.textBetween(from, to, ' ').trim().slice(0, 80));
       setSuggest(computeSuggest(editor, docToBlocks(editor.getJSON()), FORMATS[latest.current.format]));
     };
     editor.on('selectionUpdate', update);
@@ -298,6 +305,16 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
     );
   }, [editor, pages]);
   const stats = useMemo(() => scriptStats(blocks, f, pages), [blocks, f, pages]);
+  const breakdown = live?.breakdown ?? latest.current.breakdown;
+  useEffect(() => {
+    if (editor) showBreakdown(editor, breakdown);
+  }, [editor, breakdown]);
+  const counts = useMemo(() => (side === 'breakdown' ? itemSceneCounts({ blocks, format, breakdown }) : new Map<string, number>()), [side, blocks, format, breakdown]);
+  const setBreakdown = (next: BreakdownItem[]) => save({ breakdown: next }, true);
+  const addToBreakdown = (name: string, cat: BreakdownCategory) => {
+    const next = addItem(breakdown, { id: nanoid(8), category: cat, name });
+    if (next !== breakdown) setBreakdown(next);
+  };
 
   const close = useCallback(() => useOpenScript.setState({ id: null }), []);
   useEffect(() => {
@@ -348,6 +365,20 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
     } catch (error) {
       actions.showToast(error instanceof Error ? error.message : 'Не удалось экспортировать');
     }
+  };
+
+  /** Puts something built from the script on its board, after closing the editor (so undo removes just that). */
+  const toBoard = (kind: 'scenes' | 'storyboard' | 'breakdown') => {
+    setMenu(null);
+    if (!stats.scenes.length) return actions.showToast('В сценарии пока нет сцен');
+    save({}, true);
+    const snapshot = current();
+    close();
+    setTimeout(() => {
+      const id = kind === 'scenes' ? scenesToBoard(snapshot) : kind === 'storyboard' ? makeStoryboard(snapshot) : makeBreakdownTable(snapshot);
+      if (id) actions.select([id]);
+      actions.showToast(kind === 'scenes' ? `Сцены разложены на доске: ${stats.scenes.length}` : kind === 'storyboard' ? 'Раскадровка создана — откройте доску рядом со сценарием' : 'Таблица разбора добавлена на доску');
+    }, 0);
   };
 
   return (
@@ -408,25 +439,27 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
           Открыть…
         </button>
         <input ref={fileInput} type="file" accept=".fountain,.spmd,.fdx,.txt" hidden onChange={(e) => void importFile(e.target.files?.[0])} />
-        <button
-          type="button"
-          className="ibtn wide"
-          title="Разложить сцены карточками на доске"
-          onClick={() => {
-            if (!stats.scenes.length) return actions.showToast('В сценарии пока нет сцен');
-            save({}, true);
-            const snapshot = current();
-            // Close first, so the script edit is its own undo step before the new cards.
-            close();
-            setTimeout(() => {
-              const id = scenesToBoard(snapshot);
-              if (id) actions.select([id]);
-              actions.showToast(`Сцены разложены на доске: ${stats.scenes.length}`);
-            }, 0);
-          }}
-        >
-          Сцены на доску
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button type="button" className="ibtn wide" aria-expanded={menu === 'board'} onClick={() => setMenu(menu ? null : 'board')}>
+            На доску ▾
+          </button>
+          {menu === 'board' && (
+            <div className="popover panel" style={{ left: 'auto', right: 0, width: 280 }} role="menu">
+              {(
+                [
+                  ['scenes', 'Сцены карточками', 'Колонка: заголовок, начало действия, объём, персонажи'],
+                  ['storyboard', 'Раскадровка', 'Доска с рядом кадров для каждой сцены'],
+                  ['breakdown', 'Разбор по сценам (таблица)', 'Режим, объект, время, объём, персонажи и элементы разбора'],
+                ] as const
+              ).map(([kind, label, hint]) => (
+                <button key={kind} type="button" role="menuitem" className="menu-item menu-item-2" onClick={() => toBoard(kind)}>
+                  <span>{label}</span>
+                  <small>{hint}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ position: 'relative' }}>
           <button type="button" className="btn-accent" aria-expanded={menu === 'export'} onClick={() => setMenu(menu ? null : 'export')}>
             Экспорт
@@ -459,8 +492,55 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
             <button type="button" role="tab" aria-selected={side === 'characters'} className={side === 'characters' ? 'on' : ''} onClick={() => setSide('characters')}>
               Персонажи
             </button>
+            <button type="button" role="tab" aria-selected={side === 'breakdown'} className={side === 'breakdown' ? 'on' : ''} onClick={() => setSide('breakdown')}>
+              Разбор
+            </button>
           </div>
-          {side === 'scenes' ? (
+          {side === 'breakdown' ? (
+            <div className="sp-bd">
+              <form
+                className="sp-bd-add"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addToBreakdown(newItem, category);
+                  setNewItem('');
+                }}
+              >
+                <select aria-label="Категория" value={category} onChange={(e) => setCategory(e.target.value as BreakdownCategory)}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <input aria-label="Новый элемент разбора" placeholder="Например, револьвер" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
+              </form>
+              <p className="side-hint" style={{ padding: '0 0 8px' }}>
+                Или выделите слово в тексте и нажмите «В разбор» внизу. Элемент находится во всех сценах, в любой форме слова.
+              </p>
+              {CATEGORIES.filter((c) => breakdown.some((i) => i.category === c.id)).map((c) => (
+                <section key={c.id} className="sp-bd-cat">
+                  <h3>
+                    <span className="bd-dot" style={{ background: c.color }} /> {c.label}
+                  </h3>
+                  <ul>
+                    {breakdown
+                      .filter((i) => i.category === c.id)
+                      .map((i) => (
+                        <li key={i.id}>
+                          <span>{i.name}</span>
+                          <span className="sp-bd-count">{counts.get(i.name) ?? 0} сц.</span>
+                          <button type="button" className="ibtn sp-bd-del" aria-label={`Убрать «${i.name}» из разбора`} onClick={() => setBreakdown(breakdown.filter((x) => x.id !== i.id))}>
+                            ✕
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                </section>
+              ))}
+              {!breakdown.length && <p className="col-empty">Разбор пуст</p>}
+            </div>
+          ) : side === 'scenes' ? (
             <ol className="sp-scenes">
               {stats.scenes.map((s) => (
                 <li key={s.block}>
@@ -529,6 +609,20 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
         <span className="sp-hint">
           Enter → {KIND_LABELS[NEXT_ON_ENTER[kind]]} · Tab → {KIND_LABELS[kind === 'dialogue' ? 'parenthetical' : TAB_NEXT[kind]]}
         </span>
+        {selText && (
+          <span className="sp-bd-quick">
+            <select aria-label="Категория разбора" value={category} onChange={(e) => setCategory(e.target.value as BreakdownCategory)}>
+              {CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn-accent" onMouseDown={(e) => e.preventDefault()} onClick={() => addToBreakdown(selText, category)}>
+              В разбор: «{selText.length > 24 ? `${selText.slice(0, 24)}…` : selText}»
+            </button>
+          </span>
+        )}
         {kind === 'character' && editor && (
           <button type="button" className="link-btn" onClick={() => (toggleDual(editor), editor.view.focus())}>
             {currentLine(editor).node.attrs.dual ? 'Убрать двойной диалог' : 'Двойной диалог (рядом с предыдущей репликой)'}

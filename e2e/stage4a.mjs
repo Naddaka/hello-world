@@ -88,7 +88,8 @@ const failed = await runSuite('stage 4a', 4338, async ({ page, check }) => {
   check('the title comes from the title page', (await page.inputValue('#sp-title')) === 'Северный ветер');
 
   // Scenes to the board.
-  await page.click('.sp-head >> text=Сцены на доску');
+  await page.click('.sp-head >> text=На доску');
+  await page.click('.menu-item >> text=Сцены карточками');
   await page.waitForSelector('.layer .column:has-text("Сцены · Северный ветер")');
   const cards = page.locator('.layer .column', { hasText: 'Сцены · Северный ветер' }).locator('.note');
   check('scenes are laid out as cards in a column', (await cards.count()) === 2 && (await cards.first().textContent()).includes('1. ИНТ. МАЯК — НОЧЬ'));

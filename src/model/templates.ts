@@ -57,11 +57,13 @@ export const BUILT_IN_TEMPLATES: BuiltInTemplate[] = [
   {
     id: 'storyboard',
     name: 'Раскадровка',
-    description: 'Шесть кадров 16:9 с подписями крупности и движения',
+    description: 'Шесть кадров 16:9 с номерами и параметрами кадра',
     build() {
       const b = make();
+      const sizes = ['Общий', 'Средний', 'Крупный'];
       for (let i = 0; i < 6; i++) {
-        b.add({ type: 'SKETCH', x: (i % 3) * 38, y: Math.floor(i / 3) * 34, width: 34, strokes: [], aspect: 16 / 9, caption: `Кадр ${i + 1} · крупность · движение` });
+        const shot = { scene: String(Math.floor(i / 3) + 1), shot: String((i % 3) + 1), size: sizes[i % 3], angle: '', movement: i % 3 === 0 ? 'Статика' : '', lens: '', duration: null };
+        b.add({ type: 'SKETCH', x: (i % 3) * 30, y: Math.floor(i / 3) * 27, width: 27, strokes: [], aspect: 16 / 9, caption: '', shot });
       }
       return b;
     },
@@ -77,6 +79,25 @@ export const BUILT_IN_TEMPLATES: BuiltInTemplate[] = [
         b.add({ type: 'CARD', color: 'default', content: doc(p('Добавьте изображения и ссылки')) }, col);
       });
       ['#1e2a44', '#3f5a8a', '#f4b183', '#e9e1d6'].forEach((hex, i) => b.add({ type: 'COLOR_SWATCH', x: 122 + i * 14, y: 0, width: 12, hex, name: '', display: 'hex' }));
+      return b;
+    },
+  },
+  {
+    id: 'shot-list',
+    name: 'Shot list',
+    description: 'Таблица кадров с крупностью, оптикой и общей длительностью',
+    build() {
+      const b = make();
+      const header = ['Сцена', 'Кадр', 'Крупность', 'Ракурс', 'Движение', 'Оптика', 'Длит., с', 'Описание'];
+      const rows = [
+        ['1', '1', 'Общий', 'Нейтральный', 'Статика', '24 мм', '5', ''],
+        ['1', '2', 'Средний', '', 'Наезд', '35 мм', '4', ''],
+        ['1', '3', 'Крупный', '', 'Статика', '85 мм', '3', ''],
+      ];
+      const cells = [header, ...rows, ['Итого', '3', '', '', '', '', '=SUM(G2:G4)', '']];
+      const formats: Record<string, { bold: boolean }> = {};
+      header.forEach((_, c) => (formats[`4,${c}`] = { bold: true }));
+      b.add({ type: 'TABLE', x: 0, y: 0, width: 116, cells, colWidths: [64, 56, 110, 110, 110, 110, 80, 240], formats, header: true });
       return b;
     },
   },

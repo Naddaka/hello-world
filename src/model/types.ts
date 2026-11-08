@@ -216,6 +216,21 @@ export interface DrawingElement extends ElementBase {
   height: number;
 }
 
+/** Storyboard data of a frame: where it belongs and how it is shot. */
+export interface ShotInfo {
+  /** Scene number, e.g. "12" or "12A". */
+  scene: string;
+  /** Shot number within the scene, e.g. "3". */
+  shot: string;
+  /** Shot size (крупность), e.g. "Крупный". */
+  size: string;
+  angle: string;
+  movement: string;
+  lens: string;
+  /** Planned length in seconds. */
+  duration: number | null;
+}
+
 /** A card to draw on (storyboard frames); points in units of 1000 per card width. */
 export interface SketchElement extends ElementBase {
   type: 'SKETCH';
@@ -223,6 +238,10 @@ export interface SketchElement extends ElementBase {
   /** Width divided by height. */
   aspect: number;
   caption: string;
+  /** Set on storyboard frames. */
+  shot?: ShotInfo;
+  /** A picture under the drawing (a reference still, a photo of the location). */
+  backdrop?: MediaRef | null;
 }
 
 /** Kinds of screenplay paragraphs (the standard set used by Final Draft and Fountain). */
@@ -249,6 +268,28 @@ export interface ScriptTitlePage {
   contact: string;
 }
 
+export type BreakdownCategory =
+  | 'extras'
+  | 'props'
+  | 'wardrobe'
+  | 'makeup'
+  | 'set'
+  | 'vehicles'
+  | 'animals'
+  | 'stunts'
+  | 'sfx'
+  | 'vfx'
+  | 'sound'
+  | 'equipment'
+  | 'notes';
+
+/** An element of the script breakdown; it is found in the text wherever its name occurs (in any grammatical form). */
+export interface BreakdownItem {
+  id: string;
+  category: BreakdownCategory;
+  name: string;
+}
+
 /** A screenplay, shown on the board as a tile and edited full screen. */
 export interface ScriptElement extends ElementBase {
   type: 'SCRIPT';
@@ -257,6 +298,8 @@ export interface ScriptElement extends ElementBase {
   format: ScriptFormat;
   titlePage: ScriptTitlePage;
   sceneNumbers: boolean;
+  /** Props, wardrobe, vehicles… tagged in the text (cast and locations come from the script itself). */
+  breakdown?: BreakdownItem[];
 }
 
 /** A label definition. Labels live outside boards (parentId null). */

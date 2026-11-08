@@ -5,6 +5,7 @@ import type { ImageElement, SketchElement, Stroke } from '../model/types';
 import { useMediaSrc } from '../storage/media';
 import { handleDrawKey, hitsStroke, PEN_SIZES, strokePath, useDrawTool } from './strokes';
 import { DrawToolbar } from './DrawToolbar';
+import { shotNumber, sizeShort } from '../script/storyboard';
 
 /** Sketch and image strokes use 1000 units across the width. */
 const UNITS = 1000;
@@ -28,11 +29,21 @@ export function StrokesSvg({ strokes, aspect, className }: { strokes: Stroke[]; 
 
 /** A card to sketch on, e.g. a storyboard frame. */
 export function SketchCard({ element, selected }: { element: SketchElement; selected: boolean }) {
+  const backdrop = useMediaSrc(element.backdrop ?? null);
+  const shot = element.shot;
+  const facts = shot ? [shot.size && sizeShort(shot.size), shot.angle, shot.movement, shot.lens].filter(Boolean).join(' · ') : '';
   return (
-    <figure className={`media-card sketch-card${selected ? ' selected' : ''}`}>
-      <div className="sketch-surface" style={{ aspectRatio: `${element.aspect}` }}>
+    <figure className={`media-card sketch-card${shot ? ' frame-card' : ''}${selected ? ' selected' : ''}`}>
+      {shot && (
+        <div className="frame-head">
+          <span className="frame-no">{shotNumber(shot) || 'Кадр'}</span>
+          <span className="frame-facts">{facts}</span>
+          {shot.duration != null && <span className="frame-dur">{shot.duration} с</span>}
+        </div>
+      )}
+      <div className="sketch-surface" style={{ aspectRatio: `${element.aspect}`, backgroundImage: backdrop ? `url("${backdrop}")` : undefined }}>
         <StrokesSvg strokes={element.strokes} aspect={element.aspect} className="sketch-svg" />
-        {element.strokes.length === 0 && <span className="sketch-empty">Двойной клик — рисовать</span>}
+        {element.strokes.length === 0 && !backdrop && <span className="sketch-empty">Двойной клик — рисовать</span>}
       </div>
       {element.caption && <figcaption>{element.caption}</figcaption>}
     </figure>
@@ -56,7 +67,7 @@ function Editor({ element }: { element: SketchElement | ImageElement }) {
   const latest = useRef(initial);
   latest.current = strokes;
   const surface = useRef<HTMLDivElement>(null);
-  const imageSrc = useMediaSrc(isImage ? element.media : null);
+  const imageSrc = useMediaSrc(isImage ? element.media : (element.backdrop ?? null));
 
   const field = isImage ? 'annotations' : 'strokes';
   const close = () => {

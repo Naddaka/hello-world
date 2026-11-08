@@ -4,7 +4,9 @@ import { Placeholder, UndoRedo } from '@tiptap/extensions';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { nanoid } from 'nanoid';
-import type { ScriptBlock, ScriptBlockType } from '../model/types';
+import type { BreakdownItem, ScriptBlock, ScriptBlockType } from '../model/types';
+import { findItem } from './breakdown';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { looksLikeScene, looksLikeTransition } from './layout';
 
 /**
@@ -269,6 +271,50 @@ export function showPageBreaks(editor: Editor, starts: { block: number; page: nu
   editor.view.dispatch(editor.state.tr.setMeta(pagesKey, DecorationSet.create(doc, decos)).setMeta('addToHistory', false));
 }
 
+// ---------- breakdown highlights ----------
+
+export const breakdownKey = new PluginKey<{ items: BreakdownItem[]; decos: DecorationSet }>('scriptBreakdown');
+
+function breakdownDecos(doc: PMNode, items: BreakdownItem[]): DecorationSet {
+  if (!items.length) return DecorationSet.empty;
+  const decos: Decoration[] = [];
+  doc.forEach((line, offset) => {
+    const text = line.textContent;
+    if (!text) return;
+    for (const item of items) {
+      for (const [from, to] of findItem(text, item.name)) {
+        decos.push(Decoration.inline(offset + 1 + from, offset + 1 + to, { class: `bd bd-${item.category}`, title: item.name }));
+      }
+    }
+  });
+  return DecorationSet.create(doc, decos);
+}
+
+const BreakdownHighlights = Extension.create({
+  name: 'scriptBreakdown',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<{ items: BreakdownItem[]; decos: DecorationSet }>({
+        key: breakdownKey,
+        state: {
+          init: (_config, state) => ({ items: [], decos: breakdownDecos(state.doc, []) }),
+          apply: (tr, old) => {
+            const items = (tr.getMeta(breakdownKey) as BreakdownItem[] | undefined) ?? old.items;
+            if (!tr.docChanged && items === old.items) return old;
+            return { items, decos: breakdownDecos(tr.doc, items) };
+          },
+        },
+        props: { decorations: (state) => breakdownKey.getState(state)?.decos },
+      }),
+    ];
+  },
+});
+
+/** Highlights the breakdown items in the text. */
+export function showBreakdown(editor: Editor, items: BreakdownItem[]) {
+  editor.view.dispatch(editor.state.tr.setMeta(breakdownKey, items).setMeta('addToHistory', false));
+}
+
 export function scriptExtensions() {
   return [
     ScriptDoc,
@@ -278,5 +324,6 @@ export function scriptExtensions() {
     Placeholder.configure({ placeholder: ({ node }) => PLACEHOLDERS[(node.attrs.kind as ScriptBlockType) ?? 'action'], showOnlyCurrent: true }),
     ScriptKeys,
     PageBreaks,
+    BreakdownHighlights,
   ];
 }

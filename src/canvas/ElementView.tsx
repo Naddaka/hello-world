@@ -23,6 +23,9 @@ import { focusOn, usePresent } from '../ui/Presentation';
 import { CommentCard, CommentMarkers } from './Comments';
 import { ScriptTile, openScript, scenesToBoard } from '../script/ScriptEditor';
 import { exportScript } from '../script/print';
+import { addFrameAfter, emptyShot, framesOn, makeShotList } from '../script/storyboard';
+import { openShotDialog } from '../draw/ShotDialog';
+import { exportTableCsv } from '../table/csv';
 import { descendants } from '../model/store';
 
 /**
@@ -77,7 +80,10 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       { label: 'Экспорт в Fountain', run: () => void exportScript(element, 'fountain') },
     );
   }
-  if (!many && element.type === 'TABLE') items.push({ label: 'Редактировать таблицу', hint: '↵', run: () => actions.setEditing(element.id) });
+  if (!many && element.type === 'TABLE') {
+    items.push({ label: 'Редактировать таблицу', hint: '↵', run: () => actions.setEditing(element.id) });
+    items.push({ label: 'Экспорт в CSV', run: () => void exportTableCsv(element, element.cells[0]?.[0] === 'Сцена' ? 'Shot list' : 'Таблица') });
+  }
   if (!many && element.type === 'COLOR_SWATCH') {
     items.push({ label: 'Изменить цвет', hint: 'двойной клик', run: () => document.querySelector<HTMLInputElement>(`[data-element-id="${element.id}"] input[type="color"]`)?.click() });
     for (const [display, label] of [['hex', 'HEX'], ['rgb', 'RGB'], ['hsl', 'HSL'], ['none', 'Без подписи']] as const) {
@@ -86,6 +92,24 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
   }
   if (!many && element.type === 'SKETCH') {
     items.push({ label: 'Рисовать', hint: 'двойной клик', run: () => openSketchEditor(element.id) });
+    if (element.shot) {
+      items.push({ label: 'Параметры кадра…', run: () => openShotDialog(element.id) });
+      items.push({ label: 'Добавить кадр после', run: () => actions.select([addFrameAfter(element)]) });
+    } else {
+      items.push({ label: 'Сделать кадром раскадровки', run: () => (actions.update(element.id, { shot: emptyShot() }), openShotDialog(element.id)) });
+    }
+    items.push({
+      label: element.backdrop ? 'Заменить изображение под рисунком…' : 'Изображение под рисунком…',
+      run: async () => {
+        const lib = await media();
+        const [file] = await lib.pickFiles();
+        if (!file) return;
+        const info = typeof file === 'string' ? await lib.importPath(file) : await lib.importFile(file);
+        actions.update(element.id, { backdrop: { id: info.id, ext: info.ext } });
+      },
+    });
+    if (element.backdrop) items.push({ label: 'Убрать изображение', run: () => actions.update(element.id, { backdrop: null }) });
+    if (framesOn(boardId).length) items.push({ label: 'Shot list по кадрам доски', run: () => { const id = makeShotList(boardId); if (id) actions.select([id]); } });
     for (const a of ASPECTS) items.push({ label: `${Math.abs(element.aspect - a.value) < 0.01 ? '● ' : ''}Формат ${a.label}`, run: () => actions.update(element.id, { aspect: a.value }) });
   }
   if (!many && element.type === 'IMAGE') {
