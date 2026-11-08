@@ -44,12 +44,36 @@ export interface CardElement extends ElementBase {
   /** Rich text document (TipTap/ProseMirror JSON). */
   content: JSONContent;
   color: CardColor;
+  /** Notes sharing a sync group always show the same text. */
+  syncGroup?: string;
 }
 
 export interface BoardElement extends ElementBase {
   type: 'BOARD';
   title: string;
   color: BoardColor;
+  /** Offered in the template picker of empty boards. */
+  isTemplate?: boolean;
+}
+
+/** A shortcut to a board that lives somewhere else. */
+export interface AliasElement extends ElementBase {
+  type: 'ALIAS';
+  targetId: string;
+}
+
+export interface CommentMessage {
+  id: string;
+  text: string;
+  at: number;
+  reactions: string[];
+}
+
+export interface CommentElement extends ElementBase {
+  type: 'COMMENT';
+  messages: CommentMessage[];
+  /** Card the comment is pinned to; it then shows as a marker on that card. */
+  attachedTo: string | null;
 }
 
 export interface ColumnElement extends ElementBase {
@@ -224,7 +248,9 @@ export type ZElement =
   | TableElement
   | DocumentElement
   | DrawingElement
-  | SketchElement;
+  | SketchElement
+  | AliasElement
+  | CommentElement;
 export type ElementType = ZElement['type'];
 
 type BaseKeys = 'id' | 'parentId' | 'section' | 'x' | 'y' | 'z' | 'width' | 'createdAt' | 'updatedAt';
@@ -245,7 +271,9 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<TableElement, 'id' | 'type'>> &
   Partial<Omit<DocumentElement, 'id' | 'type'>> &
   Partial<Omit<DrawingElement, 'id' | 'type'>> &
-  Partial<Omit<SketchElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
+  Partial<Omit<SketchElement, 'id' | 'type'>> &
+  Partial<Omit<AliasElement, 'id' | 'type'>> &
+  Partial<Omit<CommentElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -262,6 +290,8 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   DOCUMENT: 14,
   DRAWING: 10,
   SKETCH: 32,
+  ALIAS: 14,
+  COMMENT: 34,
 };
 
 /** Types that can be placed inside a column. */

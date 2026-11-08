@@ -205,3 +205,39 @@ describe('stage 1 organisation', () => {
     expect(Object.values(useStore.getState().elements).filter((e) => e.parentId === pasted)).toHaveLength(1);
   });
 });
+
+describe('stage 2c model', () => {
+  let n = 0;
+  beforeEach(async () => {
+    __resetForTests();
+    useStore.setState({ elements: {}, boardId: HOME_ID, back: [], forward: [], selection: [], editingId: null, ready: false });
+    await actions.init(await IdbRepo.open(`stage2c-${n++}`));
+  });
+
+  it('keeps synced copies of a note identical, including undo', () => {
+    const id = actions.createCard(HOME_ID, 0, 0, { edit: false });
+    actions.createSyncedCopy(id);
+    const copy = useStore.getState().selection[0];
+    const before = (useStore.getState().elements[id] as CardElement).content;
+    const typed = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Синий час' }] }] };
+    actions.setContentLive(copy, typed);
+    actions.recordContentEdit(copy, before, typed);
+    expect((useStore.getState().elements[id] as CardElement).content).toEqual(typed);
+    actions.undo();
+    expect((useStore.getState().elements[id] as CardElement).content).toEqual(before);
+    expect((useStore.getState().elements[copy] as CardElement).content).toEqual(before);
+    actions.unsync(copy);
+    actions.setContentLive(copy, typed);
+    expect((useStore.getState().elements[id] as CardElement).content).toEqual(before);
+  });
+
+  it('applies a template board by copying its content', () => {
+    const template = actions.createBoard(HOME_ID, 0, 30);
+    actions.createCard(template, 0, 0, { edit: false });
+    actions.setTemplate(template, true);
+    const target = actions.createBoard(HOME_ID, 20, 30);
+    actions.applyTemplate(template, target);
+    expect(Object.values(useStore.getState().elements).filter((e: ZElement) => e.parentId === target)).toHaveLength(1);
+    expect(Object.values(useStore.getState().elements).filter((e: ZElement) => e.parentId === template)).toHaveLength(1);
+  });
+});

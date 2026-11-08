@@ -61,6 +61,9 @@ try {
   await page.keyboard.press('Enter');
   await page.keyboard.type('[ ] Найти пирс');
   check('format bar is shown while editing', await page.isVisible('.formatbar'));
+  // Clicking inside the note being edited keeps editing (to place the cursor).
+  await page.locator('.note.editing .ProseMirror').click();
+  check('clicking inside a note being edited keeps it in editing', (await page.locator('.note.editing').count()) === 1);
   await page.screenshot({ path: `${OUT}/01-editing-light.png` });
   await page.keyboard.press('Escape');
   await page.mouse.click(1100, 700);

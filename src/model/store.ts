@@ -303,17 +303,76 @@ export const actions = {
     if (changed) commit([updateOp(element, patch)]);
   },
 
-  /** Saves edits while typing without creating undo steps. */
+  /** Saves edits while typing without creating undo steps (synced notes follow along). */
   setLive(id: string, patch: ElementPatch) {
-    const element = get().elements[id];
-    if (element) commit([updateOp(element, patch)], false);
+    const elements = get().elements;
+    const targets = 'content' in patch ? syncPeers(elements, id) : [id];
+    commit(targets.map((t) => elements[t]).filter(Boolean).map((e) => updateOp(e, patch)), false);
   },
 
-  /** Records a whole editing session as one undo step. */
+  /** Records a whole editing session as one undo step (covering every synced copy). */
   recordEdit(id: string, before: ElementPatch, after: ElementPatch) {
     if (JSON.stringify(before) === JSON.stringify(after)) return;
-    history.record([{ kind: 'update', id, before, after }]);
+    const targets = 'content' in after ? syncPeers(get().elements, id) : [id];
+    history.record(targets.map((t) => ({ kind: 'update' as const, id: t, before, after })));
     set({ canUndo: history.canUndo, canRedo: history.canRedo });
+  },
+
+  /** Makes a copy of a note that stays in sync with the original. */
+  createSyncedCopy(id: string) {
+    const card = get().elements[id];
+    if (card?.type !== 'CARD') return;
+    const group = card.syncGroup ?? nanoid();
+    const copy: CardElement = { ...structuredClone(card), id: nanoid(), x: card.x + 2, y: card.y + 2, z: topZ(card.parentId ?? '') + 1, syncGroup: group, createdAt: now(), updatedAt: now() };
+    const ops: Op[] = [{ kind: 'create', element: copy }];
+    if (!card.syncGroup) ops.unshift(updateOp(card, { syncGroup: group }));
+    commit(ops);
+    set({ selection: [copy.id], toast: 'Синхронная копия: правка в одной меняет все' });
+  },
+
+  /** Stops a note from following its synced copies. */
+  unsync(id: string) {
+    const card = get().elements[id];
+    if (card?.type !== 'CARD' || !card.syncGroup) return;
+    commit([updateOp(card, { syncGroup: undefined })]);
+  },
+
+  // ----- board shortcuts and templates -----
+  createAlias(targetId: string, parentId: string, x: number, y: number): string {
+    const id = actions.insert({ type: 'ALIAS', targetId }, parentId, x, y);
+    set({ selection: [id] });
+    return id;
+  },
+
+  setTemplate(boardId: string, isTemplate: boolean) {
+    actions.update(boardId, { isTemplate });
+    set({ toast: isTemplate ? 'Доска стала шаблоном — она появится в выборе шаблонов' : 'Шаблон снова стал обычной доской' });
+  },
+
+  /** Copies the content of a template board onto a board. */
+  applyTemplate(templateId: string, intoId: string) {
+    const elements = get().elements;
+    const tx: Op[] = [];
+    let z = topZ(intoId);
+    for (const child of Object.values(elements)) {
+      if (child.parentId === templateId && child.section !== 'TRASH') copyTree(elements, child, intoId, tx, { z: ++z });
+    }
+    commit(tx);
+  },
+
+  // ----- comments -----
+  addCommentMessage(id: string, text: string) {
+    const c = get().elements[id];
+    if (c?.type !== 'COMMENT' || !text.trim()) return;
+    actions.update(id, { messages: [...c.messages, { id: nanoid(), text: text.trim(), at: now(), reactions: [] }] });
+  },
+
+  toggleReaction(id: string, messageId: string, emoji: string) {
+    const c = get().elements[id];
+    if (c?.type !== 'COMMENT') return;
+    actions.update(id, {
+      messages: c.messages.map((m) => (m.id !== messageId ? m : { ...m, reactions: m.reactions.includes(emoji) ? m.reactions.filter((r) => r !== emoji) : [...m.reactions, emoji] })),
+    });
   },
 
   setContentLive(id: string, content: JSONContent) {
@@ -642,6 +701,15 @@ export function trashChildren(elements: ElementMap, boardId: string): ZElement[]
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** Ids of a note and its live synced copies (just the note if it is not synced). */
+export function syncPeers(elements: ElementMap, id: string): string[] {
+  const card = elements[id];
+  if (card?.type !== 'CARD' || !card.syncGroup) return [id];
+  return Object.values(elements)
+    .filter((e) => e.type === 'CARD' && e.syncGroup === card.syncGroup && e.section !== 'TRASH')
+    .map((e) => e.id);
+}
+
 /** All label definitions, alphabetically. */
 export function allLabels(elements: ElementMap): LabelElement[] {
   return Object.values(elements)
@@ -749,6 +817,8 @@ function copyTree(elements: ElementMap, original: ZElement, parentId: string | n
   const id = nanoid();
   const copy = { ...structuredClone(original), ...overrides, id, parentId, createdAt: now(), updatedAt: now() } as ZElement;
   if (copy.type === 'TASK_LIST') copy.items = copy.items.map((item) => ({ ...item, id: nanoid() }));
+  // Duplicates are ordinary notes; only "synced copy" links them.
+  if (copy.type === 'CARD') delete copy.syncGroup;
   tx.push({ kind: 'create', element: copy });
   if (original.type === 'BOARD' || original.type === 'COLUMN') {
     for (const child of Object.values(elements)) {

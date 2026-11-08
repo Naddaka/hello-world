@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs",
+    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs && node e2e/stage2c.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -30,6 +30,8 @@
     "@tiptap/pm": "^3.33.0",
     "@tiptap/react": "^3.33.0",
     "@tiptap/starter-kit": "^3.33.0",
+    "fflate": "^0.8.3",
+    "html-to-image": "^1.11.13",
     "idb": "^8.0.4",
     "nanoid": "^5.1.16",
     "react": "^19.3.1",

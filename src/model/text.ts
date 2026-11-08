@@ -44,6 +44,10 @@ export function elementText(e: ZElement): string {
       return '';
     case 'SKETCH':
       return e.caption;
+    case 'ALIAS':
+      return '';
+    case 'COMMENT':
+      return e.messages.map((m) => m.text).join('\n');
     case 'DOCUMENT':
       return [e.title, docText(e.content)].filter(Boolean).join('\n');
   }

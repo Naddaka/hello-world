@@ -3,11 +3,50 @@ import { HOME_ID } from '../model/types';
 import { useDrag } from '../canvas/dnd';
 import { isTauri } from '../storage/repo';
 import { startPresenting } from './Presentation';
+import { useState } from 'react';
+import { exportBoard, type BoardExportFormat } from '../doc/boardExport';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
 // Full-window views (documents) also need room for the window buttons.
 if (macOverlay) document.documentElement.classList.add('mac-overlay');
+
+function ExportMenu() {
+  const [open, setOpen] = useState(false);
+  const run = async (format: BoardExportFormat) => {
+    setOpen(false);
+    try {
+      await exportBoard(format);
+    } catch (error) {
+      actions.showToast(error instanceof Error ? error.message : 'Не удалось экспортировать доску');
+    }
+  };
+  return (
+    <div style={{ position: 'relative' }}>
+      <button type="button" className="btn-accent" aria-expanded={open} onClick={() => setOpen(!open)}>
+        Экспорт
+      </button>
+      {open && (
+        <div className="popover panel" style={{ left: 'auto', right: 0, zIndex: 30 }} role="menu" onMouseLeave={() => setOpen(false)}>
+          {(
+            [
+              ['pdf', 'PDF (печать)'],
+              ['png', 'PNG-изображение'],
+              ['doc', 'Word'],
+              ['md', 'Markdown'],
+              ['txt', 'Обычный текст'],
+              ['zip', 'ZIP со всеми файлами'],
+            ] as const
+          ).map(([f, label]) => (
+            <button key={f} type="button" role="menuitem" className="menu-item" onClick={() => void run(f)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TopBar() {
   const elements = useStore((s) => s.elements);
@@ -66,9 +105,7 @@ export function TopBar() {
           <IconPresent size={17} />
         </button>
       </div>
-      <button type="button" className="btn-accent" disabled title="Экспорт — появится, этап 2">
-        Экспорт
-      </button>
+      <ExportMenu />
     </header>
   );
 }

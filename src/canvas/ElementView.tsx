@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { actions, useStore } from '../model/store';
+import { actions, countChildren, useStore } from '../model/store';
 import { GRID, type ZElement } from '../model/types';
 import { BoardTile } from './BoardTile';
 import { NoteCard } from './NoteCard';
@@ -20,6 +20,8 @@ import { LabelChips, openLabelPicker } from '../ui/Labels';
 import { DrawingView } from '../draw/BoardDraw';
 import { ASPECTS, openSketchEditor, SketchCard } from '../draw/SketchEditor';
 import { focusOn, usePresent } from '../ui/Presentation';
+import { CommentCard, CommentMarkers } from './Comments';
+import { descendants } from '../model/store';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -34,6 +36,22 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
   if (!many && element.type === 'BOARD') {
     items.push({ label: 'Открыть', hint: '↵', run: () => actions.openBoard(element.id) });
     items.push({ label: 'Переименовать', run: () => actions.setEditing(element.id) });
+    items.push({ label: 'Создать ярлык на доску', run: () => actions.createAlias(element.id, element.parentId ?? boardId, element.x + 16, element.y) });
+    items.push(element.isTemplate ? { label: 'Вернуть шаблон в доску', run: () => actions.setTemplate(element.id, false) } : { label: 'Сделать шаблоном', run: () => actions.setTemplate(element.id, true) });
+  }
+  if (!many && element.type === 'ALIAS') {
+    const target = elements[element.targetId];
+    items.push({ label: 'Открыть доску', hint: '↵', disabled: target?.type !== 'BOARD', run: () => actions.openBoard(element.targetId) });
+    if (target?.type === 'BOARD') {
+      items.push({
+        label: 'Дублировать доску, на которую ведёт ярлык',
+        run: () => actions.paste([target], [target, ...descendants(elements, target.id).map((id) => elements[id])], { x: element.x + 16, y: element.y }),
+      });
+    }
+  }
+  if (!many && element.type === 'CARD') {
+    items.push({ label: 'Создать синхронную копию', run: () => actions.createSyncedCopy(element.id) });
+    if (element.syncGroup) items.push({ label: 'Отвязать от копий', run: () => actions.unsync(element.id) });
   }
   if (!many && ['CARD', 'COLUMN', 'TASK_LIST', 'LINK'].includes(element.type)) {
     items.push({ label: element.type === 'COLUMN' ? 'Переименовать' : element.type === 'LINK' ? 'Изменить ссылку' : 'Редактировать', hint: '↵', run: () => actions.setEditing(element.id) });
@@ -118,7 +136,10 @@ export function ElementView({
   const editing = useStore((s) => s.editingId === element.id) && !readOnly;
   const zoom = useStore((s) => (s.cameras[s.boardId] ?? currentCamera()).zoom);
   const drag = useDrag((s) => (s.ids.includes(element.id) ? s : null));
-  const dropActive = useDrag((s) => s.drop?.kind === 'board' && s.drop.id === element.id);
+  const dropActive = useDrag((s) => s.drop?.kind === 'board' && s.drop.id === (element.type === 'ALIAS' ? element.targetId : element.id));
+  const attachTarget = useDrag((s) => s.drop?.kind === 'attach' && s.drop.id === element.id);
+  const aliasTarget = useStore((s) => (element.type === 'ALIAS' ? s.elements[element.targetId] : undefined));
+  const aliasCount = useStore((s) => (element.type === 'ALIAS' && aliasTarget ? countChildren(s.elements, element.targetId) : 0));
   const [liveWidth, setLiveWidth] = useState<number | null>(null);
   // Elements inside the canvas layer are scaled by the zoom; panels are not.
   const scale = inLayer ? zoom : 1;
@@ -148,7 +169,11 @@ export function ElementView({
       }
     }
     const state = useStore.getState();
-    if (state.editingId === element.id && !readOnly) return; // the editor handles its own pointer
+    if (state.editingId === element.id && !readOnly) {
+      // The editor handles its own pointer; the canvas must not end editing on this click.
+      e.stopPropagation();
+      return;
+    }
     e.stopPropagation();
     if (e.shiftKey || e.metaKey) {
       actions.toggleSelect(element.id);
@@ -202,6 +227,7 @@ export function ElementView({
     e.stopPropagation();
     if (readOnly) return;
     if (element.type === 'BOARD') actions.openBoard(element.id);
+    else if (element.type === 'ALIAS') actions.openBoard(element.targetId);
     else if (usePresent.getState().active && usePresent.getState().preventEdit) return;
     else if (element.type === 'SKETCH') openSketchEditor(element.id);
     else if (element.type === 'DOCUMENT') openDocument(element.id);
@@ -221,7 +247,7 @@ export function ElementView({
   return (
     <div
       ref={ref}
-      className={`el${drag ? ' dragging' : ''}${mode === 'list' ? ' in-list' : ''}`}
+      className={`el${drag ? ' dragging' : ''}${mode === 'list' ? ' in-list' : ''}${attachTarget ? ' attach-target' : ''}`}
       data-element-id={element.id}
       data-col-item={mode === 'list' ? element.id : undefined}
       style={style}
@@ -241,6 +267,14 @@ export function ElementView({
       {element.type === 'DOCUMENT' && <DocumentTile element={element} selected={selected} />}
       {element.type === 'DRAWING' && <DrawingView element={element} selected={selected} />}
       {element.type === 'SKETCH' && <SketchCard element={element} selected={selected} />}
+      {element.type === 'COMMENT' && <CommentCard element={element} selected={selected} />}
+      {element.type === 'ALIAS' &&
+        (aliasTarget?.type === 'BOARD' && aliasTarget.section !== 'TRASH' ? (
+          <BoardTile element={aliasTarget} selected={selected} editing={false} dropActive={dropActive} count={aliasCount} compact={mode === 'list'} shortcut />
+        ) : (
+          <div className="tile broken"><div className="tile-icon" /><div className="tile-title">Доска удалена</div></div>
+        ))}
+      {element.type !== 'COMMENT' && <CommentMarkers elementId={element.id} />}
       {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
       {lineHandle && <span className="line-from" title="Потяните, чтобы провести линию" role="presentation" onPointerDown={(e) => startLineFrom(element.id, e)} />}

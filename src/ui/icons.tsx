@@ -58,3 +58,5 @@ export const IconExternal = make(<><path d="M14 4h6v6" /><path d="M20 4l-9 9" />
 export const IconSwatch = make(<><path d="M12 3a9 9 0 100 18c1.1 0 1.5-.9 1.2-1.7-.4-1 .3-2.3 1.5-2.3H17a4 4 0 004-4c0-5-4-10-9-10z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10.5" cy="7" r="1" /><circle cx="15" cy="7.5" r="1" /></>);
 export const IconTag = make(<><path d="M3 12V4h8l10 10-8 8z" /><circle cx="7.5" cy="8" r="1.5" /></>);
 export const IconSketch = make(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 15c2-4 4 1 6-2s3-2 4-1" /></>);
+export const IconComment = make(<path d="M4 5h16v11H9l-5 4z" />);
+export const IconShortcut = make(<><path d="M9 15l6-6" /><path d="M10 9h5v5" /></>, { stroke: 2.4 });

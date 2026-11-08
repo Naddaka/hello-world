@@ -5,6 +5,7 @@ import { ElementView } from './ElementView';
 import { LinesLayer } from './LinesLayer';
 import { BoardDrawOverlay, BoardDrawStrokes } from '../draw/BoardDraw';
 import { usePresent } from '../ui/Presentation';
+import { TemplatePicker } from '../ui/TemplatePicker';
 import type { LineElement } from '../model/types';
 import { currentCamera, lastPointer, registerViewport, screenToCanvas, setCamera, sizes, zoomAt, zoomToFit } from './runtime';
 import { useDrag } from './dnd';
@@ -43,7 +44,17 @@ export function Canvas() {
 
   const all = useMemo(() => canvasChildren(elements, boardId), [elements, boardId]);
   const lines = useMemo(() => all.filter((e): e is LineElement => e.type === 'LINE'), [all]);
-  const children = useMemo(() => all.filter((e) => e.type !== 'LINE'), [all]);
+  const hideComments = usePresent((s) => s.active && s.hideComments);
+  // Comments pinned to a card are shown as markers on it, not on the canvas.
+  const children = useMemo(
+    () =>
+      all.filter((e) => {
+        if (e.type === 'LINE') return false;
+        if (e.type === 'COMMENT') return !hideComments && !(e.attachedTo && elements[e.attachedTo] && elements[e.attachedTo].section !== 'TRASH');
+        return true;
+      }),
+    [all, elements, hideComments],
+  );
   const inboxCount = useMemo(() => inboxChildren(elements, boardId).length, [elements, boardId]);
   const inboxOpen = useStore((s) => s.panel === 'inbox');
   const overInbox = useDrag((s) => s.drop?.kind === 'inbox');
@@ -226,6 +237,7 @@ export function Canvas() {
       </div>
       {marquee && <div className="marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} />}
       <BoardDrawOverlay />
+      {!presenting && <TemplatePicker />}
       {!inboxOpen && !presenting && (
         <button
           type="button"

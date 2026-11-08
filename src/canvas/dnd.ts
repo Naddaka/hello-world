@@ -9,6 +9,7 @@ export type DropTarget =
   | { kind: 'column'; id: string; index: number }
   | { kind: 'inbox' }
   | { kind: 'trash' }
+  | { kind: 'attach'; id: string }
   | null;
 
 interface DragState {
@@ -30,6 +31,11 @@ function dropAt(x: number, y: number, dragged: string[]): DropTarget {
   const board = el.closest<HTMLElement>('[data-drop-board]')?.dataset.dropBoard ?? el.closest<HTMLElement>('[data-crumb-board]')?.dataset.crumbBoard;
   if (board && !dragged.includes(board) && board !== boardId) return { kind: 'board', id: board };
   if (el.closest('[data-drop-trash]')) return { kind: 'trash' };
+  // A single comment dropped onto a card gets pinned to it.
+  if (dragged.length === 1 && elements[dragged[0]]?.type === 'COMMENT') {
+    const target = el.closest<HTMLElement>('[data-element-id]')?.dataset.elementId;
+    if (target && target !== dragged[0] && elements[target] && elements[target].type !== 'COMMENT') return { kind: 'attach', id: target };
+  }
   if (el.closest('[data-drop-inbox]')) return { kind: 'inbox' };
   const columnEl = el.closest<HTMLElement>('[data-drop-column]');
   const column = columnEl?.dataset.dropColumn;
@@ -87,6 +93,7 @@ export function startElementDrag(e: { clientX: number; clientY: number }, ids: s
     if (drop?.kind === 'column') return actions.insertIntoColumn(movable, drop.id, drop.index);
     if (drop?.kind === 'inbox') return actions.moveToInbox(movable, boardId);
     if (drop?.kind === 'trash') return actions.trash(movable);
+    if (drop?.kind === 'attach') return actions.update(movable[0], { attachedTo: drop.id });
     if (!isOverViewport(ev.clientX, ev.clientY) || (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest('.toolbar, .side-panel')) return;
     const zoom = useStore.getState().cameras[boardId]?.zoom ?? 1;
     const moves = movable

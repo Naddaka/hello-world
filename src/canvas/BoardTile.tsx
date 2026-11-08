@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { actions } from '../model/store';
 import type { BoardElement } from '../model/types';
-import { IconBoard } from '../ui/icons';
+import { IconBoard, IconShortcut } from '../ui/icons';
 import { plural } from '../ui/plural';
 
 function TitleInput({ element }: { element: BoardElement }) {
@@ -32,14 +32,20 @@ function TitleInput({ element }: { element: BoardElement }) {
   );
 }
 
-export function BoardTile({ element, selected, editing, dropActive, count, compact = false }: { element: BoardElement; selected: boolean; editing: boolean; dropActive: boolean; count: number; compact?: boolean }) {
+export function BoardTile({ element, selected, editing, dropActive, count, compact = false, shortcut = false }: { element: BoardElement; selected: boolean; editing: boolean; dropActive: boolean; count: number; compact?: boolean; shortcut?: boolean }) {
   const c = element.color;
+  const badge = shortcut && (
+    <span className="shortcut-badge" title="Ярлык: ведёт на доску в другом месте" aria-label="Ярлык">
+      <IconShortcut size={12} />
+    </span>
+  );
   if (compact) {
     // Inside a column or panel: a horizontal row instead of a large tile.
     return (
       <div className={`tile-row${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
-        <span className="tile-row-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)` }}>
+        <span className="tile-row-icon" style={{ position: 'relative', background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)` }}>
           <IconBoard size={20} strokeWidth={1.8} />
+          {badge}
         </span>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           {editing ? <TitleInput element={element} /> : <span className="tile-row-title">{element.title}</span>}
@@ -52,9 +58,10 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
     <div className={`tile${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
       <div className="tile-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)`, boxShadow: `inset 0 0 0 1px var(--board-${c}-ring)` }}>
         <IconBoard size={38} strokeWidth={1.6} />
+        {badge}
       </div>
-      {editing ? <TitleInput element={element} /> : <div className="tile-title">{element.title}</div>}
-      <div className="tile-meta">{count} {plural(count)}</div>
+      {editing && !shortcut ? <TitleInput element={element} /> : <div className="tile-title">{element.title}</div>}
+      <div className="tile-meta">{element.isTemplate ? 'Шаблон · ' : ''}{count} {plural(count)}</div>
     </div>
   );
 }

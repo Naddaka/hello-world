@@ -9,9 +9,9 @@ const KEY = 'zadum.presentation';
 
 function loadOptions() {
   try {
-    return { preventEdit: true, focusOnClick: true, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
+    return { preventEdit: true, focusOnClick: true, hideComments: false, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
   } catch {
-    return { preventEdit: true, focusOnClick: true };
+    return { preventEdit: true, focusOnClick: true, hideComments: false };
   }
 }
 
@@ -19,14 +19,15 @@ interface PresentState {
   active: boolean;
   preventEdit: boolean;
   focusOnClick: boolean;
+  hideComments: boolean;
 }
 
 export const usePresent = create<PresentState>(() => ({ active: false, ...loadOptions() }));
 
 function remember() {
-  const { preventEdit, focusOnClick } = usePresent.getState();
+  const { preventEdit, focusOnClick, hideComments } = usePresent.getState();
   try {
-    localStorage.setItem(KEY, JSON.stringify({ preventEdit, focusOnClick }));
+    localStorage.setItem(KEY, JSON.stringify({ preventEdit, focusOnClick, hideComments }));
   } catch {
     /* preferences are optional */
   }
@@ -67,7 +68,7 @@ export function focusOn(id: string) {
 
 /** Bottom bar while presenting: options and the way out. */
 export function PresentBar() {
-  const { active, preventEdit, focusOnClick } = usePresent();
+  const { active, preventEdit, focusOnClick, hideComments } = usePresent();
   const back = useStore((s) => s.back.length > 0);
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export function PresentBar() {
   }, [active]);
 
   if (!active) return null;
-  const toggle = (key: 'preventEdit' | 'focusOnClick') => {
+  const toggle = (key: 'preventEdit' | 'focusOnClick' | 'hideComments') => {
     usePresent.setState({ [key]: !usePresent.getState()[key] });
     remember();
   };
@@ -92,6 +93,7 @@ export function PresentBar() {
       {back && <button type="button" className="link-btn" onClick={() => actions.goBack()}>← Назад</button>}
       <label><input type="checkbox" checked={preventEdit} onChange={() => toggle('preventEdit')} /> Запретить редактирование</label>
       <label><input type="checkbox" checked={focusOnClick} onChange={() => toggle('focusOnClick')} /> Фокус по клику</label>
+      <label><input type="checkbox" checked={hideComments} onChange={() => toggle('hideComments')} /> Скрыть комментарии</label>
       <button type="button" className="btn-accent" onClick={stopPresenting}>Завершить (Esc)</button>
     </div>
   );

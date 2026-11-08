@@ -3,7 +3,9 @@ import { EditorContent, useEditor, type UseEditorOptions } from '@tiptap/react';
 import { generateHTML, type JSONContent } from '@tiptap/core';
 import { noteExtensions } from '../editor/extensions';
 import { FormatBar } from '../editor/FormatBar';
-import { actions, useStore } from '../model/store';
+import { actions, boardPath, containingBoard, syncPeers, useStore } from '../model/store';
+import { openMenu } from '../ui/ContextMenu';
+import { reveal } from '../ui/SearchPanel';
 import { GRID, type CardElement } from '../model/types';
 import { sizes } from './runtime';
 
@@ -128,6 +130,33 @@ function NoteEditor({ element, zoom }: { element: CardElement; zoom: number }) {
   );
 }
 
+function SyncFooter({ element }: { element: CardElement }) {
+  // Select a string, not a fresh array: a new array every time would re-render forever.
+  const key = useStore((s) => (element.syncGroup ? syncPeers(s.elements, element.id).join(',') : ''));
+  const peers = key ? key.split(',') : [];
+  if (peers.length < 2) return null;
+  const showWhere = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const elements = useStore.getState().elements;
+    openMenu(
+      e.clientX,
+      e.clientY,
+      peers
+        .filter((id) => id !== element.id)
+        .map((id) => {
+          const board = containingBoard(elements, id);
+          const path = board ? boardPath(elements, board).map((b) => b.title).join(' / ') : '';
+          return { label: `Копия: ${path}`, run: () => reveal(elements[id]) };
+        }),
+    );
+  };
+  return (
+    <button type="button" className="sync-footer" onPointerDown={(e) => e.stopPropagation()} onClick={showWhere} title="Правка меняет все копии. Где они?">
+      ⟳ Синхронизировано · {peers.length} {peers.length < 5 ? 'копии' : 'копий'}
+    </button>
+  );
+}
+
 export function NoteCard({ element, selected, editing, zoom }: { element: CardElement; selected: boolean; editing: boolean; zoom: number }) {
   const cls = ['note', selected && 'selected', editing && 'editing', element.color === 'transparent' && 'transparent', element.locked && 'locked']
     .filter(Boolean)
@@ -136,6 +165,7 @@ export function NoteCard({ element, selected, editing, zoom }: { element: CardEl
   return (
     <div className={cls} style={{ background }}>
       {editing ? <NoteEditor element={element} zoom={zoom} /> : <StaticNote element={element} />}
+      {element.syncGroup && <SyncFooter element={element} />}
     </div>
   );
 }
