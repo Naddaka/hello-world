@@ -98,14 +98,25 @@ function linear(boardId: string): Block[] {
   return items.flatMap((e) => blockOf(e, 0));
 }
 
+/** A file name ending in the stored file's real extension ("Скетч" → "Скетч.svg", "фото.jpg" of an SVG → "фото.svg"). */
+export function withExtension(name: string, ext: string): string {
+  const base = name.trim() || 'файл';
+  if (!ext) return base;
+  // An extension has a letter in it: "Сцена 1.2" has none.
+  const current = base.match(/\.([a-z0-9]{0,7}[a-z][a-z0-9]{0,7})$/i)?.[1]?.toLowerCase();
+  if (current === ext.toLowerCase() || (current === 'jpeg' && ext === 'jpg') || (current === 'jpg' && ext === 'jpeg')) return base;
+  return `${current ? base.slice(0, -current.length - 1) : base}.${ext}`;
+}
+
 function mediaOnBoard(boardId: string): { ref: MediaRef; name: string }[] {
   const elements = useStore.getState().elements;
   const seen = new Map<string, { ref: MediaRef; name: string }>();
   const visit = (parent: string) => {
     for (const e of Object.values(elements)) {
       if (e.parentId !== parent || e.section === 'TRASH') continue;
-      if (e.type === 'IMAGE' || e.type === 'FILE') seen.set(e.media.id, { ref: e.media, name: e.name });
-      if (e.type === 'LINK' && e.image) seen.set(e.image.id, { ref: e.image, name: `${e.title || 'превью'}.${e.image.ext}` });
+      if (e.type === 'IMAGE' || e.type === 'FILE') seen.set(e.media.id, { ref: e.media, name: withExtension(e.name, e.media.ext) });
+      if (e.type === 'LINK' && e.image) seen.set(e.image.id, { ref: e.image, name: withExtension(e.title || 'превью', e.image.ext) });
+      if (e.type === 'SKETCH' && e.backdrop) seen.set(e.backdrop.id, { ref: e.backdrop, name: withExtension(e.caption || 'кадр', e.backdrop.ext) });
       if (e.type === 'COLUMN') visit(e.id);
     }
   };

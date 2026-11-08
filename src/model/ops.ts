@@ -109,6 +109,12 @@ export class History {
     return false;
   }
 
+  /** Forgets all steps (after a change that cannot be undone past, like replacing an import). */
+  clear() {
+    this.undoStack = [];
+    this.redoStack = [];
+  }
+
   get canUndo() {
     return this.undoStack.length > 0;
   }

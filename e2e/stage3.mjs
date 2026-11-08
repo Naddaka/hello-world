@@ -52,6 +52,18 @@ const failed = await runSuite(
     await page.screenshot({ path: `${OUT}/73-milanote-board.png` });
 
     // Importing again replaces the previous import instead of duplicating it.
+    const storedFiles = () =>
+      page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const open = indexedDB.open('zadum-media');
+            open.onsuccess = () => {
+              const req = open.result.transaction('files').objectStore('files').count();
+              req.onsuccess = () => resolve(req.result);
+            };
+          }),
+      );
+    const filesBefore = await storedFiles();
     await page.locator('.crumb').first().click();
     await page.click('.topbar >> text=Импорт');
     await page.setInputFiles('.modal input[type="file"]', FIXTURE);
@@ -61,6 +73,8 @@ const failed = await runSuite(
     await page.waitForSelector('.modal >> text=Готово', { timeout: 20000 });
     await page.click('.modal >> button:has-text("Закрыть")');
     check('re-importing does not duplicate the board', (await page.locator('.layer .tile', { hasText: 'Milanote' }).count()) === 1);
+    const filesAfter = await storedFiles();
+    check('files of the replaced import are removed', filesAfter === filesBefore, `${filesBefore} → ${filesAfter}`);
 
     await page.waitForTimeout(700);
     await page.reload();

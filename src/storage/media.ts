@@ -27,6 +27,8 @@ interface MediaBackend {
   importFile(file: File): Promise<MediaInfo>;
   importPath(path: string): Promise<MediaInfo>;
   importUrl(url: string): Promise<MediaInfo | null>;
+  /** Deletes stored files nothing refers to any more. */
+  remove(refs: MediaRef[]): Promise<void>;
   /** Downloads a file of any size by URL (imports); rejects with the reason on failure. */
   download(url: string, name: string): Promise<MediaInfo>;
   src(ref: MediaRef): Promise<string>;
@@ -62,7 +64,7 @@ async function tauriBackend(): Promise<MediaBackend> {
     importPath: (path) => invoke<MediaInfo>('import_media_file', { path }),
     async importFile(file) {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      return invoke<MediaInfo>('save_media_bytes', bytes, { headers: { 'x-name': encodeURIComponent(file.name || 'вставка.png') } });
+      return invoke<MediaInfo>('save_media_bytes', bytes, { headers: { 'x-name': encodeURIComponent(file.name || 'вставка.png'), 'x-type': file.type || '' } });
     },
     async importUrl(url) {
       try {
@@ -72,6 +74,9 @@ async function tauriBackend(): Promise<MediaBackend> {
       }
     },
     download: (url, name) => invoke<MediaInfo>('download_media', { url, name }),
+    async remove(refs) {
+      if (refs.length) await invoke('delete_media', { files: refs.map((r) => `${r.id}.${r.ext}`) });
+    },
     src: async (ref) => convertFileSrc(pathOf(ref)),
     async preview(url) {
       try {
@@ -118,6 +123,14 @@ async function browserBackend(): Promise<MediaBackend> {
     importFile,
     importPath: () => Promise.reject(new Error('пути к файлам доступны только в приложении')),
     importUrl: async () => null,
+    async remove(refs) {
+      for (const r of refs) {
+        await db.delete('files', r.id);
+        const url = urls.get(r.id);
+        if (url) URL.revokeObjectURL(url);
+        urls.delete(r.id);
+      }
+    },
     async download(url, name) {
       // Works for data: URLs and servers that allow cross-origin reads.
       const response = await fetch(url);

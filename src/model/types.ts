@@ -396,3 +396,18 @@ export function fitsInColumn(type: ElementType): boolean {
 }
 
 export const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+
+/** Files of the media library an element uses. */
+export function mediaRefsOf(e: ZElement): MediaRef[] {
+  switch (e.type) {
+    case 'IMAGE':
+    case 'FILE':
+      return [e.media];
+    case 'LINK':
+      return e.image ? [e.image] : [];
+    case 'SKETCH':
+      return e.backdrop ? [e.backdrop] : [];
+    default:
+      return [];
+  }
+}

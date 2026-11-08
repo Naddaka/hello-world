@@ -120,7 +120,9 @@ pub async fn save_media_bytes(app: AppHandle, request: tauri::ipc::Request<'_>) 
         .and_then(|v| v.to_str().ok())
         .map(|v| percent_decode(v))
         .unwrap_or_else(|| "вставка.png".into());
-    let ext = extension_of(&name);
+    // The type the UI knows (from the clipboard or the file itself) wins over a misleading name.
+    let content_type = request.headers().get("x-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+    let ext = choose_extension(&name, content_type);
     let id = new_id();
     let target = media_dir(&app)?.join(format!("{id}.{ext}"));
     std::fs::write(&target, bytes).map_err(|e| e.to_string())?;
@@ -141,15 +143,7 @@ pub async fn import_media_url(app: AppHandle, url: String) -> Result<MediaInfo, 
         .unwrap_or("")
         .to_string();
     let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-    let ext = match content_type.split(';').next().unwrap_or("") {
-        "image/jpeg" => "jpg".to_string(),
-        "image/png" => "png".to_string(),
-        "image/gif" => "gif".to_string(),
-        "image/webp" => "webp".to_string(),
-        "image/avif" => "avif".to_string(),
-        "image/svg+xml" => "svg".to_string(),
-        _ => extension_of(url.split(['?', '#']).next().unwrap_or("")),
-    };
+    let ext = choose_extension(url.split(['?', '#']).next().unwrap_or(""), &content_type);
     let id = new_id();
     let target = media_dir(&app)?.join(format!("{id}.{ext}"));
     std::fs::write(&target, &bytes).map_err(|e| e.to_string())?;
@@ -157,28 +151,40 @@ pub async fn import_media_url(app: AppHandle, url: String) -> Result<MediaInfo, 
     describe(&target, id, ext, name)
 }
 
-/// Extension for a downloaded file: from its name, else from the content type.
-fn download_extension(name: &str, content_type: &str) -> String {
-    let from_name = extension_of(name);
-    if from_name != "bin" {
-        return from_name;
-    }
-    match content_type.split(';').next().unwrap_or("").trim() {
+/// Extension of a known media content type.
+fn extension_for_type(content_type: &str) -> Option<&'static str> {
+    Some(match content_type {
         "image/jpeg" => "jpg",
         "image/png" => "png",
         "image/gif" => "gif",
         "image/webp" => "webp",
+        "image/avif" => "avif",
         "image/heic" => "heic",
         "image/svg+xml" => "svg",
+        "image/tiff" => "tif",
         "application/pdf" => "pdf",
         "video/mp4" => "mp4",
         "video/quicktime" => "mov",
+        "video/webm" => "webm",
         "audio/mpeg" => "mp3",
         "audio/mp4" => "m4a",
-        "audio/wav" | "audio/x-wav" => "wav",
-        _ => "bin",
+        "audio/wav" | "audio/x-wav" | "audio/wave" => "wav",
+        "audio/ogg" => "ogg",
+        "audio/flac" => "flac",
+        _ => return None,
+    })
+}
+
+/// The extension a stored file gets: the one in its name, unless the file's
+/// real type says otherwise (an SVG named "picture.jpg" is saved as .svg, so
+/// it is served and shown as SVG).
+fn choose_extension(name: &str, content_type: &str) -> String {
+    let from_name = extension_of(name);
+    let ct = content_type.split(';').next().unwrap_or("").trim().to_ascii_lowercase();
+    match extension_for_type(&ct) {
+        Some(ext) if from_name == "bin" || mime_for(ext) != mime_for(&from_name) => ext.into(),
+        _ => from_name,
     }
-    .into()
 }
 
 /// Downloads a file of any size into the media library, streaming it to disk
@@ -206,7 +212,7 @@ pub async fn download_media(app: AppHandle, url: String, name: Option<String>) -
     let name = name
         .filter(|n| !n.trim().is_empty())
         .unwrap_or_else(|| percent_decode(url.split(['?', '#']).next().unwrap_or("").rsplit('/').next().unwrap_or("файл")));
-    let ext = download_extension(&name, &content_type);
+    let ext = choose_extension(&name, &content_type);
     let id = new_id();
     let target = media_dir(&app)?.join(format!("{id}.{ext}"));
     let partial = target.with_extension(format!("{ext}.part"));
@@ -249,6 +255,18 @@ fn percent_decode(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn real_type_beats_a_misleading_name() {
+        assert_eq!(choose_extension("изображение.jpg", "image/svg+xml"), "svg");
+        assert_eq!(choose_extension("вставка", "image/png"), "png");
+        assert_eq!(choose_extension("photo.JPEG", "image/jpeg"), "jpeg");
+        assert_eq!(choose_extension("clip.m4v", "video/mp4"), "m4v");
+        assert_eq!(choose_extension("take.wav", "audio/x-wav"), "wav");
+        assert_eq!(choose_extension("notes.txt", "text/plain"), "txt");
+        assert_eq!(choose_extension("raw.cr2", ""), "cr2");
+        assert_eq!(choose_extension("a.png", "image/webp; charset=binary"), "webp");
+    }
 
     #[test]
     fn decodes_percent_encoded_names() {
@@ -294,4 +312,24 @@ pub async fn read_text_file(path: String) -> Result<String, String> {
         return Err("Файл слишком большой для сценария".into());
     }
     std::fs::read_to_string(&path).map_err(|e| format!("Не удалось прочитать файл: {e}"))
+}
+
+/// Removes files from the media library that nothing refers to any more
+/// (e.g. the pictures of a Milanote import that was replaced).
+#[tauri::command]
+pub fn delete_media(app: AppHandle, files: Vec<String>) -> Result<usize, String> {
+    let dir = media_dir(&app)?;
+    let mut removed = 0;
+    for file in files {
+        // Only plain library names ("<id>.<ext>"), never a path.
+        let (id, ext) = file.split_once('.').ok_or("неверное имя файла")?;
+        let valid = !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric()) && !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric());
+        if !valid {
+            return Err(format!("неверное имя файла: {file}"));
+        }
+        if std::fs::remove_file(dir.join(&file)).is_ok() {
+            removed += 1;
+        }
+    }
+    Ok(removed)
 }

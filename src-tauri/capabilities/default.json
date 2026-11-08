@@ -36,6 +36,7 @@
     "allow-import-media-url",
     "allow-download-media",
     "allow-read-text-file",
+    "allow-delete-media",
     "allow-write-file",
     "allow-print-window",
     "allow-link-preview",

@@ -156,6 +156,12 @@ export function commit(tx: Transaction, record = true) {
   schedulePersist(changed, removed);
 }
 
+/** Forgets undo history: earlier steps may refer to elements that are gone for good. */
+export function clearHistory() {
+  history.clear();
+  set({ canUndo: false, canRedo: false });
+}
+
 function applyHistory(tx: Transaction | null) {
   if (!tx) return;
   const { elements, changed, removed } = applyTransaction(get().elements, tx);

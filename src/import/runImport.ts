@@ -1,6 +1,6 @@
-import { commit, useStore } from '../model/store';
+import { clearHistory, commit, flushPersist, useStore } from '../model/store';
 import type { Op } from '../model/ops';
-import { HOME_ID, type ZElement } from '../model/types';
+import { HOME_ID, mediaRefsOf, type MediaRef, type ZElement } from '../model/types';
 import { media } from '../storage/media';
 import { dataUrlToBlob } from '../storage/dataUrl';
 import { convertMilanote, finalizeImport, MN_PREFIX, type ImportReport, type MediaJob, type MilanoteExport, type StoredMedia } from './milanote';
@@ -79,10 +79,21 @@ export async function importMilanote(
   }
 
   const ops: Op[] = [];
-  for (const e of Object.values(state)) if (e.id.startsWith(MN_PREFIX)) ops.push({ kind: 'delete', element: e });
+  const old = Object.values(state).filter((e) => e.id.startsWith(MN_PREFIX));
+  for (const e of old) ops.push({ kind: 'delete', element: e });
   for (const e of elements) ops.push({ kind: 'create', element: e });
+  // Files of the previous import that nothing else uses (copies moved off the board keep theirs).
+  const kept = new Set(Object.values(state).filter((e) => !e.id.startsWith(MN_PREFIX)).flatMap((e) => mediaRefsOf(e).map((r) => r.id)));
+  const orphans = new Map<string, MediaRef>();
+  for (const e of old) for (const r of mediaRefsOf(e)) if (!kept.has(r.id)) orphans.set(r.id, r);
   // Not an undo step: the import is too large to undo by accident.
   commit(ops, false);
+  if (old.length) {
+    // Earlier undo steps may refer to the replaced elements; they cannot come back.
+    clearHistory();
+    await flushPersist();
+    await (await media()).remove([...orphans.values()]).catch((error) => console.warn('Milanote import: could not remove old files', error));
+  }
   return { report: plan.report, rootId: plan.rootId };
 }
 

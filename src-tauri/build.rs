@@ -9,6 +9,7 @@ const COMMANDS: &[&str] = &[
     "import_media_url",
     "download_media",
     "read_text_file",
+    "delete_media",
     "write_file",
     "print_window",
     "link_preview",
