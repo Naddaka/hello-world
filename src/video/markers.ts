@@ -3,11 +3,22 @@ import type { MarkerColor, VideoMarker } from '../model/types';
 /**
  * Timecodes and marker exports for editing software: DaVinci Resolve (EDL),
  * Premiere Pro (FCP 7 XML), Final Cut Pro (FCPXML), plus CSV and YouTube
- * chapters. Timecodes are non-drop-frame, as editors show them by default.
+ * chapters. Timecodes are non-drop-frame unless drop-frame is chosen for
+ * 29.97 or 59.94 fps (HH:MM:SS;FF, as NTSC broadcast counts).
  */
 
 export const FRAME_RATES = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
 export const DEFAULT_FPS = 25;
+
+/** A measured rate snapped to the standard one it stands for (29.969… → 29.97). */
+export function snapFps(raw: number): number {
+  // 29.97 and 30 are only 0.1 % apart: take the nearest, and only when it is really close.
+  const nearest = FRAME_RATES.reduce((best, r) => (Math.abs(r - raw) < Math.abs(best - raw) ? r : best));
+  return Math.abs(nearest - raw) / nearest < 0.0005 ? nearest : Math.round(raw * 1000) / 1000;
+}
+
+/** Drop-frame timecode exists only for the NTSC rates 29.97 and 59.94. */
+export const canDropFrame = (fps: number) => Math.abs(fps - 29.97) < 0.01 || Math.abs(fps - 59.94) < 0.01;
 
 /** Frames per second as counted in timecode (29.97 counts as 30). */
 export const timecodeBase = (fps: number) => Math.round(fps);
@@ -21,15 +32,32 @@ export const frameMiddle = (frame: number, fps: number) => (Math.max(0, frame) +
 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0');
 
-/** Frame count → HH:MM:SS:FF. */
-export function framesToTimecode(frames: number, fps: number): string {
+/**
+ * Frame count → HH:MM:SS:FF. With drop-frame, frame numbers 0 and 1 (0–3 at
+ * 59.94) are skipped at the start of every minute except each tenth, so the
+ * timecode keeps up with the clock.
+ */
+export function framesToTimecode(frames: number, fps: number, dropFrame = false): string {
   const base = timecodeBase(fps);
-  const ff = frames % base;
-  const total = Math.floor(frames / base);
-  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}:${pad(ff)}`;
+  let n = frames;
+  const df = dropFrame && canDropFrame(fps);
+  if (df) {
+    const drop = base === 60 ? 4 : 2;
+    const per10 = Math.round(fps * 600);
+    const perMinute = base * 60 - drop;
+    const tens = Math.floor(n / per10);
+    const rest = n % per10;
+    n += drop * 9 * tens + (rest > drop ? drop * Math.floor((rest - drop) / perMinute) : 0);
+  }
+  const ff = n % base;
+  const total = Math.floor(n / base);
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}${df ? ';' : ':'}${pad(ff)}`;
 }
 
-export const timecode = (seconds: number, fps: number) => framesToTimecode(frameOf(seconds, fps), fps);
+export const timecode = (seconds: number, fps: number, dropFrame = false) => framesToTimecode(frameOf(seconds, fps), fps, dropFrame);
+
+/** Frames in one hour of timecode (01:00:00:00 is where editors start timelines). */
+const hourFrames = (fps: number, dropFrame: boolean) => (dropFrame && canDropFrame(fps) ? Math.round(fps * 3600) : 3600 * timecodeBase(fps));
 
 /** Short clock for the UI and YouTube chapters: m:ss or h:mm:ss. */
 export function clock(seconds: number): string {
@@ -49,13 +77,14 @@ const RESOLVE_COLORS: Record<MarkerColor, string> = { blue: 'Blue', red: 'Red', 
  * EDL that DaVinci Resolve reads with "Timeline → Import → Timeline Markers
  * from EDL". Times are timeline times: the default timeline starts at 01:00:00:00.
  */
-export function toResolveEdl(markers: VideoMarker[], fps: number, title: string, startHour = 1): string {
-  const offset = startHour * 3600 * timecodeBase(fps);
-  const lines = [`TITLE: ${title}`, 'FCM: NON-DROP FRAME', ''];
+export function toResolveEdl(markers: VideoMarker[], fps: number, title: string, startHour = 1, dropFrame = false): string {
+  const df = dropFrame && canDropFrame(fps);
+  const offset = startHour * hourFrames(fps, df);
+  const lines = [`TITLE: ${title}`, `FCM: ${df ? 'DROP FRAME' : 'NON-DROP FRAME'}`, ''];
   sortMarkers(markers).forEach((m, i) => {
     const f = frameOf(m.time, fps) + offset;
-    const a = framesToTimecode(f, fps);
-    const b = framesToTimecode(f + 1, fps);
+    const a = framesToTimecode(f, fps, df);
+    const b = framesToTimecode(f + 1, fps, df);
     lines.push(`${pad(i + 1, 3)}  001      V     C        ${a} ${b} ${a} ${b}  `);
     lines.push(` |C:ResolveColor${RESOLVE_COLORS[m.color]} |M:${m.text.replace(/\s*\n\s*/g, ' ').replace(/\|/g, '/')} |D:1`);
     lines.push('');
@@ -64,7 +93,7 @@ export function toResolveEdl(markers: VideoMarker[], fps: number, title: string,
 }
 
 /** FCP 7 XML: a sequence with the clip and its markers, which Premiere Pro imports. */
-export function toPremiereXml(markers: VideoMarker[], fps: number, clip: { name: string; duration: number; path?: string; width?: number; height?: number }): string {
+export function toPremiereXml(markers: VideoMarker[], fps: number, clip: { name: string; duration: number; path?: string; width?: number; height?: number }, dropFrame = false): string {
   const base = timecodeBase(fps);
   const ntsc = isNtsc(fps) ? 'TRUE' : 'FALSE';
   const rate = `<rate><timebase>${base}</timebase><ntsc>${ntsc}</ntsc></rate>`;
@@ -80,7 +109,7 @@ export function toPremiereXml(markers: VideoMarker[], fps: number, clip: { name:
     <name>${esc(clip.name)} — ревью</name>
     <duration>${dur}</duration>
     ${rate}
-    <timecode>${rate}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>
+    <timecode>${rate}<string>${dropFrame && canDropFrame(fps) ? '00:00:00;00' : '00:00:00:00'}</string><frame>0</frame><displayformat>${dropFrame && canDropFrame(fps) ? 'DF' : 'NDF'}</displayformat></timecode>
     <media>
       <video>
         <format><samplecharacteristics>${rate}<width>${clip.width ?? 1920}</width><height>${clip.height ?? 1080}</height></samplecharacteristics></format>
@@ -117,7 +146,7 @@ function fcpTime(frames: number, fps: number): string {
 }
 
 /** FCPXML 1.10: a project with the clip and its markers (unfinished comments become to-do markers). */
-export function toFcpxml(markers: VideoMarker[], fps: number, clip: { name: string; duration: number; path?: string; width?: number; height?: number }): string {
+export function toFcpxml(markers: VideoMarker[], fps: number, clip: { name: string; duration: number; path?: string; width?: number; height?: number }, dropFrame = false): string {
   const dur = Math.max(1, frameOf(clip.duration, fps));
   const frameDuration = fcpTime(1, fps);
   const src = clip.path ? `file://${encodeURI(clip.path)}` : encodeURI(clip.name);
@@ -136,7 +165,7 @@ export function toFcpxml(markers: VideoMarker[], fps: number, clip: { name: stri
   <library>
     <event name="Zadum">
       <project name="${esc(clip.name)} — ревью">
-        <sequence format="r1" duration="${fcpTime(dur, fps)}" tcStart="0s" tcFormat="NDF">
+        <sequence format="r1" duration="${fcpTime(dur, fps)}" tcStart="0s" tcFormat="${dropFrame && canDropFrame(fps) ? 'DF' : 'NDF'}">
           <spine>
             <asset-clip ref="r2" name="${esc(clip.name)}" offset="0s" duration="${fcpTime(dur, fps)}" start="0s" format="r1">
 ${markerXml}
@@ -151,9 +180,9 @@ ${markerXml}
 }
 
 /** Spreadsheet-friendly list (";" separated, with a BOM for Cyrillic). */
-export function toMarkersCsv(markers: VideoMarker[], fps: number): string {
+export function toMarkersCsv(markers: VideoMarker[], fps: number, dropFrame = false): string {
   const q = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
-  const rows = sortMarkers(markers).map((m) => [timecode(m.time, fps), m.time.toFixed(3), q(m.text), m.done ? 'да' : 'нет'].join(';'));
+  const rows = sortMarkers(markers).map((m) => [timecode(m.time, fps, dropFrame), m.time.toFixed(3), q(m.text), m.done ? 'да' : 'нет'].join(';'));
   return `﻿${['Таймкод;Секунды;Комментарий;Исправлено', ...rows].join('\r\n')}\r\n`;
 }
 
@@ -166,4 +195,21 @@ export function toYoutubeChapters(markers: VideoMarker[]): string {
   const lines = list.map((m) => `${clock(m.time)} ${m.text.split('\n')[0].trim()}`);
   if (!list.length || list[0].time >= 1) lines.unshift('0:00 Начало');
   return `${lines.join('\n')}\n`;
+}
+
+/**
+ * Why YouTube would not turn the chapters into a chapter bar: it needs at
+ * least three chapters, the first at 0:00, each at least ten seconds long.
+ */
+export function youtubeChapterProblems(markers: VideoMarker[], duration: number): string[] {
+  const times = toYoutubeChapters(markers)
+    .trim()
+    .split('\n')
+    .map((line) => line.split(' ')[0].split(':').reduce((acc, part) => acc * 60 + Number(part), 0));
+  const problems: string[] = [];
+  if (times.length < 3) problems.push(`нужно хотя бы 3 главы, а получилось ${times.length}`);
+  const ends = [...times.slice(1), duration || Infinity];
+  const short = times.filter((t, i) => ends[i] - t < 10).length;
+  if (short) problems.push(`короче 10 секунд глав: ${short}`);
+  return problems;
 }

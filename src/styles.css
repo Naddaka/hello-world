@@ -758,3 +758,8 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .file-marker-count { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
 .tile { position: relative; }
 .tile-measure { position: absolute; left: 0; right: 0; top: 0; visibility: hidden; pointer-events: none; max-height: none; }
+.sp-bd-name { flex: 1 1 auto; min-width: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); font: 12px var(--font); padding: 2px 4px; }
+.sp-bd-name:hover { border-color: var(--line); }
+.sp-bd-name:focus { border-color: var(--accent); background: var(--field); outline: none; }
+.shot-row .sp-field { min-width: 0; }
+.shot-row .sp-field input { width: 100%; min-width: 0; box-sizing: border-box; }

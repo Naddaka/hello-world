@@ -10,12 +10,12 @@ function imageWidth(info: MediaInfo) {
   return Math.max(12, Math.min(40, Math.round(natural / 2 / GRID)));
 }
 
-function cardFor(info: MediaInfo): ElementFields<ImageElement> | ElementFields<FileElement> {
+function cardFor(info: MediaInfo, sourcePath?: string): ElementFields<ImageElement> | ElementFields<FileElement> {
   const ref = { id: info.id, ext: info.ext };
   if (info.mime.startsWith('image/') && info.width && info.height) {
     return { type: 'IMAGE', media: ref, name: info.name, naturalWidth: info.width, naturalHeight: info.height, caption: '', showCaption: false };
   }
-  return { type: 'FILE', media: ref, name: info.name, size: info.size, mime: info.mime, autoplay: false, loop: false };
+  return { type: 'FILE', media: ref, name: info.name, size: info.size, mime: info.mime, autoplay: false, loop: false, ...(sourcePath ? { sourcePath } : {}) };
 }
 
 /**
@@ -41,7 +41,7 @@ export async function addFiles(items: (string | File)[], at: { x: number; y: num
         continue;
       }
       const info = typeof item === 'string' ? await lib.importPath(item) : await lib.importFile(item);
-      const fields = cardFor(info);
+      const fields = cardFor(info, typeof item === 'string' ? item : undefined);
       const width = fields.type === 'IMAGE' ? imageWidth(info) : DEFAULT_WIDTH.FILE;
       ids.push(actions.insert(fields, parentId, x, at.y, width));
       x += width + 3;

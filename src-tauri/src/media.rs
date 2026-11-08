@@ -321,15 +321,29 @@ pub fn delete_media(app: AppHandle, files: Vec<String>) -> Result<usize, String>
     let dir = media_dir(&app)?;
     let mut removed = 0;
     for file in files {
-        // Only plain library names ("<id>.<ext>"), never a path.
-        let (id, ext) = file.split_once('.').ok_or("неверное имя файла")?;
-        let valid = !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric()) && !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric());
-        if !valid {
-            return Err(format!("неверное имя файла: {file}"));
-        }
+        library_name(&file)?;
         if std::fs::remove_file(dir.join(&file)).is_ok() {
             removed += 1;
         }
     }
     Ok(removed)
+}
+
+/// Accepts only plain library names ("<id>.<ext>"), never a path.
+fn library_name(file: &str) -> Result<(), String> {
+    let (id, ext) = file.split_once('.').ok_or("неверное имя файла")?;
+    let valid = !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric()) && !ext.is_empty() && ext.len() <= 8 && ext.chars().all(|c| c.is_ascii_alphanumeric());
+    if valid {
+        Ok(())
+    } else {
+        Err(format!("неверное имя файла: {file}"))
+    }
+}
+
+/// Frame rate of a video in the library, read from its container (None if unknown).
+#[tauri::command]
+pub async fn media_frame_rate(app: AppHandle, file: String) -> Result<Option<f64>, String> {
+    library_name(&file)?;
+    let path = media_dir(&app)?.join(&file);
+    tauri::async_runtime::spawn_blocking(move || crate::video::frame_rate(&path)).await.map_err(|e| e.to_string())
 }

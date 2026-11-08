@@ -8,11 +8,12 @@ import type { Op } from '../model/ops';
 import { DEFAULT_WIDTH, type BreakdownCategory, type BreakdownItem, type ScriptBlock, type ScriptBlockType, type ScriptElement, type ScriptFormat, type ScriptTitlePage } from '../model/types';
 import { IconScript } from '../ui/icons';
 import { TileTitle } from '../canvas/TileTitle';
+import { freeSpot } from '../canvas/placement';
 import { FORMATS, characterName, eighthsLabel, paginate, parseHeading, scriptLanguage, scriptStats, type FormatSpec } from './layout';
 import { EMPTY_TITLE_PAGE, parseFdx, parseFountain, type ParsedScript } from './formats';
 import { exportScript, type ScriptExportFormat } from './print';
 import { KIND_LABELS, KIND_ORDER, NEXT_ON_ENTER, TAB_NEXT, blocksToDoc, currentLine, docToBlocks, scriptExtensions, setKind, showBreakdown, showPageBreaks, toggleDual } from './schema';
-import { CATEGORIES, addItem, itemSceneCounts } from './breakdown';
+import { CATEGORIES, addItem, itemSceneCounts, renameItem } from './breakdown';
 import { makeBreakdownTable, makeStoryboard } from './storyboard';
 
 export function newScriptFields(blocks?: ScriptBlock[], titlePage?: ScriptTitlePage, title = 'Новый сценарий') {
@@ -71,10 +72,11 @@ export function scenesToBoard(script: ScriptElement): string | null {
   const now = Date.now();
   const parentId = script.parentId ?? useStore.getState().boardId;
   const columnId = nanoid();
+  const spot = freeSpot(parentId, script.x + script.width + 4, script.y, DEFAULT_WIDTH.COLUMN, 12 + stats.scenes.length * 14);
   const ops: Op[] = [
     {
       kind: 'create',
-      element: { id: columnId, type: 'COLUMN', parentId, section: 'CANVAS', x: script.x + script.width + 4, y: script.y, z: script.z + 1, width: DEFAULT_WIDTH.COLUMN, title: `Сцены · ${script.title}`, collapsed: false, createdAt: now, updatedAt: now },
+      element: { id: columnId, type: 'COLUMN', parentId, section: 'CANVAS', x: spot.x, y: spot.y, z: script.z + 1, width: DEFAULT_WIDTH.COLUMN, title: `Сцены · ${script.title}`, collapsed: false, createdAt: now, updatedAt: now },
     },
   ];
   stats.scenes.forEach((scene, i) => {
@@ -529,7 +531,15 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
                       .filter((i) => i.category === c.id)
                       .map((i) => (
                         <li key={i.id}>
-                          <span>{i.name}</span>
+                          <input
+                            key={`${i.id}:${i.name}`}
+                            className="sp-bd-name"
+                            aria-label={`Название «${i.name}»`}
+                            title="Можно переименовать, например в начальную форму слова"
+                            defaultValue={i.name}
+                            onBlur={(e) => e.target.value.trim() !== i.name && setBreakdown(renameItem(breakdown, i.id, e.target.value))}
+                            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                          />
                           <span className="sp-bd-count">{counts.get(i.name) ?? 0} сц.</span>
                           <button type="button" className="ibtn sp-bd-del" aria-label={`Убрать «${i.name}» из разбора`} onClick={() => setBreakdown(breakdown.filter((x) => x.id !== i.id))}>
                             ✕

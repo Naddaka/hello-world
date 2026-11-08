@@ -6,8 +6,9 @@ import type { FileElement, MarkerColor, VideoMarker } from '../model/types';
 import { media, useMediaSrc } from '../storage/media';
 import { fileName, saveFile } from '../storage/files';
 import { isTauri } from '../storage/repo';
-import { DEFAULT_FPS, FRAME_RATES, clock, frameMiddle, frameOf, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
+import { DEFAULT_FPS, FRAME_RATES, canDropFrame, clock, frameMiddle, frameOf, snapFps, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters, youtubeChapterProblems } from './markers';
 import { shortcutKey } from '../ui/keys';
+import { freeSpot } from '../canvas/placement';
 
 /** Which video or audio file is open for review. */
 export const useReview = create<{ id: string | null }>(() => ({ id: null }));
@@ -18,8 +19,9 @@ export const isReviewable = (e: { type: string; mime?: string }) => e.type === '
 const COLORS: MarkerColor[] = ['blue', 'red', 'green', 'yellow', 'purple'];
 const COLOR_LABELS: Record<MarkerColor, string> = { blue: 'Синий', red: 'Красный', green: 'Зелёный', yellow: 'Жёлтый', purple: 'Фиолетовый' };
 
-/** Absolute path of a stored file (desktop only), for editors that open the media from disk. */
+/** Path editing software should open: the original file if it was imported from disk, else the library copy (desktop only). */
 async function mediaPath(file: FileElement): Promise<string | undefined> {
+  if (file.sourcePath) return file.sourcePath;
   if (!isTauri()) return undefined;
   const { invoke } = await import('@tauri-apps/api/core');
   const dir = await invoke<string>('media_location');
@@ -30,20 +32,24 @@ type ExportKind = 'edl' | 'premiere' | 'fcpxml' | 'csv' | 'youtube';
 
 async function exportMarkers(file: FileElement, kind: ExportKind, duration: number, size: { w: number; h: number }) {
   const fps = file.fps ?? DEFAULT_FPS;
+  const df = !!file.dropFrame && canDropFrame(fps);
   const markers = file.markers ?? [];
   const base = file.name.replace(/\.[^.]+$/, '') || 'Видео';
   const clip = { name: file.name, duration, path: await mediaPath(file), width: size.w || undefined, height: size.h || undefined };
   switch (kind) {
     case 'edl':
-      return saveFile(fileName(`${base} — маркеры`, 'edl'), toResolveEdl(markers, fps, base), 'text/plain', { name: 'EDL', extensions: ['edl'] });
+      return saveFile(fileName(`${base} — маркеры`, 'edl'), toResolveEdl(markers, fps, base, 1, df), 'text/plain', { name: 'EDL', extensions: ['edl'] });
     case 'premiere':
-      return saveFile(fileName(`${base} — ревью`, 'xml'), toPremiereXml(markers, fps, clip), 'application/xml', { name: 'XML', extensions: ['xml'] });
+      return saveFile(fileName(`${base} — ревью`, 'xml'), toPremiereXml(markers, fps, clip, df), 'application/xml', { name: 'XML', extensions: ['xml'] });
     case 'fcpxml':
-      return saveFile(fileName(`${base} — ревью`, 'fcpxml'), toFcpxml(markers, fps, clip), 'application/xml', { name: 'FCPXML', extensions: ['fcpxml'] });
+      return saveFile(fileName(`${base} — ревью`, 'fcpxml'), toFcpxml(markers, fps, clip, df), 'application/xml', { name: 'FCPXML', extensions: ['fcpxml'] });
     case 'csv':
-      return saveFile(fileName(`${base} — комментарии`, 'csv'), toMarkersCsv(markers, fps), 'text/csv', { name: 'CSV', extensions: ['csv'] });
-    case 'youtube':
+      return saveFile(fileName(`${base} — комментарии`, 'csv'), toMarkersCsv(markers, fps, df), 'text/csv', { name: 'CSV', extensions: ['csv'] });
+    case 'youtube': {
+      const problems = youtubeChapterProblems(markers, duration);
+      if (problems.length && !window.confirm(`YouTube не покажет эти главы: ${problems.join('; ')}. Сохранить всё равно?`)) return false;
       return saveFile(fileName(`${base} — главы`, 'txt'), toYoutubeChapters(markers), 'text/plain', { name: 'Текст', extensions: ['txt'] });
+    }
   }
 }
 
@@ -56,16 +62,17 @@ export async function grabFrame(file: FileElement, video: HTMLVideoElement): Pro
   canvas.getContext('2d')!.drawImage(video, 0, 0);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) return null;
-  const tc = timecode(video.currentTime, file.fps ?? DEFAULT_FPS);
+  const tc = timecode(video.currentTime, file.fps ?? DEFAULT_FPS, !!file.dropFrame);
   const name = `${file.name.replace(/\.[^.]+$/, '')} ${tc.replace(/:/g, '-')}.png`;
   const info = await (await media()).importFile(new File([blob], name, { type: 'image/png' }));
-  const grabs = Object.values(useStore.getState().elements).filter((e) => e.type === 'IMAGE' && e.parentId === file.parentId && e.name.startsWith(file.name.replace(/\.[^.]+$/, ''))).length;
+  const width = 26;
+  const spot = freeSpot(file.parentId!, file.x + file.width + 3, file.y, width, Math.ceil((width * video.videoHeight) / video.videoWidth) + 5);
   return actions.insert(
     { type: 'IMAGE', media: { id: info.id, ext: info.ext }, name, naturalWidth: video.videoWidth, naturalHeight: video.videoHeight, caption: `${file.name} · ${tc}`, showCaption: true },
     file.parentId!,
-    file.x + file.width + 3 + (grabs % 3) * 3,
-    file.y + (grabs % 3) * 3,
-    26,
+    spot.x,
+    spot.y,
+    width,
   );
 }
 
@@ -81,10 +88,50 @@ function Review({ file }: { file: FileElement }) {
   const [menu, setMenu] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const fps = file.fps ?? DEFAULT_FPS;
+  const df = !!file.dropFrame && canDropFrame(fps);
+  const tc = (seconds: number) => timecode(seconds, fps, df);
   const markers = sortMarkers(file.markers ?? []);
   const isVideo = file.mime.startsWith('video/');
 
   const setMarkers = (next: VideoMarker[]) => actions.update(file.id, { markers: next });
+
+  // Frame rate: read from the file's container; if it does not say, measured from frames while playing.
+  useEffect(() => {
+    if (file.fps != null || !isVideo) return;
+    let cancelled = false;
+    const found = (raw: number) => {
+      if (cancelled || !Number.isFinite(raw) || raw < 1 || raw > 240) return;
+      if (useStore.getState().elements[file.id]?.type === 'FILE' && (useStore.getState().elements[file.id] as FileElement).fps == null) {
+        actions.setLive(file.id, { fps: snapFps(raw), fpsDetected: true });
+      }
+    };
+    const measure = () => {
+      const v = video.current as (HTMLVideoElement & { requestVideoFrameCallback?: (cb: (now: number, meta: { mediaTime: number }) => void) => number }) | null;
+      if (!v?.requestVideoFrameCallback) return;
+      const times: number[] = [];
+      const onFrame = (_now: number, meta: { mediaTime: number }) => {
+        if (cancelled) return;
+        if (!v.paused) times.push(meta.mediaTime);
+        if (times.length < 16) v.requestVideoFrameCallback!(onFrame);
+        else {
+          // The shortest steady gap between presented frames is one frame.
+          const gaps = times.slice(1).map((t, i) => t - times[i]).filter((g) => g > 0).sort((a, b) => a - b);
+          if (gaps.length) found(1 / gaps[Math.floor(gaps.length / 3)]);
+        }
+      };
+      v.requestVideoFrameCallback(onFrame);
+    };
+    if (isTauri()) {
+      void import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke<number | null>('media_frame_rate', { file: `${file.media.id}.${file.media.ext}` }))
+        .then((raw) => (raw ? found(raw) : measure()))
+        .catch(measure);
+    } else measure();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file.id, file.fps == null, src]);
   const seek = useCallback(
     (t: number) => {
       const v = video.current;
@@ -161,14 +208,28 @@ function Review({ file }: { file: FileElement }) {
         </span>
         <label className="sp-check">
           Кадров/с
-          <select className="sp-select" value={fps} onChange={(e) => actions.update(file.id, { fps: Number(e.target.value) })}>
-            {FRAME_RATES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
+          <select
+            className="sp-select"
+            value={fps}
+            title={file.fpsDetected ? 'Определено по файлу' : file.fps == null ? 'Не определено — выберите частоту' : 'Выбрано вручную'}
+            onChange={(e) => actions.update(file.id, { fps: Number(e.target.value), fpsDetected: false })}
+          >
+            {[...new Set([...FRAME_RATES, fps])]
+              .sort((a, b) => a - b)
+              .map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                  {file.fpsDetected && r === fps ? ' (по файлу)' : ''}
+                </option>
+              ))}
           </select>
         </label>
+        {canDropFrame(fps) && (
+          <label className="sp-check" title="Drop-frame: таймкод с «;», идёт вровень с часами">
+            <input type="checkbox" checked={df} onChange={(e) => actions.update(file.id, { dropFrame: e.target.checked })} />
+            DF
+          </label>
+        )}
         {isVideo && (
           <button
             type="button"
@@ -178,7 +239,7 @@ function Review({ file }: { file: FileElement }) {
               if (!video.current) return;
               video.current.pause();
               const id = await grabFrame(file, video.current);
-              actions.showToast(id ? `Стоп-кадр ${timecode(video.current.currentTime, fps)} добавлен на доску` : 'Не удалось взять кадр');
+              actions.showToast(id ? `Стоп-кадр ${tc(video.current.currentTime)} добавлен на доску` : 'Не удалось взять кадр');
             }}
           >
             Стоп-кадр в карточку
@@ -210,7 +271,10 @@ function Review({ file }: { file: FileElement }) {
                   }}
                 >
                   <span>{label}</span>
-                  <small>{hint}</small>
+                  <small>
+                    {hint}
+                    {(kind === 'premiere' || kind === 'fcpxml') && !file.sourcePath ? '. Ссылается на копию в медиатеке Zadum — в монтажке перелинкуйте на оригинал' : ''}
+                  </small>
                 </button>
               ))}
             </div>
@@ -259,7 +323,7 @@ function Review({ file }: { file: FileElement }) {
               ⏭
             </button>
             <span className="vr-tc" aria-live="off">
-              {timecode(time, fps)}
+              {tc(time)}
             </span>
             <div
               className="vr-timeline"
@@ -293,7 +357,7 @@ function Review({ file }: { file: FileElement }) {
                     type="button"
                     className={`vr-pin c-${m.color}${m.done ? ' done' : ''}`}
                     style={{ left: `${(m.time / duration) * 100}%` }}
-                    title={`${timecode(m.time, fps)} — ${m.text}`}
+                    title={`${tc(m.time)} — ${m.text}`}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       seek(m.time);
@@ -301,7 +365,7 @@ function Review({ file }: { file: FileElement }) {
                   />
                 ))}
             </div>
-            <span className="vr-tc muted">{timecode(duration, fps)}</span>
+            <span className="vr-tc muted">{tc(duration)}</span>
           </div>
           <p className="vr-keys">Пробел — пуск/пауза · ← → — кадр (с Shift — секунда) · M — комментарий · [ ] — к соседнему комментарию</p>
         </div>
@@ -314,7 +378,7 @@ function Review({ file }: { file: FileElement }) {
             }}
           >
             <div className="vr-new-head">
-              <span>Комментарий на {timecode(time, fps)}</span>
+              <span>Комментарий на {tc(time)}</span>
               <span className="vr-colors" role="radiogroup" aria-label="Цвет маркера">
                 {COLORS.map((c) => (
                   <button key={c} type="button" role="radio" aria-checked={c === color} aria-label={COLOR_LABELS[c]} className={`vr-dot c-${c}${c === color ? ' on' : ''}`} onClick={() => setColor(c)} />
@@ -344,12 +408,12 @@ function Review({ file }: { file: FileElement }) {
               <li key={m.id} className={`vr-item${m.done ? ' done' : ''}${Math.abs(m.time - time) < 0.5 / fps + 0.02 ? ' current' : ''}`}>
                 <button type="button" className={`vr-time c-${m.color}`} onClick={() => seek(m.time)} title="Перейти">
                   {clock(m.time)}
-                  <small>{timecode(m.time, fps)}</small>
+                  <small>{tc(m.time)}</small>
                 </button>
                 <textarea
                   key={`${m.id}:${m.text}`}
                   className="vr-text"
-                  aria-label={`Комментарий на ${timecode(m.time, fps)}`}
+                  aria-label={`Комментарий на ${tc(m.time)}`}
                   defaultValue={m.text}
                   rows={Math.min(4, m.text.split('\n').length + Math.floor(m.text.length / 40))}
                   onBlur={(e) => e.target.value.trim() !== m.text && setMarkers((file.markers ?? []).map((x) => (x.id === m.id ? { ...x, text: e.target.value.trim() } : x)))}

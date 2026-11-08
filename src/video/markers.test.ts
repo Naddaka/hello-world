@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoMarker } from '../model/types';
-import { clock, frameMiddle, framesToTimecode, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
+import { canDropFrame, clock, frameMiddle, framesToTimecode, snapFps, youtubeChapterProblems, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
 
 const m = (time: number, text: string, extra: Partial<VideoMarker> = {}): VideoMarker => ({ id: `m${time}`, time, text, color: 'blue', done: false, ...extra });
 const markers = [m(65.48, 'Пересветить небо', { color: 'red' }), m(2, 'Начать раньше'), m(3600 + 0.04, 'Титры', { done: true })];
@@ -58,5 +58,44 @@ describe('marker exports', () => {
     expect(toMarkersCsv([m(2, 'Сцена; дубль 2')], 25)).toBe('﻿Таймкод;Секунды;Комментарий;Исправлено\r\n00:00:02:00;2.000;"Сцена; дубль 2";нет\r\n');
     expect(toYoutubeChapters(markers)).toBe('0:00 Начало\n0:02 Начать раньше\n1:05 Пересветить небо\n1:00:00 Титры\n');
     expect(toYoutubeChapters([m(0, 'Вступление'), m(30, 'Обзор')])).toBe('0:00 Вступление\n0:30 Обзор\n');
+  });
+});
+
+describe('frame rates and drop-frame timecode', () => {
+  it('snaps measured rates to the standard ones', () => {
+    expect(snapFps(29.97002997)).toBe(29.97);
+    expect(snapFps(30.0004)).toBe(30);
+    expect(snapFps(23.976023)).toBe(23.976);
+    expect(snapFps(12.5)).toBe(12.5);
+    expect(canDropFrame(29.97)).toBe(true);
+    expect(canDropFrame(30)).toBe(false);
+  });
+
+  it('skips frame numbers at each minute except every tenth', () => {
+    expect(framesToTimecode(1799, 29.97, true)).toBe('00:00:59;29');
+    expect(framesToTimecode(1800, 29.97, true)).toBe('00:01:00;02');
+    expect(framesToTimecode(17982, 29.97, true)).toBe('00:10:00;00');
+    expect(framesToTimecode(107892, 29.97, true)).toBe('01:00:00;00');
+    expect(framesToTimecode(3600, 59.94, true)).toBe('00:01:00;04');
+    // Without drop-frame, or at a rate that has none, nothing changes.
+    expect(framesToTimecode(1800, 29.97)).toBe('00:01:00:00');
+    expect(framesToTimecode(1800, 30, true)).toBe('00:01:00:00');
+  });
+
+  it('marks drop-frame in the exports', () => {
+    // Drop-frame timecode matches the clock at every ten minutes.
+    const edl = toResolveEdl([m(600, 'x')], 29.97, 'T', 1, true);
+    expect(edl).toContain('FCM: DROP FRAME');
+    expect(edl).toContain('01:10:00;00');
+    expect(toFcpxml([m(1, 'x')], 29.97, { name: 'a', duration: 2 }, true)).toContain('tcFormat="DF"');
+    expect(toPremiereXml([m(1, 'x')], 29.97, { name: 'a', duration: 2 }, true)).toContain('<displayformat>DF</displayformat>');
+  });
+});
+
+describe('YouTube chapter rules', () => {
+  it('explains why YouTube would ignore the chapters', () => {
+    expect(youtubeChapterProblems([m(2, 'a'), m(5, 'b')], 60)).toEqual(['короче 10 секунд глав: 2']);
+    expect(youtubeChapterProblems([m(30, 'a')], 60)).toEqual(['нужно хотя бы 3 главы, а получилось 2']);
+    expect(youtubeChapterProblems([m(0, 'a'), m(20, 'b'), m(40, 'c')], 60)).toEqual([]);
   });
 });

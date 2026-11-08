@@ -34,11 +34,14 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function itemPattern(name: string): RegExp | null {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return null;
-  // An ending is a few letters at most, so «кот» finds «кота», but not «котлета».
+  // An ending is a few letters at most, so «кот» finds «кота», but not «котлета»;
+  // a short word ending in a vowel changes it («Маша» → «Машу», «Машей», not «Машина»).
   const parts = words.map((w) => {
     const letters = [...w];
     const long = letters.length >= 5 && /\p{L}$/u.test(w);
-    return `${escapeRe(long ? letters.slice(0, -2).join('') : w)}\\p{L}{0,${long ? 4 : 3}}`;
+    const vowel = letters.length === 4 && /[аяоеёьйыиуюэ]$/iu.test(w);
+    const stem = long ? letters.slice(0, -2) : vowel ? letters.slice(0, -1) : letters;
+    return `${escapeRe(stem.join(''))}\\p{L}{0,${long ? 4 : vowel ? 2 : 3}}`;
   });
   return new RegExp(`(?<![\\p{L}\\p{N}])${parts.join('[\\s\\-]+')}(?![\\p{L}])`, 'giu');
 }
@@ -59,6 +62,7 @@ export interface SceneBreakdown {
   time: string;
   page: number;
   eighths: number;
+  /** Characters who speak in the scene, then those only mentioned in its action. */
   cast: string[];
   items: Partial<Record<BreakdownCategory, string[]>>;
 }
@@ -67,10 +71,17 @@ export interface SceneBreakdown {
 export function breakdownScenes(script: Pick<ScriptElement, 'blocks' | 'format' | 'breakdown'>): SceneBreakdown[] {
   const stats = scriptStats(script.blocks, FORMATS[script.format]);
   const items = script.breakdown ?? [];
+  // Everyone who speaks somewhere in the script; they count in a scene where they only appear in the action, too.
+  const speakers = stats.characters.map((c) => c.name);
   return stats.scenes.map((scene, i) => {
     const end = stats.scenes[i + 1]?.block ?? script.blocks.length;
     const text = script.blocks
       .slice(scene.block, end)
+      .map((b) => b.text)
+      .join('\n');
+    const action = script.blocks
+      .slice(scene.block, end)
+      .filter((b) => b.type === 'action' || b.type === 'scene')
       .map((b) => b.text)
       .join('\n');
     const found: Partial<Record<BreakdownCategory, string[]>> = {};
@@ -86,7 +97,7 @@ export function breakdownScenes(script: Pick<ScriptElement, 'blocks' | 'format' 
       time: h.time.toLocaleUpperCase('ru-RU'),
       page: scene.page,
       eighths: scene.eighths,
-      cast: scene.characters,
+      cast: [...scene.characters, ...speakers.filter((name) => !scene.characters.includes(name) && findItem(action, name).length)],
       items: found,
     };
   });
@@ -115,4 +126,11 @@ export function addItem(list: BreakdownItem[] | undefined, item: BreakdownItem):
   const key = item.name.trim().toLocaleLowerCase('ru-RU');
   if (!key || existing.some((i) => i.name.toLocaleLowerCase('ru-RU') === key && i.category === item.category)) return existing;
   return [...existing, { ...item, name: item.name.trim() }];
+}
+
+/** Renames an item (e.g. from the word form that was selected to the base form). */
+export function renameItem(list: BreakdownItem[], id: string, name: string): BreakdownItem[] {
+  const clean = name.trim();
+  if (!clean) return list;
+  return list.map((i) => (i.id === id ? { ...i, name: clean } : i));
 }

@@ -16,6 +16,14 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   check('double-clicking a video opens the review', await page.isVisible('.vr-tc:has-text("00:00:06:00")'), await page.locator('.vr-tc').last().textContent());
 
   const tc = () => page.locator('.vr-tc').first().textContent();
+  // The frame rate is read from the frames while the video plays (the app also reads it from the file).
+  await page.keyboard.press(' ');
+  await page.waitForFunction(() => document.querySelector('.vr-head-fps, .sp-select option:checked')?.textContent?.includes('по файлу'), null, { timeout: 8000 }).catch(() => {});
+  await page.keyboard.press(' ');
+  check('the frame rate is detected', (await page.locator('.vr-overlay .sp-select option:checked').textContent()).includes('25 (по файлу)'), await page.locator('.vr-overlay .sp-select option:checked').textContent());
+  await page.keyboard.press('Home');
+  await page.evaluate(() => (document.querySelector('.vr-overlay video').currentTime = 0));
+  await page.waitForFunction(() => document.querySelector('.vr-overlay video').currentTime === 0);
   await page.keyboard.press('Shift+ArrowRight');
   await page.keyboard.press('Shift+ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -51,8 +59,15 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   check('markers export as a Resolve EDL', edl.includes('01:00:02:01 01:00:02:02') && edl.includes('|C:ResolveColorRed |M:Звук громче |D:1'), edl.slice(0, 200));
   await page.click('.vr-overlay >> text=Экспорт маркеров');
   download = page.waitForEvent('download');
+  // Chapters at 0:02 and 0:03 break YouTube's rules: the app says so and lets you save anyway.
+  let warning = '';
+  page.once('dialog', (d) => {
+    warning = d.message();
+    void d.accept();
+  });
   await page.click('.menu-item:has-text("Главы YouTube")');
   const chapters = readFileSync(await (await download).path(), 'utf8');
+  check('YouTube chapter rules are checked', warning.includes('короче 10 секунд'), warning);
   check('and as YouTube chapters', chapters === '0:00 Начало\n0:02 Пересветить небо\n0:03 Звук громче\n', JSON.stringify(chapters));
 
   // Frame grab.

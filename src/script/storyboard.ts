@@ -4,6 +4,7 @@ import type { Op } from '../model/ops';
 import { DEFAULT_WIDTH, GRID, type ScriptElement, type ShotInfo, type SketchElement, type TableElement, type ZElement } from '../model/types';
 import { FORMATS, eighthsLabel, scriptStats } from './layout';
 import { breakdownTable } from './breakdown';
+import { freeSpot } from '../canvas/placement';
 
 /** Shot vocabulary, with the usual abbreviations for the shot list. */
 export const SHOT_SIZES: { label: string; short: string }[] = [
@@ -41,7 +42,8 @@ export function makeStoryboard(script: ScriptElement, framesPerScene = 3): strin
   const parentId = script.parentId ?? useStore.getState().boardId;
   const boardId = nanoid();
   const base = (parent: string, x: number, y: number, z: number, width: number) => ({ id: nanoid(), parentId: parent, section: 'CANVAS' as const, x, y, z, width, createdAt: now, updatedAt: now });
-  const ops: Op[] = [{ kind: 'create', element: { ...base(parentId, script.x, script.y + 20, script.z + 1, DEFAULT_WIDTH.BOARD), id: boardId, type: 'BOARD', title: `Раскадровка · ${script.title}`, color: 'purple' } }];
+  const spot = freeSpot(parentId, script.x + script.width + 4, script.y, DEFAULT_WIDTH.BOARD, 18);
+  const ops: Op[] = [{ kind: 'create', element: { ...base(parentId, spot.x, spot.y, script.z + 1, DEFAULT_WIDTH.BOARD), id: boardId, type: 'BOARD', title: `Раскадровка · ${script.title}`, color: 'purple' } }];
   let z = 1;
   stats.scenes.forEach((scene, row) => {
     const y = row * ROW_HEIGHT;
@@ -79,14 +81,15 @@ export function makeStoryboard(script: ScriptElement, framesPerScene = 3): strin
 export function addFrameAfter(frame: SketchElement): string {
   const now = Date.now();
   const shot = frame.shot ?? emptyShot();
+  const spot = frame.section === 'CANVAS' && frame.parentId ? freeSpot(frame.parentId, frame.x + frame.width + FRAME_GAP, frame.y, frame.width, Math.ceil(frame.width / frame.aspect) + 6) : { x: frame.x + frame.width + FRAME_GAP, y: frame.y };
   const n = Number.parseInt(shot.shot, 10);
   const element: SketchElement = {
     id: nanoid(),
     type: 'SKETCH',
     parentId: frame.parentId,
     section: frame.section,
-    x: frame.x + frame.width + FRAME_GAP,
-    y: frame.y,
+    x: spot.x,
+    y: spot.y,
     z: frame.z + 1,
     width: frame.width,
     createdAt: now,
@@ -145,7 +148,9 @@ function placeTable(fields: Pick<TableElement, 'type' | 'cells' | 'colWidths' | 
   const now = Date.now();
   const elements = useStore.getState().elements;
   const z = Math.max(0, ...canvasChildren(elements, parentId).map((e) => e.z)) + 1;
-  const element: TableElement = { id: nanoid(), parentId, section: 'CANVAS', x, y, z, width: tableWidthGU(fields.colWidths), createdAt: now, updatedAt: now, ...fields };
+  const width = tableWidthGU(fields.colWidths);
+  const spot = freeSpot(parentId, x, y, width, fields.cells.length * 5 + 4);
+  const element: TableElement = { id: nanoid(), parentId, section: 'CANVAS', x: spot.x, y: spot.y, z, width, createdAt: now, updatedAt: now, ...fields };
   commit([{ kind: 'create', element }]);
   return element.id;
 }

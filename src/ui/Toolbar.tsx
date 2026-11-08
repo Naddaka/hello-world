@@ -23,6 +23,7 @@ import {
   IconTrash,
 } from './icons';
 import { newLine } from '../canvas/LinesLayer';
+import { freeSpot } from '../canvas/placement';
 import { addSwatch } from '../canvas/SwatchCard';
 import { newTableFields, tableWidth } from '../table/TableCard';
 import { newDocumentFields, openDocument } from '../doc/DocumentView';
@@ -111,8 +112,10 @@ export function Toolbar() {
       setGhost(null);
       const halfWidth = (kind === 'MEDIA' ? DEFAULT_WIDTH.IMAGE : kind === 'LINE' || kind === 'DRAW' ? 12 : DEFAULT_WIDTH[kind]) / 2;
       if (!moved) {
+        // A click puts it in the middle of the view, next to (not on top of) what is there.
         const c = viewportCentreGrid();
-        create(kind, c.x - halfWidth, c.y - 6);
+        const spot = kind === 'LINE' || kind === 'DRAW' ? { x: c.x - halfWidth, y: c.y - 6 } : freeSpot(useStore.getState().boardId, c.x - halfWidth, c.y - 6, halfWidth * 2, 14);
+        create(kind, spot.x, spot.y);
       } else if (isOverViewport(ev.clientX, ev.clientY) && !(document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest('.toolbar')) {
         const p = screenToCanvas(ev.clientX, ev.clientY);
         create(kind, p.x / GRID - halfWidth, p.y / GRID - 3, ev.clientX, ev.clientY);

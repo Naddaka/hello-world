@@ -29,7 +29,11 @@ const failed = await runSuite('stage 4b', 4339, async ({ page, check }) => {
   await page.keyboard.press('Enter');
   await page.keyboard.type('Под ногами — мокрые доски.');
   check('typing after a click keeps the text', (await page.locator('.sl', { hasText: 'Маша идёт по мокрым доскам.' }).count()) === 1);
-  check('a selection can be added to the breakdown', await page.isVisible('.sp-bd-cat:has-text("Декорация") >> text=Маша'));
+  check('a selection can be added to the breakdown', (await page.locator('.sp-bd-cat:has-text("Декорация") .sp-bd-name').inputValue()) === 'Маша');
+  // The selected word form can be renamed.
+  await page.fill('.sp-bd-cat:has-text("Декорация") .sp-bd-name', 'Маш');
+  await page.keyboard.press('Enter');
+  check('a breakdown item can be renamed', (await page.locator('.sp-bd-cat:has-text("Декорация") .sp-bd-name').inputValue()) === 'Маш');
   await page.click('.sp-bd-cat:has-text("Декорация") button[aria-label^="Убрать"]');
   check('an item can be removed again', (await page.locator('.sp-bd-cat:has-text("Декорация")').count()) === 0);
   await page.fill('.sp-bd-add input', 'мокрые доски');
@@ -66,6 +70,9 @@ const failed = await runSuite('stage 4b', 4339, async ({ page, check }) => {
   await page.fill('.sp-field:has-text("Движение камеры") input', 'Наезд');
   await page.fill('.sp-field:has-text("Длительность") input', '4');
   await page.fill('.sp-field:has-text("Описание") textarea', 'Лампа маяка');
+  const modal = await page.locator('.modal').boundingBox();
+  const duration = await page.locator('.sp-field:has-text("Длительность") input').boundingBox();
+  check('the shot dialog fields fit inside it', duration.x + duration.width <= modal.x + modal.width - 10, `${duration.x + duration.width} vs ${modal.x + modal.width}`);
   await page.click('.modal >> text=Сохранить');
   check('shot settings show on the frame', (await first.locator('.frame-facts').textContent()) === 'CU · Наезд' && (await first.locator('.frame-dur').textContent()) === '4 с');
 

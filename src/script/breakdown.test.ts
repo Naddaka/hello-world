@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ScriptBlock, ScriptBlockType, SketchElement } from '../model/types';
-import { addItem, breakdownScenes, breakdownTable, findItem, itemSceneCounts } from './breakdown';
+import { addItem, breakdownScenes, breakdownTable, findItem, itemSceneCounts, renameItem } from './breakdown';
 import { shotListCells, sizeShort, shotNumber, emptyShot } from './storyboard';
 import { tableToCsv } from '../table/csv';
 import { computeTable } from '../table/formula';
@@ -15,6 +15,7 @@ describe('breakdown', () => {
     expect(findItem('Подъезжает старого грузовика нет, стоит старый грузовик.', 'старый грузовик')).toHaveLength(2);
     expect(findItem('Кот спит. Котлета остыла. Нет кота.', 'кот')).toEqual([[0, 3], [30, 34]]);
     expect(findItem('скот', 'кот')).toEqual([]);
+    expect(findItem('Он ждёт Машу. Машей. Машина уехала.', 'МАША')).toEqual([[8, 12], [14, 19]]);
     expect(findItem('', 'кот')).toEqual([]);
   });
 
@@ -50,6 +51,21 @@ describe('breakdown', () => {
     expect(rows[0]).toEqual(['№', 'Режим', 'Объект', 'Время', 'Стр.', 'Объём', 'Персонажи', 'Реквизит', 'Костюм', 'Транспорт']);
     expect(rows[1]).toEqual(['1', 'ИНТ.', 'КВАРТИРА', 'ДЕНЬ', '1', '1/8', 'МАША', 'револьвер', 'красный плащ', '']);
     expect(rows[2].slice(-3)).toEqual(['револьвер', '', 'грузовик']);
+  });
+
+  it('counts characters who are only mentioned in the action', () => {
+    const scenes = breakdownScenes({
+      format: 'russian',
+      blocks: [b('scene', 'ИНТ. КУХНЯ — ДЕНЬ'), b('character', 'Маша'), b('dialogue', 'Пока.'), b('scene', 'ИНТ. СПАЛЬНЯ — НОЧЬ'), b('action', 'Петя смотрит на спящую Машу.'), b('character', 'Петя'), b('dialogue', 'Спи.')],
+    });
+    expect(scenes[1].cast).toEqual(['ПЕТЯ', 'МАША']);
+    expect(scenes[0].cast).toEqual(['МАША']);
+  });
+
+  it('renames an item, e.g. to the base form of the word', () => {
+    const list = [{ id: 'a', category: 'set' as const, name: 'лестнице' }];
+    expect(renameItem(list, 'a', ' лестница ')).toEqual([{ id: 'a', category: 'set', name: 'лестница' }]);
+    expect(renameItem(list, 'a', '  ')).toBe(list);
   });
 
   it('does not add the same item twice', () => {

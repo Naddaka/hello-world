@@ -144,6 +144,12 @@ export interface FileElement extends ElementBase {
   markers?: VideoMarker[];
   /** Frame rate used for timecodes and exports. */
   fps?: number;
+  /** The frame rate was read from the file (not chosen by hand). */
+  fpsDetected?: boolean;
+  /** Drop-frame timecode (29.97 and 59.94 only). */
+  dropFrame?: boolean;
+  /** Where the file was imported from on disk, so editing software can link to the original. */
+  sourcePath?: string;
 }
 
 export interface LinkElement extends ElementBase {

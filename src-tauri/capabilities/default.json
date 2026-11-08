@@ -37,6 +37,7 @@
     "allow-download-media",
     "allow-read-text-file",
     "allow-delete-media",
+    "allow-media-frame-rate",
     "allow-write-file",
     "allow-print-window",
     "allow-link-preview",

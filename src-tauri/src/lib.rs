@@ -1,6 +1,7 @@
 mod links;
 mod media;
 mod milanote;
+mod video;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -47,6 +48,7 @@ pub fn run() {
             media::download_media,
             media::read_text_file,
             media::delete_media,
+            media::media_frame_rate,
             media::write_file,
             media::print_window,
             links::link_preview,
