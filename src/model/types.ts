@@ -54,6 +54,8 @@ export interface BoardElement extends ElementBase {
   color: BoardColor;
   /** Offered in the template picker of empty boards. */
   isTemplate?: boolean;
+  /** Set on the board that holds an import (so a later import of the same account replaces it). */
+  importedFrom?: 'milanote';
 }
 
 /** A shortcut to a board that lives somewhere else. */

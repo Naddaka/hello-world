@@ -10,6 +10,7 @@ import { FormatBar } from '../editor/FormatBar';
 import { toMarkdown } from './markdown';
 import { fileName, printHtml, saveFile } from '../storage/files';
 import { IconScript } from '../ui/icons';
+import { TileTitle } from '../canvas/TileTitle';
 
 const staticExtensions = noteExtensions();
 const words = (doc: JSONContent) => (docText(doc).match(/\S+/g) ?? []).length;
@@ -44,7 +45,7 @@ export function DocumentTile({ element, selected }: { element: DocumentElement; 
       <div className="tile-icon doc-icon">
         <IconScript size={38} strokeWidth={1.5} />
       </div>
-      <div className="tile-title">{element.title}</div>
+      <TileTitle text={element.title} />
       <div className="tile-meta">{wordsLabel(words(element.content))}</div>
     </div>
   );

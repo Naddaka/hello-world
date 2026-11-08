@@ -1,6 +1,6 @@
 import { clearHistory, commit, flushPersist, useStore } from '../model/store';
-import type { Op } from '../model/ops';
-import { HOME_ID, mediaRefsOf, type MediaRef, type ZElement } from '../model/types';
+import { HOME_ID, type ZElement } from '../model/types';
+import { otherImportRoots, planReplacement } from './replace';
 import { media } from '../storage/media';
 import { dataUrlToBlob } from '../storage/dataUrl';
 import { convertMilanote, finalizeImport, MN_PREFIX, type ImportReport, type MediaJob, type MilanoteExport, type StoredMedia } from './milanote';
@@ -31,15 +31,17 @@ async function storeJob(job: MediaJob): Promise<StoredMedia | null> {
   }
 }
 
-/** Whether a previous Milanote import exists (it would be replaced). */
-export function previousImport(data: MilanoteExport): ZElement | undefined {
-  return useStore.getState().elements[`${MN_PREFIX}${data.roots?.home ?? 'home'}`];
+/** The previous import of the same account (it would be replaced), and imports of other accounts (they stay). */
+export function existingImports(data: MilanoteExport): { same: ZElement | undefined; others: ZElement[] } {
+  const elements = useStore.getState().elements;
+  const rootId = `${MN_PREFIX}${data.roots?.home ?? 'home'}`;
+  return { same: elements[rootId], others: otherImportRoots(elements, rootId) };
 }
 
 /**
  * Brings a Milanote export into Zadum: converts it, downloads every file into
  * the media library, then adds everything in one go as a "Milanote" board on
- * the home board. A previous import is replaced.
+ * the home board. A previous import of the same account is replaced.
  */
 export async function importMilanote(
   data: MilanoteExport,
@@ -78,21 +80,14 @@ export async function importMilanote(
     Object.assign(root, { parentId: HOME_ID, section: 'CANVAS', x: right + 4, y: top, z: Math.max(0, ...home.map((e) => e.z)) + 1 });
   }
 
-  const ops: Op[] = [];
-  const old = Object.values(state).filter((e) => e.id.startsWith(MN_PREFIX));
-  for (const e of old) ops.push({ kind: 'delete', element: e });
-  for (const e of elements) ops.push({ kind: 'create', element: e });
-  // Files of the previous import that nothing else uses (copies moved off the board keep theirs).
-  const kept = new Set(Object.values(state).filter((e) => !e.id.startsWith(MN_PREFIX)).flatMap((e) => mediaRefsOf(e).map((r) => r.id)));
-  const orphans = new Map<string, MediaRef>();
-  for (const e of old) for (const r of mediaRefsOf(e)) if (!kept.has(r.id)) orphans.set(r.id, r);
+  const { ops, removed, orphans } = planReplacement(state, elements, plan.rootId);
   // Not an undo step: the import is too large to undo by accident.
   commit(ops, false);
-  if (old.length) {
+  if (removed.size) {
     // Earlier undo steps may refer to the replaced elements; they cannot come back.
     clearHistory();
     await flushPersist();
-    await (await media()).remove([...orphans.values()]).catch((error) => console.warn('Milanote import: could not remove old files', error));
+    await (await media()).remove(orphans).catch((error) => console.warn('Milanote import: could not remove old files', error));
   }
   return { report: plan.report, rootId: plan.rootId };
 }

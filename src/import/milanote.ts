@@ -736,6 +736,7 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
     width: DEFAULT_WIDTH.BOARD,
     title: 'Milanote',
     color: 'purple',
+    importedFrom: 'milanote',
     createdAt: exportedAt,
     updatedAt: exportedAt,
   });

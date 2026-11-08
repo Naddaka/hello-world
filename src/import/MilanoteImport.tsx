@@ -4,7 +4,7 @@ import { actions } from '../model/store';
 import { isTauri } from '../storage/repo';
 import exporterSource from './milanoteExporter.js?raw';
 import { isMilanoteExport, type ImportReport, type MilanoteExport } from './milanote';
-import { importMilanote, previousImport, type ImportProgress } from './runImport';
+import { existingImports, importMilanote, type ImportProgress } from './runImport';
 
 export const useImportDialog = create<{ open: boolean }>(() => ({ open: false }));
 export const openMilanoteImport = () => useImportDialog.setState({ open: true });
@@ -205,7 +205,7 @@ export function MilanoteImportDialog() {
               {step.data.errors?.length ? ` Не удалось получить досок: ${step.data.errors.length} — подробности будут в отчёте.` : ''}
             </p>
             <p>Всё появится на главной доске как доска «Milanote». Сначала скачаю файлы — это может занять время.</p>
-            {previousImport(step.data) && <p className="mn-warn">Предыдущий импорт из Milanote будет заменён. Свои правки в нём сохраните, переместив их за пределы доски «Milanote».</p>}
+            <ExistingImports data={step.data} />
             <footer className="modal-foot">
               <button type="button" className="ibtn wide" onClick={() => setStep({ kind: 'start' })}>
                 Назад
@@ -247,6 +247,20 @@ export function MilanoteImportDialog() {
         )}
       </div>
     </div>
+  );
+}
+
+function ExistingImports({ data }: { data: MilanoteExport }) {
+  const { same, others } = existingImports(data);
+  return (
+    <>
+      {same && (
+        <p className="mn-warn">
+          Предыдущий импорт этого аккаунта (доска «{same.type === 'BOARD' ? same.title : 'Milanote'}» со всем содержимым) будет заменён свежей копией. Всё, что вы перенесли с этой доски в другие места, останется как есть.
+        </p>
+      )}
+      {others.length > 0 && <p className="side-hint mn-note">На главной уже есть импорт другого аккаунта Milanote — он останется, новая доска появится рядом.</p>}
+    </>
   );
 }
 

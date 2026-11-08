@@ -1,3 +1,4 @@
+import { TileTitle } from './TileTitle';
 import { useState } from 'react';
 import { actions } from '../model/store';
 import type { BoardElement } from '../model/types';
@@ -60,7 +61,7 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
         <IconBoard size={38} strokeWidth={1.6} />
         {badge}
       </div>
-      {editing && !shortcut ? <TitleInput element={element} /> : <div className="tile-title">{element.title}</div>}
+      {editing && !shortcut ? <TitleInput element={element} /> : <TileTitle text={element.title} />}
       <div className="tile-meta">{element.isTemplate ? 'Шаблон · ' : ''}{count} {plural(count)}</div>
     </div>
   );

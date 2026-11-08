@@ -7,6 +7,7 @@ import { actions, commit, useStore } from '../model/store';
 import type { Op } from '../model/ops';
 import { DEFAULT_WIDTH, type BreakdownCategory, type BreakdownItem, type ScriptBlock, type ScriptBlockType, type ScriptElement, type ScriptFormat, type ScriptTitlePage } from '../model/types';
 import { IconScript } from '../ui/icons';
+import { TileTitle } from '../canvas/TileTitle';
 import { FORMATS, characterName, eighthsLabel, paginate, parseHeading, scriptLanguage, scriptStats, type FormatSpec } from './layout';
 import { EMPTY_TITLE_PAGE, parseFdx, parseFountain, type ParsedScript } from './formats';
 import { exportScript, type ScriptExportFormat } from './print';
@@ -47,7 +48,7 @@ export function ScriptTile({ element, selected }: { element: ScriptElement; sele
         <IconScript size={38} strokeWidth={1.5} />
         <span className="script-badge">{stats.pages}</span>
       </div>
-      <div className="tile-title">{element.title}</div>
+      <TileTitle text={element.title} />
       <div className="tile-meta">
         {pagesLabel(stats.pages)} · {stats.scenes.length} сц.
       </div>

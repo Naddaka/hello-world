@@ -68,7 +68,7 @@ const failed = await runSuite(
     await page.click('.topbar >> text=Импорт');
     await page.setInputFiles('.modal input[type="file"]', FIXTURE);
     await page.waitForSelector('.modal >> button:has-text("Импортировать")');
-    check('a second import warns that it replaces the first', await page.isVisible('.modal >> text=Предыдущий импорт из Milanote будет заменён'));
+    check('a second import warns that it replaces the first', await page.isVisible('.modal >> text=Предыдущий импорт этого аккаунта'));
     await page.click('.modal >> button:has-text("Импортировать")');
     await page.waitForSelector('.modal >> text=Готово', { timeout: 20000 });
     await page.click('.modal >> button:has-text("Закрыть")');
