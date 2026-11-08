@@ -5,6 +5,7 @@ import { isTauri } from '../storage/repo';
 import { startPresenting } from './Presentation';
 import { useState } from 'react';
 import { exportBoard, type BoardExportFormat } from '../doc/boardExport';
+import { openMilanoteImport } from '../import/MilanoteImport';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
@@ -105,6 +106,9 @@ export function TopBar() {
           <IconPresent size={17} />
         </button>
       </div>
+      <button type="button" className="ibtn wide" title="Импорт из Milanote" onClick={openMilanoteImport}>
+        Импорт
+      </button>
       <ExportMenu />
     </header>
   );

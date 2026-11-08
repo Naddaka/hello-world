@@ -27,6 +27,8 @@ interface MediaBackend {
   importFile(file: File): Promise<MediaInfo>;
   importPath(path: string): Promise<MediaInfo>;
   importUrl(url: string): Promise<MediaInfo | null>;
+  /** Downloads a file of any size by URL (imports); rejects with the reason on failure. */
+  download(url: string, name: string): Promise<MediaInfo>;
   src(ref: MediaRef): Promise<string>;
   preview(url: string): Promise<LinkPreview | null>;
   openUrl(url: string): Promise<void>;
@@ -69,6 +71,7 @@ async function tauriBackend(): Promise<MediaBackend> {
         return null;
       }
     },
+    download: (url, name) => invoke<MediaInfo>('download_media', { url, name }),
     src: async (ref) => convertFileSrc(pathOf(ref)),
     async preview(url) {
       try {
@@ -105,15 +108,23 @@ async function browserBackend(): Promise<MediaBackend> {
     urls.set(ref.id, url);
     return url;
   };
+  const importFile = async (file: File): Promise<MediaInfo> => {
+    const id = crypto.randomUUID().replace(/-/g, '');
+    await db.put('files', file, id);
+    const size = await imageSize(file);
+    return { id, ext: extOf(file.name), name: file.name || 'файл', size: file.size, mime: file.type || 'application/octet-stream', width: size?.width, height: size?.height };
+  };
   return {
-    async importFile(file) {
-      const id = crypto.randomUUID().replace(/-/g, '');
-      await db.put('files', file, id);
-      const size = await imageSize(file);
-      return { id, ext: extOf(file.name), name: file.name || 'файл', size: file.size, mime: file.type || 'application/octet-stream', width: size?.width, height: size?.height };
-    },
+    importFile,
     importPath: () => Promise.reject(new Error('пути к файлам доступны только в приложении')),
     importUrl: async () => null,
+    async download(url, name) {
+      // Works for data: URLs and servers that allow cross-origin reads.
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      return importFile(new File([blob], name, { type: blob.type }));
+    },
     src,
     preview: async () => null,
     async openUrl(url) {

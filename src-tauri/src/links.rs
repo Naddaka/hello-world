@@ -27,9 +27,12 @@ struct OEmbed {
     thumbnail_url: Option<String>,
 }
 
+pub const USER_AGENT: &str =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
+
 pub fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15")
+        .user_agent(USER_AGENT)
         .timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()

@@ -157,6 +157,76 @@ pub async fn import_media_url(app: AppHandle, url: String) -> Result<MediaInfo, 
     describe(&target, id, ext, name)
 }
 
+/// Extension for a downloaded file: from its name, else from the content type.
+fn download_extension(name: &str, content_type: &str) -> String {
+    let from_name = extension_of(name);
+    if from_name != "bin" {
+        return from_name;
+    }
+    match content_type.split(';').next().unwrap_or("").trim() {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/heic" => "heic",
+        "image/svg+xml" => "svg",
+        "application/pdf" => "pdf",
+        "video/mp4" => "mp4",
+        "video/quicktime" => "mov",
+        "audio/mpeg" => "mp3",
+        "audio/mp4" => "m4a",
+        "audio/wav" | "audio/x-wav" => "wav",
+        _ => "bin",
+    }
+    .into()
+}
+
+/// Downloads a file of any size into the media library, streaming it to disk
+/// (used by the Milanote import for images, videos and documents).
+#[tauri::command]
+pub async fn download_media(app: AppHandle, url: String, name: Option<String>) -> Result<MediaInfo, String> {
+    use std::io::Write;
+    let client = reqwest::Client::builder()
+        .user_agent(crate::links::USER_AGENT)
+        .connect_timeout(std::time::Duration::from_secs(20))
+        .read_timeout(std::time::Duration::from_secs(60))
+        .redirect(reqwest::redirect::Policy::limited(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let name = name
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| percent_decode(url.split(['?', '#']).next().unwrap_or("").rsplit('/').next().unwrap_or("файл")));
+    let ext = download_extension(&name, &content_type);
+    let id = new_id();
+    let target = media_dir(&app)?.join(format!("{id}.{ext}"));
+    let partial = target.with_extension(format!("{ext}.part"));
+    let mut file = std::fs::File::create(&partial).map_err(|e| e.to_string())?;
+    let result: Result<(), String> = async {
+        while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
+            file.write_all(&chunk).map_err(|e| e.to_string())?;
+        }
+        file.flush().map_err(|e| e.to_string())
+    }
+    .await;
+    drop(file);
+    if let Err(e) = result {
+        let _ = std::fs::remove_file(&partial);
+        return Err(e);
+    }
+    std::fs::rename(&partial, &target).map_err(|e| e.to_string())?;
+    describe(&target, id, ext, name)
+}
+
 fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());

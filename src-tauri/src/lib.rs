@@ -1,5 +1,6 @@
 mod links;
 mod media;
+mod milanote;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -31,14 +32,21 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(milanote::ExportState::default())
         .invoke_handler(tauri::generate_handler![
             media::media_location,
             media::import_media_file,
             media::save_media_bytes,
             media::import_media_url,
+            media::download_media,
             media::write_file,
             media::print_window,
             links::link_preview,
+            milanote::milanote_open,
+            milanote::milanote_run,
+            milanote::milanote_close,
+            milanote::milanote_deliver,
+            milanote::milanote_read_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Zadum");

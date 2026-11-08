@@ -10,8 +10,11 @@ const { chromium } = require(path.join(execSync('npm root -g').toString().trim()
 
 export const OUT = path.resolve('e2e/out');
 
-/** Runs `scenario` against a fresh app and exits with a non-zero code if any check failed. */
-export async function runSuite(name, port, scenario) {
+/**
+ * Runs `scenario` against a fresh app and exits with a non-zero code if any check failed.
+ * `ignoreErrors` lists console messages the scenario provokes on purpose.
+ */
+export async function runSuite(name, port, scenario, { ignoreErrors = [] } = {}) {
   mkdirSync(OUT, { recursive: true });
   const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { stdio: 'ignore' });
   const results = [];
@@ -30,7 +33,7 @@ export async function runSuite(name, port, scenario) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: 'light' });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+    page.on('console', (m) => m.type() === 'error' && !ignoreErrors.some((re) => re.test(m.text())) && errors.push(m.text()));
     await page.goto(`http://localhost:${port}/`);
     await page.waitForSelector('text=Добро пожаловать в Zadum');
     await scenario({ page, check });

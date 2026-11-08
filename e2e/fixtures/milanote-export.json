@@ -1,0 +1,1186 @@
+{
+ "format": "milanote-export",
+ "version": 1,
+ "exportedAt": "2026-11-08T10:00:00.000Z",
+ "appVersion": "3.18.141",
+ "roots": {
+  "home": "H",
+  "templates": "T",
+  "quickNotes": "Q"
+ },
+ "boardCount": 7,
+ "elements": {
+  "H": {
+   "id": "H",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": null,
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "title": "Home"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "Q": {
+   "id": "Q",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": null,
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "title": "Quick notes"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "q1": {
+   "id": "q1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "Q",
+    "section": "CANVAS",
+    "position": {
+     "x": 2,
+     "y": 2
+    }
+   },
+   "content": {
+    "textContent": "Быстрая мысль"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "T": {
+   "id": "T",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": null,
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "title": "Templates"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "t1": {
+   "id": "t1",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": "T",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": "Мой шаблон съёмки",
+    "isTemplate": true
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "c1": {
+   "id": "c1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "H",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 4
+    }
+   },
+   "content": {
+    "width": 34,
+    "textContent": {
+     "blocks": [
+      {
+       "key": "k0",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "header-one",
+       "text": "Северный ветер"
+      },
+      {
+       "key": "k1",
+       "depth": 0,
+       "inlineStyleRanges": [
+        {
+         "offset": 0,
+         "length": 4,
+         "style": "BOLD"
+        }
+       ],
+       "entityRanges": [
+        {
+         "offset": 19,
+         "length": 14,
+         "key": 0
+        }
+       ],
+       "data": {},
+       "type": "unstyled",
+       "text": "Клип на один трек. Сайт режиссёра"
+      },
+      {
+       "key": "k2",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unordered-list-item",
+       "text": "Пирс"
+      },
+      {
+       "key": "k3",
+       "depth": 1,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unordered-list-item",
+       "text": "на рассвете"
+      },
+      {
+       "key": "k4",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unordered-list-item",
+       "text": "Маяк"
+      },
+      {
+       "key": "k5",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {
+        "checked": true
+       },
+       "type": "checklist",
+       "text": "Найти пирс"
+      },
+      {
+       "key": "k6",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "checklist",
+       "text": "Согласовать съёмку"
+      },
+      {
+       "key": "k7",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "small-text",
+       "text": "мелкий текст"
+      },
+      {
+       "key": "k8",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "code-block",
+       "text": "ffmpeg -i in.mov"
+      },
+      {
+       "key": "k9",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "code-block",
+       "text": "-c:v prores"
+      },
+      {
+       "key": "k10",
+       "depth": 0,
+       "inlineStyleRanges": [
+        {
+         "offset": 10,
+         "length": 1,
+         "style": "ITALIC"
+        }
+       ],
+       "entityRanges": [],
+       "data": {
+        "text-align-center": true
+       },
+       "type": "unstyled",
+       "text": "По центру 🎬 эмодзи"
+      }
+     ],
+     "entityMap": {
+      "0": {
+       "type": "LINK",
+       "data": {
+        "url": "https://example.com/director"
+       }
+      }
+     }
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "c2": {
+   "id": "c2",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "H",
+    "section": "CANVAS",
+    "position": {
+     "x": 44,
+     "y": 4
+    }
+   },
+   "content": {
+    "color": "YELLOW",
+    "textContent": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "heading",
+       "attrs": {
+        "level": 3
+       },
+       "content": [
+        {
+         "type": "text",
+         "text": "Референсы"
+        }
+       ]
+      },
+      {
+       "type": "smallText",
+       "content": [
+        {
+         "type": "text",
+         "text": "подпись мелко"
+        }
+       ]
+      },
+      {
+       "type": "callout",
+       "attrs": {
+        "icon": "💡"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Идея: снимать на 35 мм"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Позвонить "
+        },
+        {
+         "type": "mention",
+         "attrs": {
+          "id": "u2",
+          "label": "Рома"
+         }
+        },
+        {
+         "type": "text",
+         "text": " цвет",
+         "marks": [
+          {
+           "type": "textStyle",
+           "attrs": {
+            "color": "red"
+           }
+          },
+          {
+           "type": "bold"
+          }
+         ]
+        },
+        {
+         "type": "text",
+         "text": " маркер",
+         "marks": [
+          {
+           "type": "highlight",
+           "attrs": {
+            "color": "yellow"
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "taskList",
+       "content": [
+        {
+         "type": "taskItem",
+         "attrs": {
+          "checked": false
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "пункт"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "c3": {
+   "id": "c3",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "H",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 30
+    }
+   },
+   "content": {
+    "textContent": "Простой текст\nвторая строка",
+    "color": {
+     "space": "HEX",
+     "value": "#7cd651"
+    },
+    "labels": [
+     "lab1"
+    ]
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "b1": {
+   "id": "b1",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": "H",
+    "section": "CANVAS",
+    "position": {
+     "x": 84,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": "Клип «Северный ветер»",
+    "color": "BLUE"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "b2": {
+   "id": "b2",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": "H",
+    "section": "CANVAS",
+    "position": {
+     "x": 104,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": {
+     "blocks": [
+      {
+       "key": "k0",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unstyled",
+       "text": "Архив"
+      }
+     ],
+     "entityMap": {}
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "b3": {
+   "id": "b3",
+   "elementType": "BOARD",
+   "location": {
+    "parentId": "b2",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": "Глубже"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "b3c": {
+   "id": "b3c",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "b3",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 4
+    }
+   },
+   "content": {
+    "textContent": "На третьем уровне"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "col1": {
+   "id": "col1",
+   "elementType": "COLUMN",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": "Сцены",
+    "width": 36
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "cc1": {
+   "id": "cc1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "col1",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0,
+     "score": 2
+    }
+   },
+   "content": {
+    "textContent": "Сцена 2"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "cc2": {
+   "id": "cc2",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "col1",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0,
+     "score": 1
+    }
+   },
+   "content": {
+    "textContent": "Сцена 1"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "tl1": {
+   "id": "tl1",
+   "elementType": "TASK_LIST",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 44,
+     "y": 4
+    }
+   },
+   "content": {
+    "title": "Подготовка"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "task1": {
+   "id": "task1",
+   "elementType": "TASK",
+   "location": {
+    "parentId": "tl1",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0,
+     "score": 1
+    }
+   },
+   "content": {
+    "textContent": "Арендовать свет",
+    "isComplete": true
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "task2": {
+   "id": "task2",
+   "elementType": "TASK",
+   "location": {
+    "parentId": "tl1",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0,
+     "score": 2
+    }
+   },
+   "content": {
+    "textContent": {
+     "blocks": [
+      {
+       "key": "k0",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unstyled",
+       "text": "Взять дрон"
+      }
+     ],
+     "entityMap": {}
+    },
+    "dueDate": 1767225600000
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "tl2": {
+   "id": "tl2",
+   "elementType": "TASK_LIST",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 44,
+     "y": 30
+    }
+   },
+   "content": {
+    "version": "single-editor",
+    "textContent": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "taskListTitle",
+       "content": [
+        {
+         "type": "text",
+         "text": "Монтаж"
+        }
+       ]
+      },
+      {
+       "type": "taskList",
+       "content": [
+        {
+         "type": "taskItem",
+         "attrs": {
+          "checked": true
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "Черновая сборка"
+            }
+           ]
+          },
+          {
+           "type": "taskList",
+           "content": [
+            {
+             "type": "taskItem",
+             "attrs": {
+              "checked": false
+             },
+             "content": [
+              {
+               "type": "paragraph",
+               "content": [
+                {
+                 "type": "text",
+                 "text": "звук"
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "taskItem",
+         "attrs": {
+          "checked": false
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "Цветокор"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "img1": {
+   "id": "img1",
+   "elementType": "IMAGE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 84,
+     "y": 4
+    }
+   },
+   "content": {
+    "width": 30,
+    "image": {
+     "original": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzRlYmFmZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2FkNmZmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSJ1cmwoI2cpIi8+PGNpcmNsZSBjeD0iMzAwIiBjeT0iODAiIHI9IjQwIiBmaWxsPSIjZmZkMTRkIi8+PC9zdmc+",
+     "regular": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzRlYmFmZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2FkNmZmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSJ1cmwoI2cpIi8+PGNpcmNsZSBjeD0iMzAwIiBjeT0iODAiIHI9IjQwIiBmaWxsPSIjZmZkMTRkIi8+PC9zdmc+",
+     "width": 400,
+     "height": 300
+    },
+    "caption": {
+     "blocks": [
+      {
+       "key": "k0",
+       "depth": 0,
+       "inlineStyleRanges": [],
+       "entityRanges": [],
+       "data": {},
+       "type": "unstyled",
+       "text": "Кадр с пирса"
+      }
+     ],
+     "entityMap": {}
+    },
+    "showCaption": true
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "img2": {
+   "id": "img2",
+   "elementType": "IMAGE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 84,
+     "y": 40
+    }
+   },
+   "content": {
+    "image": {
+     "original": "https://media.invalid/p/missing.jpg",
+     "width": 800,
+     "height": 600
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "f1": {
+   "id": "f1",
+   "elementType": "FILE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 120,
+     "y": 4
+    }
+   },
+   "content": {
+    "file": {
+     "url": "data:text/plain;base64,0L/RgNC40LLQtdGC",
+     "filename": "заметки.txt",
+     "size": 12,
+     "mime": "text/plain"
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "l1": {
+   "id": "l1",
+   "elementType": "LINK",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 120,
+     "y": 20
+    }
+   },
+   "content": {
+    "link": {
+     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+     "title": "Референс",
+     "description": "Музыкальный клип"
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "ln1": {
+   "id": "ln1",
+   "elementType": "LINE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "start": {
+     "elementId": "img1"
+    },
+    "end": {
+     "elementId": "f1"
+    },
+    "lineLabel": "смотри",
+    "lineLabelEnabled": true,
+    "endStyle": "ARROW",
+    "startStyle": "NONE",
+    "lineWeight": 4,
+    "color": "RED"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "ln2": {
+   "id": "ln2",
+   "elementType": "LINE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 10,
+     "y": 60
+    }
+   },
+   "content": {
+    "start": {
+     "x": 0,
+     "y": 0
+    },
+    "end": {
+     "x": 20,
+     "y": 0
+    },
+    "endStyle": "NONE",
+    "lineWeight": 1
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "sw1": {
+   "id": "sw1",
+   "elementType": "COLOR_SWATCH",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 60
+    }
+   },
+   "content": {
+    "color": {
+     "space": "HEX",
+     "value": "#ff8d48"
+    },
+    "colorName": "Закатный"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "tb1": {
+   "id": "tb1",
+   "elementType": "TABLE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 80
+    }
+   },
+   "content": {
+    "tableContent": {
+     "version": 1,
+     "colWidthsGU": [
+      14,
+      10,
+      10
+     ],
+     "data": [
+      [
+       {
+        "value": "Позиция",
+        "textStyle": [
+         "BOLD"
+        ],
+        "background": "TABLE_DEFAULT_HEADER_BACKGROUND_COLOR"
+       },
+       {
+        "value": "Цена",
+        "background": "TABLE_DEFAULT_HEADER_BACKGROUND_COLOR"
+       },
+       {
+        "value": "Кол-во",
+        "background": "TABLE_DEFAULT_HEADER_BACKGROUND_COLOR"
+       }
+      ],
+      [
+       {
+        "value": "Свет"
+       },
+       {
+        "value": 5000,
+        "type": "CURRENCY"
+       },
+       {
+        "value": 2
+       }
+      ],
+      [
+       {
+        "value": "Итого",
+        "textStyle": [
+         "BOLD"
+        ]
+       },
+       {
+        "value": "=SUM(B2:B2)"
+       },
+       {
+        "value": null
+       }
+      ]
+     ]
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "sk1": {
+   "id": "sk1",
+   "elementType": "SKETCH",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 50,
+     "y": 60
+    }
+   },
+   "content": {
+    "drawing": {
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"320\" height=\"180\" viewBox=\"0 0 320 180\"><path d=\"M20 150 Q 160 10 300 150\" stroke=\"#16181d\" stroke-width=\"4\" fill=\"none\"/></svg>",
+     "width": 320,
+     "height": 180
+    },
+    "caption": "Раскадровка 1"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "ct1": {
+   "id": "ct1",
+   "elementType": "COMMENT_THREAD",
+   "location": {
+    "parentId": "cc1",
+    "section": "ATTACHED",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {},
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "ct2": {
+   "id": "ct2",
+   "elementType": "COMMENT_THREAD",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 84,
+     "y": 70
+    }
+   },
+   "content": {},
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "cl1": {
+   "id": "cl1",
+   "elementType": "CLONE",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 4,
+     "y": 110
+    }
+   },
+   "content": {
+    "linkTo": "c1",
+    "clonedElementType": "CARD"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "al1": {
+   "id": "al1",
+   "elementType": "ALIAS",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 120,
+     "y": 40
+    }
+   },
+   "content": {
+    "linkTo": "b2"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "d1": {
+   "id": "d1",
+   "elementType": "DOCUMENT",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 120,
+     "y": 60
+    }
+   },
+   "content": {
+    "title": "Сценарий",
+    "textContent": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "ИНТ. ПИРС — РАССВЕТ"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "tr1": {
+   "id": "tr1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "b1",
+    "section": "TRASH",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "textContent": "Удалённое"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "in1": {
+   "id": "in1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "b1",
+    "section": "INBOX",
+    "position": {
+     "x": 0,
+     "y": 0,
+     "score": 1
+    }
+   },
+   "content": {
+    "textContent": "Неразобранная идея"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "hx": {
+   "id": "hx",
+   "elementType": "HOLOGRAM",
+   "location": {
+    "parentId": "b1",
+    "section": "CANVAS",
+    "position": {
+     "x": 50,
+     "y": 100
+    }
+   },
+   "content": {},
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  },
+  "o1": {
+   "id": "o1",
+   "elementType": "CARD",
+   "location": {
+    "parentId": "X",
+    "section": "CANVAS",
+    "position": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "content": {
+    "textContent": "Сирота"
+   },
+   "createdTime": 1700000000000,
+   "modifiedTime": 1700000500000
+  }
+ },
+ "comments": {
+  "m1": {
+   "id": "m1",
+   "threadId": "ct1",
+   "text": {
+    "blocks": [
+     {
+      "key": "k0",
+      "depth": 0,
+      "inlineStyleRanges": [],
+      "entityRanges": [],
+      "data": {},
+      "type": "unstyled",
+      "text": "Пересветить небо"
+     }
+    ],
+    "entityMap": {}
+   },
+   "createdTime": 1700000600000
+  },
+  "m2": {
+   "id": "m2",
+   "threadId": "ct1",
+   "text": "Согласен",
+   "createdTime": 1700000700000,
+   "reactions": {
+    "👍": [
+     "u1"
+    ]
+   }
+  },
+  "m3": {
+   "id": "m3",
+   "threadId": "ct2",
+   "text": "Общий комментарий",
+   "createdTime": 1700000800000
+  }
+ },
+ "labels": {
+  "lab1": {
+   "id": "lab1",
+   "name": "Важно",
+   "color": "RED"
+  }
+ },
+ "canvasOrder": {
+  "H": [
+   "c2",
+   "c1",
+   "c3",
+   "b1",
+   "b2"
+  ]
+ },
+ "errors": [
+  {
+   "boardId": "gone",
+   "message": "not found"
+  }
+ ]
+}

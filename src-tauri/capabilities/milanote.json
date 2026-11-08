@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "milanote-import",
+  "description": "The Milanote sign-in window may only hand the user's export over to Zadum",
+  "windows": ["milanote"],
+  "remote": {
+    "urls": ["https://app.milanote.com/*"]
+  },
+  "permissions": ["allow-milanote-deliver"]
+}

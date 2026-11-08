@@ -29,6 +29,18 @@
     },
     "dialog:allow-open",
     "dialog:allow-save",
-    "core:window:allow-set-fullscreen"
+    "core:window:allow-set-fullscreen",
+    "allow-media-location",
+    "allow-import-media-file",
+    "allow-save-media-bytes",
+    "allow-import-media-url",
+    "allow-download-media",
+    "allow-write-file",
+    "allow-print-window",
+    "allow-link-preview",
+    "allow-milanote-open",
+    "allow-milanote-run",
+    "allow-milanote-close",
+    "allow-milanote-read-export"
   ]
 }
