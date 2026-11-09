@@ -20,6 +20,7 @@ import { ScriptOverlay } from './script/ScriptEditor';
 import { ShotDialog } from './draw/ShotDialog';
 import { VideoReviewOverlay } from './video/VideoReview';
 import { ConfirmDialog } from './ui/Confirm';
+import { PropertiesBar } from './canvas/PropertiesBar';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -101,6 +102,7 @@ export function App() {
         {!presenting && panel === 'inbox' && <InboxPanel />}
         {!presenting && panel === 'trash' && <TrashPanel />}
         <PresentBar />
+        {!presenting && <PropertiesBar />}
         <Toast />
       </div>
       {panel === 'search' && <SearchPanel />}

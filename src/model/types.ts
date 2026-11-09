@@ -56,6 +56,8 @@ export interface BoardElement extends ElementBase {
   isTemplate?: boolean;
   /** Set on the board that holds an import (so a later import of the same account replaces it). */
   importedFrom?: 'milanote';
+  /** Icon on the tile: "lucide:<name>" or "emoji:<character>"; the default board glyph when unset. */
+  icon?: string | null;
 }
 
 /** A shortcut to a board that lives somewhere else. */
@@ -180,6 +182,8 @@ export interface LineEnd {
 
 export type LineColor = 'default' | 'blue' | 'red' | 'green' | 'orange' | 'purple';
 
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface LineElement extends ElementBase {
   type: 'LINE';
   start: LineEnd;
@@ -189,6 +193,8 @@ export interface LineElement extends ElementBase {
   label: string;
   color: LineColor;
   weight: 1 | 2 | 3;
+  /** Solid unless set. */
+  style?: LineStyle;
   arrowStart: boolean;
   arrowEnd: boolean;
 }

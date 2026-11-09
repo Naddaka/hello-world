@@ -1,10 +1,23 @@
 import { useState } from 'react';
 import { create } from 'zustand';
 import { actions, useStore } from '../model/store';
-import { GRID, type ElementFields, type LineColor, type LineElement, type LineEnd, type ZElement } from '../model/types';
+import { GRID, type ElementFields, type LineColor, type LineElement, type LineEnd, type ZElement, type LineStyle } from '../model/types';
 import { arrowHead, bendFor, lineGeometry, type Pt } from './lineGeometry';
 import { screenToCanvas, useSizeVersion } from './runtime';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
+
+export const LINE_STYLES: { key: LineStyle; label: string }[] = [
+  { key: 'solid', label: 'Сплошная' },
+  { key: 'dashed', label: 'Пунктир' },
+  { key: 'dotted', label: 'Точками' },
+];
+
+/** Dash pattern for a line style at a stroke width (dots are round caps on zero-length dashes). */
+export function dashFor(style: LineStyle | undefined, width: number): string | undefined {
+  if (style === 'dashed') return `${width * 4} ${width * 3}`;
+  if (style === 'dotted') return `0.01 ${width * 2.4}`;
+  return undefined;
+}
 
 export const LINE_COLORS: { key: LineColor; label: string }[] = [
   { key: 'default', label: 'Серая' },
@@ -72,6 +85,8 @@ function lineMenu(line: LineElement): MenuEntry[] {
     'sep',
     ...([1, 2, 3] as const).map((w) => ({ label: `${w === line.weight ? '● ' : ''}${['Тонкая', 'Средняя', 'Толстая'][w - 1]}`, run: () => actions.update(line.id, { weight: w }) })),
     'sep',
+    ...LINE_STYLES.map((s) => ({ label: `${s.key === (line.style ?? 'solid') ? '● ' : ''}${s.label}`, run: () => actions.update(line.id, { style: s.key }) })),
+    'sep',
     { label: 'Удалить', danger: true, run: () => actions.trash([line.id]) },
   ];
 }
@@ -107,6 +122,7 @@ function LineView({ line, elements, boardId, selected, editing }: { line: LineEl
   const d = `M ${a.x} ${a.y} Q ${ctrl.x} ${ctrl.y} ${b.x} ${b.y}`;
   const stroke = `var(--line-${line.color})`;
   const w = line.weight === 1 ? 1.5 : line.weight === 2 ? 2.25 : 3.5;
+  const dash = dashFor(line.style, w);
 
   const drag = (e: React.PointerEvent, part: 'start' | 'end' | 'mid' | 'body') => {
     e.stopPropagation();
@@ -160,7 +176,7 @@ function LineView({ line, elements, boardId, selected, editing }: { line: LineEl
   return (
     <g className={`line${selected ? ' selected' : ''}`} data-line-id={line.id}>
       <path d={d} className="line-hit" onPointerDown={(e) => drag(e, 'body')} onDoubleClick={(e) => { e.stopPropagation(); actions.setEditing(line.id); }} onContextMenu={onContext} />
-      <path d={d} fill="none" stroke={stroke} strokeWidth={w} strokeLinecap="round" className="line-path" />
+      <path d={d} fill="none" stroke={stroke} strokeWidth={w} strokeLinecap="round" strokeDasharray={dash} className="line-path" />
       {line.arrowEnd && <polygon points={arrowHead(b, ctrl, 3 + w)} fill={stroke} />}
       {line.arrowStart && <polygon points={arrowHead(a, ctrl, 3 + w)} fill={stroke} />}
       {(line.label || editing) && (

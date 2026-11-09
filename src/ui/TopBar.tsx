@@ -1,3 +1,4 @@
+import { BoardIcon } from '../icons/boardIcons';
 import { actions, boardPath, useStore } from '../model/store';
 import { HOME_ID } from '../model/types';
 import { useDrag } from '../canvas/dnd';
@@ -77,7 +78,7 @@ export function TopBar() {
                   <IconHome size={14} />
                 ) : current ? (
                   <span className="crumb-badge" style={{ background: `var(--board-${board.color}-fg)`, color: 'var(--app)' }}>
-                    <IconBoard size={11} strokeWidth={2.4} />
+                    {board.icon ? <BoardIcon icon={board.icon} size={12} /> : <IconBoard size={11} strokeWidth={2.4} />}
                   </span>
                 ) : null}
                 {board.title}

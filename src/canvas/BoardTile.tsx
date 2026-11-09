@@ -1,3 +1,4 @@
+import { BoardIcon } from '../icons/boardIcons';
 import { TileTitle } from './TileTitle';
 import { useState } from 'react';
 import { actions } from '../model/store';
@@ -45,7 +46,7 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
     return (
       <div className={`tile-row${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
         <span className="tile-row-icon" style={{ position: 'relative', background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)` }}>
-          <IconBoard size={20} strokeWidth={1.8} />
+          {element.icon ? <BoardIcon icon={element.icon} size={20} /> : <IconBoard size={20} strokeWidth={1.8} />}
           {badge}
         </span>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -58,7 +59,7 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
   return (
     <div className={`tile${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
       <div className="tile-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)`, boxShadow: `inset 0 0 0 1px var(--board-${c}-ring)` }}>
-        <IconBoard size={38} strokeWidth={1.6} />
+        {element.icon ? <BoardIcon icon={element.icon} size={40} /> : <IconBoard size={38} strokeWidth={1.6} />}
         {badge}
       </div>
       {editing && !shortcut ? <TitleInput element={element} /> : <TileTitle text={element.title} />}

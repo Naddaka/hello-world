@@ -829,6 +829,7 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
       label: content.lineLabelEnabled === false ? '' : milanotePlain(content.lineLabel),
       color: lineColor(content.color),
       weight: weight >= 4 ? 3 : weight >= 2 ? 2 : 1,
+      ...(str(content.lineStyle).toUpperCase() === 'DASHED' ? { style: 'dashed' as const } : str(content.lineStyle).toUpperCase() === 'DOTTED' ? { style: 'dotted' as const } : {}),
       arrowStart: str(content.startStyle).toUpperCase() === 'ARROW',
       arrowEnd: content.endStyle === undefined ? true : str(content.endStyle).toUpperCase() === 'ARROW',
     });

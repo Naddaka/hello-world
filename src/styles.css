@@ -768,3 +768,30 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .confirm-title { margin: 14px 0 4px; font: 600 16px var(--font); }
 .btn-danger { background: var(--danger); color: #fff; }
 .sp-bd-count { white-space: nowrap; }
+
+/* ---------- properties bar and icon picker ---------- */
+.props-bar { position: fixed; z-index: 900; display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-radius: 12px; }
+.pb-group { display: flex; align-items: center; gap: 3px; }
+.pb-sep { width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
+.pb-btn { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 30px; height: 30px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font: 500 12px var(--font); cursor: pointer; }
+.pb-btn:hover { background: var(--hover); }
+.pb-btn.on { background: var(--accent-soft); color: var(--accent); }
+.pb-icon { padding: 0 10px 0 8px; }
+.pb-swatch { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.pb-swatch.card { border-radius: 6px; }
+.pb-swatch.clear { background: repeating-conic-gradient(var(--field) 0 25%, var(--card) 0 50%) 0 0 / 8px 8px; }
+.pb-swatch.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+.board-emoji { display: block; }
+.icon-picker { position: fixed; z-index: 1000; display: flex; flex-direction: column; max-height: 460px; border-radius: 14px; }
+.icon-picker-head { padding: 10px 10px 6px; display: flex; flex-direction: column; gap: 8px; }
+.icon-search { height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 13px var(--font); padding: 0 10px; }
+.icon-groups { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.icon-group { flex: 0 0 auto; height: 24px; padding: 0 8px; border: 0; border-radius: 12px; background: var(--field); color: var(--muted); font: 11px var(--font); cursor: pointer; }
+.icon-group.on { background: var(--accent-soft); color: var(--accent); }
+.icon-grid { flex: 1 1 auto; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 2px; padding: 4px 10px 8px; }
+.icon-grid .col-empty { grid-column: 1 / -1; }
+.icon-cell { display: flex; align-items: center; justify-content: center; height: 38px; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+.icon-cell:hover { background: var(--hover); }
+.icon-cell.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.icon-cell.emoji { font-size: 22px; }
+.icon-picker-foot { display: flex; justify-content: space-between; padding: 6px 12px 10px; border-top: 1px solid var(--line); }

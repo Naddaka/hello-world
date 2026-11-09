@@ -309,6 +309,16 @@ export const actions = {
     if (changed) commit([updateOp(element, patch)]);
   },
 
+  /** Applies the same change to several elements as one undo step (the properties bar). */
+  updateMany(ids: string[], patch: ElementPatch) {
+    const elements = get().elements;
+    const ops = ids
+      .map((id) => elements[id])
+      .filter((e): e is ZElement => !!e && Object.entries(patch).some(([k, v]) => JSON.stringify((e as unknown as Record<string, unknown>)[k]) !== JSON.stringify(v)))
+      .map((e) => updateOp(e, patch));
+    commit(ops);
+  },
+
   /** Saves edits while typing without creating undo steps (synced notes follow along). */
   setLive(id: string, patch: ElementPatch) {
     const elements = get().elements;
