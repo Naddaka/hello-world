@@ -91,7 +91,14 @@
    },
    "content": {
     "title": "Мой шаблон съёмки",
-    "isTemplate": true
+    "isTemplate": true,
+    "icon": null,
+    "image": {
+     "regular": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGM4oRH1HxkzkC4AANToJJFneWEjAAAAAElFTkSuQmCC",
+     "width": 160,
+     "height": 160,
+     "transparent": true
+    }
    },
    "createdTime": 1700000000000,
    "modifiedTime": 1700000500000
@@ -408,7 +415,15 @@
    },
    "content": {
     "title": "Клип «Северный ветер»",
-    "color": "BLUE"
+    "color": "BLUE",
+    "icon": {
+     "type": "mn-svg",
+     "id": "reel-fake",
+     "name": "Катушка",
+     "svg": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48ZGVmcz48c3R5bGU+LmZhLXNlY29uZGFyeXtvcGFjaXR5Oi40fTwvc3R5bGU+PC9kZWZzPjxwYXRoIGNsYXNzPSJmYS1zZWNvbmRhcnkiIGQ9Ik0zMiA2NGg0NDh2Mzg0SDMyeiIvPjxwYXRoIGNsYXNzPSJmYS1wcmltYXJ5IiBkPSJNOTYgMTI4aDk2djk2SDk2ek0yMjQgMTI4aDE5MnYzMkgyMjR6Ii8+PC9zdmc+",
+     "png": "https://media.invalid/element-icon/reel-fake.png"
+    },
+    "image": null
    },
    "createdTime": 1700000000000,
    "modifiedTime": 1700000500000
@@ -438,6 +453,12 @@
       }
      ],
      "entityMap": {}
+    },
+    "icon": {
+     "type": "mn-svg",
+     "id": "mn-square-12",
+     "name": "12",
+     "png": "https://media.invalid/element-icon/mn-square-12.png"
     }
    },
    "createdTime": 1700000000000,
@@ -455,7 +476,12 @@
     }
    },
    "content": {
-    "title": "Глубже"
+    "title": "Глубже",
+    "icon": {
+     "type": "string",
+     "id": "str-1",
+     "string": "7"
+    }
    },
    "createdTime": 1700000000000,
    "modifiedTime": 1700000500000

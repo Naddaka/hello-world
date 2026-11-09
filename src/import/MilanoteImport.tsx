@@ -4,7 +4,8 @@ import { actions } from '../model/store';
 import { isTauri } from '../storage/repo';
 import exporterSource from './milanoteExporter.js?raw';
 import { isMilanoteExport, type ImportReport, type MilanoteExport } from './milanote';
-import { existingImports, importMilanote, type ImportProgress } from './runImport';
+import { existingImports, importMilanote, refreshMilanoteIcons, type ImportProgress } from './runImport';
+import type { IconRefreshPlan } from './milanoteIcons';
 
 export const useImportDialog = create<{ open: boolean }>(() => ({ open: false }));
 export const openMilanoteImport = () => useImportDialog.setState({ open: true });
@@ -18,6 +19,7 @@ type Step =
   | { kind: 'confirm'; data: MilanoteExport }
   | { kind: 'importing'; progress: ImportProgress }
   | { kind: 'done'; report: ImportReport; rootId: string }
+  | { kind: 'icons-done'; result: IconRefreshPlan & { updated: number } }
   | { kind: 'error'; message: string };
 
 function parseExport(text: string): MilanoteExport {
@@ -43,6 +45,8 @@ export function MilanoteImportDialog() {
   const [windowOpen, setWindowOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const iconsFile = useRef<HTMLInputElement>(null);
+  const [replaceIcons, setReplaceIcons] = useState(false);
   const desktop = isTauri();
 
   // Messages from the export script running in the Milanote window.
@@ -119,6 +123,22 @@ export function MilanoteImportDialog() {
       setStep({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
     }
   };
+  /** Board icons only, from the export saved by the last import (or a chosen file). */
+  const refreshIcons = async (file?: File) => {
+    setStep({ kind: 'importing', progress: { phase: 'media', done: 0, total: 0 } });
+    try {
+      let text: string;
+      if (file) text = await file.text();
+      else {
+        const { invoke } = await import('@tauri-apps/api/core');
+        text = await invoke<string>('milanote_read_export');
+      }
+      const result = await refreshMilanoteIcons(parseExport(text), replaceIcons, (progress) => setStep({ kind: 'importing', progress }));
+      setStep({ kind: 'icons-done', result });
+    } catch (error) {
+      setStep({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
   const runImport = async (data: MilanoteExport) => {
     setStep({ kind: 'importing', progress: { phase: 'media', done: 0, total: 0 } });
     try {
@@ -184,6 +204,38 @@ export function MilanoteImportDialog() {
               </button>
               <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={(e) => void pickFile(e.target.files?.[0])} />
             </details>
+            <div className="mn-alt mn-icons">
+              <p>
+                <b>Уже импортировали?</b> Можно обновить только иконки досок — без входа в Milanote и без повторного импорта. Названия, цвета, содержимое и расположение
+                не меняются.
+              </p>
+              <label className="mn-check">
+                <input type="checkbox" checked={replaceIcons} onChange={(e) => setReplaceIcons(e.target.checked)} /> Заменить и иконки, которые уже стоят (в том числе
+                выбранные вручную)
+              </label>
+              <div className="mn-icons-actions">
+                {desktop && (
+                  <button type="button" className="ibtn wide" onClick={() => void refreshIcons()}>
+                    Обновить иконки досок
+                  </button>
+                )}
+                <button type="button" className="link-btn" onClick={() => iconsFile.current?.click()}>
+                  {desktop ? 'Из другого файла экспорта…' : 'Обновить иконки из файла экспорта…'}
+                </button>
+              </div>
+              <input
+                ref={iconsFile}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                aria-label="Файл экспорта для иконок"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void refreshIcons(f);
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -235,6 +287,22 @@ export function MilanoteImportDialog() {
 
         {step.kind === 'done' && <ImportDone report={step.report} rootId={step.rootId} onClose={close} />}
 
+        {step.kind === 'icons-done' && (
+          <div className="modal-body">
+            <p>
+              {step.result.updated ? `Иконки обновлены у ${plural(step.result.updated, 'доски', 'досок', 'досок')}.` : 'Менять было нечего.'} Отменить можно одним ⌘Z.
+            </p>
+            <IconSummary icons={step.result} />
+            {step.result.kept > 0 && <p className="side-hint mn-note">Оставил как есть — у доски уже была иконка: {step.result.kept}.</p>}
+            {step.result.absent > 0 && <p className="side-hint mn-note">Нет в Zadum (не импортированы или удалены): {step.result.absent}.</p>}
+            <footer className="modal-foot">
+              <button type="button" className="btn-accent" onClick={close}>
+                Готово
+              </button>
+            </footer>
+          </div>
+        )}
+
         {step.kind === 'error' && (
           <div className="modal-body">
             <p className="mn-warn">{step.message}</p>
@@ -264,6 +332,18 @@ function ExistingImports({ data }: { data: MilanoteExport }) {
   );
 }
 
+/** How the board icons came over: exactly, by meaning, or not at all (with the shapes we did not know). */
+function IconSummary({ icons }: { icons: { exact: number; approx: number; missing: number; shapes: string[] } }) {
+  if (icons.exact + icons.approx + icons.missing === 0) return null;
+  const parts = [`точно — ${icons.exact}`, ...(icons.approx ? [`подобрано по смыслу — ${icons.approx}`] : []), ...(icons.missing ? [`без иконки — ${icons.missing}`] : [])];
+  return (
+    <p className="side-hint mn-note">
+      Иконки досок: {parts.join(', ')}
+      {icons.missing > 0 && icons.shapes.length > 0 && <> ({icons.shapes.join('; ')})</>}.
+    </p>
+  );
+}
+
 function ImportDone({ report, rootId, onClose }: { report: ImportReport; rootId: string; onClose: () => void }) {
   const rows: [string, number][] = [
     ['Доски', report.boards],
@@ -288,12 +368,7 @@ function ImportDone({ report, rootId, onClose }: { report: ImportReport; rootId:
       </table>
       {report.trashed > 0 && <p className="side-hint mn-note">Из корзины Milanote не переносил: {report.trashed}.</p>}
       {report.orphans > 0 && <p className="side-hint mn-note">Без своей доски оказалось {report.orphans} — они в «Неразобранном» доски «Milanote».</p>}
-      {report.icons.moved + report.icons.skipped > 0 && (
-        <p className="side-hint mn-note">
-          Иконки досок: перенесено {report.icons.moved}
-          {report.icons.skipped > 0 && <>, не перенесено {report.icons.skipped} ({report.icons.shapes.join('; ')})</>}.
-        </p>
-      )}
+      <IconSummary icons={report.icons} />
       {report.unknownTypes.length > 0 && <p className="side-hint mn-note">Незнакомые типы (вместо них — заметки с пометкой): {report.unknownTypes.join(', ')}.</p>}
       {report.exportErrors.length > 0 && <p className="mn-warn">Milanote не отдал досок: {report.exportErrors.length}. Попробуйте импорт ещё раз позже.</p>}
       {report.failedMedia.length > 0 && (

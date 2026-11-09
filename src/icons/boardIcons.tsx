@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { iconMedia } from '../model/types';
 import { useMediaSrc } from '../storage/media';
 import { IconBoard } from '../ui/icons';
+import { parseTextIcon } from './letters';
+import { svgIconMarkup } from './svgIcon';
 
 /**
  * Board icons: the Lucide set (2000+ line icons, ISC licence) and emoji with
@@ -48,13 +50,17 @@ function GlyphIcon({ icon, size }: { icon: string; size: number }) {
   useEffect(() => {
     if (isLucide && !set) void loadLucide().then(setSet);
   }, [isLucide, set]);
-  if (icon.startsWith('letter:')) {
-    const text = icon.slice(7);
+  const text = parseTextIcon(icon);
+  if (text) {
+    const n = [...text.text].length;
     return (
-      <span className="board-letter" style={{ fontSize: size * (text.length > 1 ? 0.72 : 0.95), lineHeight: 1 }} aria-hidden="true">
-        {text}
+      <span className={`board-text${text.boxed ? ' boxed' : ''}`} style={{ width: size, height: size, fontSize: size * [0.95, 0.95, 0.68, 0.5, 0.4][n] * (text.boxed ? 0.82 : 1), borderWidth: text.boxed ? Math.max(1.5, size * 0.075) : 0 }} aria-hidden="true">
+        {text.text}
       </span>
     );
+  }
+  if (icon.startsWith('svg:')) {
+    return <span className="board-svg" style={{ width: size, height: size }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svgIconMarkup(icon) }} />;
   }
   if (icon.startsWith('emoji:')) {
     return (

@@ -18,9 +18,9 @@ import {
 } from '../model/types';
 import { milanoteDoc, milanotePlain } from './milanoteText';
 import { isHexColor, luminance } from '../ui/colors';
-import { letterIcon } from '../icons/letters';
+import { boardIconFrom } from './milanoteIcons';
 
-export { letterIcon };
+export { boardIconOf, iconShape } from './milanoteIcons';
 
 /**
  * Converts a Milanote export (see milanoteExporter.js) into Zadum elements.
@@ -82,7 +82,7 @@ export interface ImportReport {
    * Board icons: how many came over, and the shapes (type and field names, never
    * values) of those that did not, so an unfamiliar format shows up in the summary.
    */
-  icons: { moved: number; skipped: number; shapes: string[] };
+  icons: { exact: number; approx: number; missing: number; shapes: string[] };
   /** Boards Milanote could not give us. */
   exportErrors: { boardId: string; message: string }[];
   /** Media that could not be downloaded (filled in by finalizeImport). */
@@ -281,60 +281,6 @@ function labelColor(value: unknown, index: number): LabelColor | HexColor {
   return f ?? cycle[index % cycle.length];
 }
 
-const PICTOGRAPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
-
-/**
- * A board's icon in Milanote ({type: 'emoji' | 'icon' | 'image' | 'letter', id, …})
- * as our icon value: an emoji character, a Lucide icon of the same name, or a
- * picture to download ("pending:<key>" until it is stored), or one or two letters.
- */
-/** Whether Milanote's icon field holds an icon at all (it may only carry the tile colour). */
-function hasIcon(value: unknown): boolean {
-  if (typeof value === 'string') return !!value.trim();
-  const keys = Object.keys(obj(value)).filter((k) => k !== 'color' && obj(value)[k] != null && obj(value)[k] !== '');
-  return keys.length > 0;
-}
-
-/** "emoji: id, skin" — the type and field names of an icon, without its values. */
-export function iconShape(value: unknown): string {
-  if (typeof value === 'string') return 'строка';
-  const o = obj(value);
-  const keys = Object.keys(o).filter((k) => k !== 'type').sort();
-  return `${str(o.type) || 'без типа'}: ${keys.join(', ') || '—'}`;
-}
-
-export function boardIconOf(value: unknown): { icon: string } | { imageUrl: string } | null {
-  if (typeof value === 'string') return PICTOGRAPH.test(value) ? { icon: `emoji:${value.trim()}` } : null;
-  const o = obj(value);
-  const type = str(o.type).toLowerCase();
-  const candidates = [o.emoji, o.native, o.char, o.unicode, o.value, o.id, o.name].filter((v): v is string => typeof v === 'string' && !!v.trim());
-  if (type === 'emoji' || (!type && candidates.some((c) => PICTOGRAPH.test(c)))) {
-    const char = candidates.find((c) => PICTOGRAPH.test(c));
-    if (char) return { icon: `emoji:${char.trim()}` };
-    // Code points such as "1f3ac" or "1f1fa-1f1e6".
-    const code = candidates.find((c) => /^[0-9a-f]{4,6}(-[0-9a-f]{4,6})*$/i.test(c));
-    if (code) return { icon: `emoji:${String.fromCodePoint(...code.split('-').map((h) => parseInt(h, 16)))}` };
-    return null;
-  }
-  if (type === 'image' || type === 'upload' || type === 'custom') {
-    const url = imageUrl(o.image) ?? imageUrl(o.url) ?? imageUrl(o.src) ?? imageUrl(o);
-    return url && /^https?:/i.test(url) ? { imageUrl: url } : null;
-  }
-  if (type === 'letter' || type === 'letters' || type === 'text') {
-    const text = letterIcon(candidates.find((c) => letterIcon(c)) ?? '');
-    return text ? { icon: `letter:${text}` } : null;
-  }
-  if (type === 'icon') {
-    const name = str(o.id || o.name)
-      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-      .replace(/[\s_]+/g, '-')
-      .toLowerCase()
-      .replace(/^icon-/, '');
-    return /^[a-z0-9-]+$/.test(name) ? { icon: `lucide:${name}` } : null;
-  }
-  return null;
-}
-
 const BOARD_CYCLE: BoardColor[] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow'];
 
 function imageUrl(image: unknown): string | null {
@@ -384,7 +330,7 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
     trashed: 0,
     orphans: 0,
     unknownTypes: [],
-    icons: { moved: 0, skipped: 0, shapes: [] },
+    icons: { exact: 0, approx: 0, missing: 0, shapes: [] },
     exportErrors: data.errors ?? [],
     failedMedia: [],
   };
@@ -527,18 +473,21 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
           title: special?.title ?? (milanotePlain(content.title) || 'Без названия'),
           color: boardColor(content.color ?? content.secondaryColor ?? obj(content.icon).color, BOARD_CYCLE[boardCount.n++ % BOARD_CYCLE.length]),
           ...(() => {
-            if (!hasIcon(content.icon)) return {};
-            const icon = boardIconOf(content.icon);
-            if (!icon) {
-              report.icons.skipped++;
-              const shape = iconShape(content.icon);
+            const { match, present, shape } = boardIconFrom(content);
+            if (!present) return {};
+            if (!match) {
+              report.icons.missing++;
               if (!report.icons.shapes.includes(shape)) report.icons.shapes.push(shape);
               return {};
             }
-            report.icons.moved++;
-            if ('icon' in icon) return { icon: icon.icon };
+            if ('icon' in match) {
+              report.icons[match.exact ? 'exact' : 'approx']++;
+              return { icon: match.icon };
+            }
+            report.icons.exact++;
             const key = `icon-${id}`;
-            media.push({ key, url: icon.imageUrl, name: fileNameFromUrl(icon.imageUrl, 'иконка.png'), role: 'board-icon', elementId: zid });
+            if (match.imageUrl.startsWith('data:')) media.push({ key, url: match.imageUrl, name: 'иконка.png', role: 'board-icon', elementId: zid });
+            else media.push({ key, url: match.imageUrl, name: fileNameFromUrl(match.imageUrl, 'иконка.png'), role: 'board-icon', elementId: zid });
             return { icon: `${PENDING}${key}` };
           })(),
           ...(content.isTemplate || special?.template || (rawParent && specialRoots.get(rawParent)?.template) ? { isTemplate: true } : {}),
@@ -1012,8 +961,8 @@ export function finalizeImport(plan: ImportPlan, results: Map<string, StoredMedi
       const got = results.get(e.icon.slice(PENDING.length));
       const { icon: _pending, ...rest } = e;
       if (got) return { ...e, icon: `media:${got.id}.${got.ext}` };
-      plan.report.icons.moved--;
-      plan.report.icons.skipped++;
+      plan.report.icons.exact--;
+      plan.report.icons.missing++;
       if (!plan.report.icons.shapes.includes('image: не скачалась')) plan.report.icons.shapes.push('image: не скачалась');
       return rest;
     }

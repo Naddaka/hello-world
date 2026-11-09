@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { boardTint } from '../ui/colors';
 import { isIconImageFile, storeIconImage } from './iconImage';
-import { letterIcon } from './letters';
+import { parseTextIcon, textIcon } from './letters';
 import { BoardIcon, SUGGESTED_ICONS, loadEmoji, loadLucide, searchEmoji, searchLucide, type EmojiEntry, type LucideIcon } from './boardIcons';
 
 type Tab = 'icons' | 'emoji' | 'own';
@@ -9,8 +9,9 @@ const PAGE = 240;
 
 /** Picks a board icon from the Lucide set or emoji, with search in Russian or English. */
 export function IconPicker({ value, color, onPick, onClose, anchor }: { value: string | null | undefined; color: string; onPick: (icon: string | null) => void; onClose: () => void; anchor: DOMRect }) {
-  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') || value?.startsWith('letter:') ? 'own' : 'icons');
+  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') || parseTextIcon(value) ? 'own' : 'icons');
   const [busy, setBusy] = useState(false);
+  const current = parseTextIcon(value);
   const [error, setError] = useState('');
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -166,12 +167,16 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
               className="icon-letter"
               onSubmit={(e) => {
                 e.preventDefault();
-                const text = letterIcon(new FormData(e.currentTarget).get('letter')?.toString() ?? '');
-                if (text) onPick(`letter:${text}`);
+                const form = new FormData(e.currentTarget);
+                const text = textIcon(form.get('text')?.toString() ?? '');
+                if (text) onPick(`${form.get('boxed') ? 'text-box' : 'text'}:${text}`);
               }}
             >
-              <label htmlFor="icon-letter">Или буквы:</label>
-              <input id="icon-letter" name="letter" maxLength={2} placeholder="АБ" defaultValue={value?.startsWith('letter:') ? value.slice(7) : ''} onKeyDown={(e) => e.stopPropagation()} />
+              <label htmlFor="icon-text">Или текст:</label>
+              <input id="icon-text" name="text" maxLength={8} placeholder="12" defaultValue={current?.text ?? ''} onKeyDown={(e) => e.stopPropagation()} />
+              <label className="icon-boxed">
+                <input type="checkbox" name="boxed" defaultChecked={current?.boxed ?? false} /> в рамке
+              </label>
               <button type="submit" className="link-btn">Поставить</button>
             </form>
             <input

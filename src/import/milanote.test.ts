@@ -3,6 +3,8 @@ import { getSchema, type JSONContent } from '@tiptap/core';
 import { Node } from '@tiptap/pm/model';
 import fixture from '../../e2e/fixtures/milanote-export.json';
 import { noteExtensions } from '../editor/extensions';
+import { boardIconFrom, MN_ICON_TO_LUCIDE, planIconRefresh } from './milanoteIcons';
+import { decodeSvgSource, sanitizeSvg } from '../icons/svgIcon';
 import { boardIconOf, convertMilanote, customHex, finalizeImport, isMilanoteExport, type MilanoteExport, type StoredMedia } from './milanote';
 import { draftToDoc, milanoteDoc, milanotePlain } from './milanoteText';
 import exporterSource from './milanoteExporter.js?raw';
@@ -175,13 +177,14 @@ describe('Milanote conversion', () => {
   it('lists media and fills them in after download; failures become links', () => {
     const { plan } = convert();
     const keys = plan.media.map((m) => m.key).sort();
-    expect(keys).toEqual(['file-f1', 'img-img1', 'img-img2', 'svg-sk1']);
+    expect(keys).toEqual(['file-f1', 'icon-t1', 'img-img1', 'img-img2', 'svg-sk1']);
     expect(plan.media.find((m) => m.key === 'svg-sk1')!.svg).toContain('<svg');
     const results = new Map<string, StoredMedia | null>([
       ['img-img1', { id: 'm1', ext: 'svg', width: 400, height: 300 }],
       ['file-f1', { id: 'm2', ext: 'txt', size: 12 }],
       ['svg-sk1', { id: 'm3', ext: 'svg' }],
       ['img-img2', null],
+      ['icon-t1', { id: 'm4', ext: 'png' }],
     ]);
     const done = Object.fromEntries(finalizeImport(plan, results).map((e) => [e.id, e]));
     expect(done['mn-img1']).toMatchObject({ type: 'IMAGE', media: { id: 'm1', ext: 'svg' }, caption: 'Кадр с пирса', showCaption: true });
@@ -246,15 +249,90 @@ describe('Milanote highlight colours', () => {
 });
 
 describe('Milanote board icons and custom colours', () => {
-  it('maps every kind of board icon', () => {
-    expect(boardIconOf({ type: 'emoji', id: '🎬' })).toEqual({ icon: 'emoji:🎬' });
-    expect(boardIconOf({ type: 'emoji', id: '1f3ac' })).toEqual({ icon: 'emoji:🎬' });
-    expect(boardIconOf({ type: 'icon', id: 'CameraRoll' })).toEqual({ icon: 'lucide:camera-roll' });
-    expect(boardIconOf({ type: 'image', image: { original: 'https://media.invalid/i/me.png' } })).toEqual({ imageUrl: 'https://media.invalid/i/me.png' });
-    expect(boardIconOf({ type: 'letter', id: 'a' })).toEqual({ icon: 'letter:A' });
-    expect(boardIconOf({ type: 'letter', id: 'Шк' })).toEqual({ icon: 'letter:ШК' });
-    expect(boardIconOf({ type: 'letter', id: 'too long' })).toBeNull();
+  const b64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+  const duotone = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><defs><style>.fa-secondary{opacity:.4}</style></defs><path class="fa-secondary" d="M0 0h10v10z"/><path class="fa-primary" d="M20 0h10v10z"/></svg>';
+
+  it('draws mn-svg glyphs from the export in the board colour, the faint layer kept faint', () => {
+    const got = boardIconOf({ type: 'mn-svg', id: 'reel-fake', name: 'Катушка', svg: b64(duotone), png: 'https://media.invalid/x.png' });
+    expect(got).toMatchObject({ exact: true });
+    const icon = (got as { icon: string }).icon;
+    expect(icon.startsWith('svg:<svg')).toBe(true);
+    expect(icon).toContain('viewBox="0 0 640 512"');
+    expect(icon).toContain('fill="currentColor"');
+    expect(icon).toContain('<path d="M0 0h10v10z" opacity="0.4">');
+    expect(icon).toContain('<path d="M20 0h10v10z">');
+    expect(icon).not.toContain('style');
+  });
+
+  it('keeps nothing but shapes from an SVG', () => {
+    const evil = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" onload="alert(1)"><script>alert(2)</script><path d="M1 1h2" onclick="alert(3)" style="fill:url(javascript:x)"/><a xlink:href="javascript:alert(4)"><path d="M5 5h1"/></a><image href="https://evil.invalid/x.png"/><foreignObject><div>x</div></foreignObject><path d="M1 1&quot; onmouseover=&quot;x" transform="url(#a)"/></svg>';
+    const clean = sanitizeSvg(evil)!;
+    expect(clean).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 1h2"></path></svg>');
+    expect(sanitizeSvg('<html><script>x</script></html>')).toBeNull();
+    expect(sanitizeSvg('<svg><script>x</script></svg>')).toBeNull();
+    expect(decodeSvgSource('data:image/svg+xml;base64,' + b64(duotone))).toBe(duotone);
+  });
+
+  it('falls back to a number or a Lucide icon of the same meaning without the SVG', () => {
+    expect(boardIconOf({ type: 'mn-svg', id: 'mn-square-12' })).toEqual({ icon: 'text-box:12', exact: false });
+    expect(boardIconOf({ type: 'mn-svg', id: 'square-3' })).toEqual({ icon: 'text-box:3', exact: false });
+    expect(boardIconOf({ type: 'mn-svg', id: 'mn-15' })).toEqual({ icon: 'text:15', exact: false });
+    expect(boardIconOf({ type: 'mn-svg', id: '7' })).toEqual({ icon: 'text:7', exact: false });
+    expect(boardIconOf({ type: 'mn-svg', id: 'masks-theater' })).toEqual({ icon: 'lucide:drama', exact: false });
+    expect(boardIconOf({ type: 'mn-svg', id: 'no-such-glyph' })).toBeNull();
+  });
+
+  it('every Lucide icon in the fallback table exists', async () => {
+    const { default: lucide } = await import('../icons/lucide.json');
+    const names = new Set((lucide as [string][]).map((i) => i[0]));
+    expect(Object.values(MN_ICON_TO_LUCIDE).filter((n) => !names.has(n))).toEqual([]);
+  });
+
+  it('maps text, emoji and pictures', () => {
+    expect(boardIconOf({ type: 'string', id: 'str-1', string: '1' })).toEqual({ icon: 'text:1', exact: true });
+    expect(boardIconOf({ type: 'string', id: 'str-1', string: '2024' })).toEqual({ icon: 'text:2024', exact: true });
+    expect(boardIconOf({ type: 'string', id: 'str-1', string: '~' })).toEqual({ icon: 'text:~', exact: true });
+    expect(boardIconOf({ type: 'emoji', id: '1f3ac' })).toEqual({ icon: 'emoji:🎬', exact: true });
+    expect(boardIconOf({ type: 'letter', id: 'a' })).toEqual({ icon: 'text:A', exact: true });
+    expect(boardIconFrom({ icon: null, image: { regular: 'https://media.invalid/i/160.png', original: 'https://media.invalid/i/big.png' } })).toEqual({ match: { imageUrl: 'https://media.invalid/i/160.png' }, present: true, shape: 'image' });
+    expect(boardIconFrom({ icon: null, image: null })).toEqual({ match: null, present: false, shape: '' });
     expect(boardIconOf(undefined)).toBeNull();
+  });
+
+  it('brings every kind of icon of the export over, and counts how', () => {
+    const { plan, byId } = convert();
+    expect(byId['mn-b1']).toMatchObject({ icon: expect.stringMatching(/^svg:<svg/) });
+    expect(byId['mn-b2']).toMatchObject({ icon: 'text-box:12' });
+    expect(byId['mn-b3']).toMatchObject({ icon: 'text:7' });
+    expect(byId['mn-t1']).toMatchObject({ icon: 'pending:icon-t1' });
+    expect(plan.report.icons).toEqual({ exact: 3, approx: 1, missing: 0, shapes: [] });
+    const done = Object.fromEntries(finalizeImport(plan, new Map([['icon-t1', null]])).map((e) => [e.id, e]));
+    expect(done['mn-t1']).not.toHaveProperty('icon');
+    expect(plan.report.icons).toEqual({ exact: 2, approx: 1, missing: 1, shapes: ['image: не скачалась'] });
+  });
+
+  it('reports icons it does not understand by their shape, never their contents', () => {
+    const copy = structuredClone(data) as MilanoteExport;
+    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'sticker', ref: 'secret-name' };
+    (copy.elements.b2.content as Record<string, unknown>).icon = { color: 'RED' };
+    const { report } = convertMilanote(copy, 0);
+    expect(report.icons.shapes).toEqual(['sticker: ref']);
+    expect(report.icons.missing).toBe(1);
+    expect(JSON.stringify(report.icons)).not.toContain('secret-name');
+  });
+
+  it('refreshes icons of imported boards only, keeping icons chosen by hand', () => {
+    const boards = Object.entries(data.elements).filter(([, e]) => e.elementType === 'BOARD').map(([id, e]) => ({ id, content: e.content }));
+    const els = {
+      'mn-b1': { id: 'mn-b1', type: 'BOARD', icon: 'lucide:film' },
+      'mn-b2': { id: 'mn-b2', type: 'BOARD' },
+      'mn-b3': { id: 'mn-b3', type: 'BOARD', icon: 'text:7' },
+    };
+    const plan = planIconRefresh(els, boards, false);
+    expect(plan.changes).toEqual([{ id: 'mn-b2', icon: 'text-box:12' }]);
+    expect(plan).toMatchObject({ kept: 2, absent: 1, approx: 1 });
+    const all = planIconRefresh(els, boards, true);
+    expect(all.changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
   });
 
   it('keeps colours mixed in Milanote and maps palette names to presets', () => {
@@ -263,30 +341,5 @@ describe('Milanote board icons and custom colours', () => {
     expect(customHex('BLUE')).toBeNull();
     expect(customHex('TABLE_DEFAULT_HEADER_BACKGROUND_COLOR')).toBeNull();
     expect(customHex('#ffffff')).toBeNull();
-  });
-
-  it('downloads picture icons and drops the ones that fail', () => {
-    const copy = structuredClone(data) as MilanoteExport;
-    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'image', image: { original: 'https://media.invalid/i/b1.png' } };
-    (copy.elements.b3.content as Record<string, unknown>).icon = { type: 'image', url: 'https://media.invalid/i/b3.png' };
-    (copy.elements.t1.content as Record<string, unknown>).icon = { type: 'emoji', id: '🎥' };
-    const plan = convertMilanote(copy, 0);
-    expect(plan.media.filter((m) => m.role === 'board-icon').map((m) => m.key).sort()).toEqual(['icon-b1', 'icon-b3']);
-    const done = Object.fromEntries(finalizeImport(plan, new Map([['icon-b1', { id: 'p1', ext: 'png' }], ['icon-b3', null]])).map((e) => [e.id, e]));
-    expect(done['mn-b1']).toMatchObject({ type: 'BOARD', icon: 'media:p1.png' });
-    expect(done['mn-b3']).not.toHaveProperty('icon');
-    expect(done['mn-t1']).toMatchObject({ icon: 'emoji:🎥' });
-    expect(plan.report.failedMedia).not.toContainEqual(expect.objectContaining({ url: 'https://media.invalid/i/b3.png' }));
-    expect(plan.report.icons).toEqual({ moved: 2, skipped: 1, shapes: ['image: не скачалась'] });
-  });
-
-  it('reports icons it does not understand by their shape, never their contents', () => {
-    const copy = structuredClone(data) as MilanoteExport;
-    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'letter', id: '!?', color: 'BLUE' };
-    (copy.elements.b3.content as Record<string, unknown>).icon = { kind: 'sticker', ref: 'secret-name' };
-    (copy.elements.t1.content as Record<string, unknown>).icon = { color: 'RED' };
-    const { report } = convertMilanote(copy, 0);
-    expect(report.icons).toEqual({ moved: 0, skipped: 2, shapes: ['letter: color, id', 'без типа: kind, ref'] });
-    expect(JSON.stringify(report.icons)).not.toContain('secret-name');
   });
 });

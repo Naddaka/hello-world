@@ -14,7 +14,7 @@ const failed = await runSuite(
 
     await page.click('.topbar >> text=Импорт');
     check('the import dialog explains how to get an export file', await page.isVisible('.modal >> text=Скопировать скрипт'));
-    await page.setInputFiles('.modal input[type="file"]', FIXTURE);
+    await page.setInputFiles('.modal details input[type="file"]', FIXTURE);
     await page.waitForSelector('.modal >> text=Импортировать');
     check('the dialog summarises the export before importing', await page.isVisible('.modal >> text=Нашлось 37 элементов на 7 досках'), await page.locator('.modal-body p').first().textContent());
     await page.screenshot({ path: `${OUT}/70-import-confirm.png` });
@@ -22,6 +22,7 @@ const failed = await runSuite(
     await page.waitForSelector('.modal >> text=Готово', { timeout: 20000 });
     check('the report counts what was brought over', (await page.locator('.mn-report tr').count()) === 6);
     check('a file that could not be downloaded is reported', await page.isVisible('.modal >> text=Не удалось скачать файлов: 1'));
+    check('the report says how board icons came over', await page.isVisible('.modal >> text=Иконки досок: точно — 3, подобрано по смыслу — 1.'));
     await page.screenshot({ path: `${OUT}/71-import-report.png` });
 
     await page.click('.modal >> text=Открыть доску «Milanote»');
@@ -31,6 +32,9 @@ const failed = await runSuite(
     check('a Draft.js note keeps headings, bold and links', (await north.locator('h1').count()) === 1 && (await north.locator('strong', { hasText: 'Клип' }).count()) === 1 && (await north.locator('a[href="https://example.com/director"]').count()) === 1);
     check('a TipTap note keeps its colour', (await page.locator('.layer .note', { hasText: 'Референсы' }).evaluate((el) => el.style.background)).includes('yellow'));
     check('labels come along', (await page.locator('.layer .el', { hasText: 'Простой текст' }).locator('.label-chip', { hasText: 'Важно' }).count()) === 1);
+    const clipTile = page.locator('.layer .tile', { hasText: 'Клип «Северный ветер»' });
+    check('a Milanote glyph is drawn from the export, two-tone, in the board colour', (await clipTile.locator('.tile-icon .board-svg svg path[opacity="0.4"]').count()) === 1 && (await clipTile.locator('.board-svg script, .board-svg style').count()) === 0);
+    check('a numbered glyph without its SVG becomes a framed number', (await page.locator('.layer .tile', { hasText: 'Архив' }).locator('.board-text.boxed').textContent()) === '12');
     await page.screenshot({ path: `${OUT}/72-milanote-home.png` });
 
     await page.locator('.layer .tile', { hasText: 'Клип «Северный ветер»' }).dblclick();
@@ -66,7 +70,7 @@ const failed = await runSuite(
     const filesBefore = await storedFiles();
     await page.locator('.crumb').first().click();
     await page.click('.topbar >> text=Импорт');
-    await page.setInputFiles('.modal input[type="file"]', FIXTURE);
+    await page.setInputFiles('.modal details input[type="file"]', FIXTURE);
     await page.waitForSelector('.modal >> button:has-text("Импортировать")');
     check('a second import warns that it replaces the first', await page.isVisible('.modal >> text=Предыдущий импорт этого аккаунта'));
     await page.click('.modal >> button:has-text("Импортировать")');
@@ -75,6 +79,27 @@ const failed = await runSuite(
     check('re-importing does not duplicate the board', (await page.locator('.layer .tile', { hasText: 'Milanote' }).count()) === 1);
     const filesAfter = await storedFiles();
     check('files of the replaced import are removed', filesAfter === filesBefore, `${filesBefore} → ${filesAfter}`);
+
+    // Icons only, from the export file, without importing again.
+    await page.locator('.layer .tile', { hasText: 'Milanote' }).dblclick();
+    await page.waitForSelector('.crumb.current:has-text("Milanote")');
+    const clip = page.locator('.layer .tile', { hasText: 'Клип «Северный ветер»' });
+    await clip.click();
+    await page.locator('.props-bar').locator('text=Иконка').click();
+    await page.click('.icon-picker >> text=Без иконки');
+    check('an icon can be taken off', (await clip.locator('.board-svg').count()) === 0);
+    await page.click('.topbar >> text=Импорт');
+    check('the dialog offers to update board icons only', await page.isVisible('.modal >> text=Уже импортировали?'));
+    await page.setInputFiles('.modal input[aria-label="Файл экспорта для иконок"]', FIXTURE);
+    await page.waitForSelector('.modal >> text=Иконки обновлены у 1 доски');
+    check('only the board without an icon gets one back', await page.isVisible('.modal >> text=Оставил как есть — у доски уже была иконка: 3.'));
+    await page.screenshot({ path: `${OUT}/74-icons-refreshed.png` });
+    await page.click('.modal >> button:has-text("Готово")');
+    check('the glyph is back', (await clip.locator('.board-svg svg').count()) === 1);
+    await page.keyboard.press('Control+z');
+    check('and the refresh is one undo step', (await clip.locator('.board-svg').count()) === 0);
+    await page.keyboard.press('Control+Shift+z');
+    await page.locator('.crumb').first().click();
 
     await page.waitForTimeout(700);
     await page.reload();

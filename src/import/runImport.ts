@@ -3,6 +3,8 @@ import { HOME_ID, type ZElement } from '../model/types';
 import { otherImportRoots, planReplacement } from './replace';
 import { media } from '../storage/media';
 import { dataUrlToBlob } from '../storage/dataUrl';
+import { planIconRefresh, type IconRefreshPlan } from './milanoteIcons';
+import { updateOp } from '../model/ops';
 import { convertMilanote, finalizeImport, MN_PREFIX, type ImportReport, type MediaJob, type MilanoteExport, type StoredMedia } from './milanote';
 
 export interface ImportProgress {
@@ -92,3 +94,43 @@ export async function importMilanote(
   return { report: plan.report, rootId: plan.rootId };
 }
 
+
+/**
+ * Puts the board icons of a saved export on boards imported earlier, without
+ * importing again: only the icon field changes, as one undo step. Pictures are
+ * downloaded first; one that fails leaves its board as it was.
+ */
+export async function refreshMilanoteIcons(
+  data: MilanoteExport,
+  replace: boolean,
+  onProgress: (p: ImportProgress) => void = () => {},
+): Promise<IconRefreshPlan & { updated: number }> {
+  const boards = Object.entries(data.elements)
+    .filter(([, e]) => e.elementType === 'BOARD')
+    .map(([id, e]) => ({ id, content: e.content }));
+  const plan = planIconRefresh(useStore.getState().elements as unknown as Record<string, Record<string, unknown>>, boards, replace, MN_PREFIX);
+  const pictures = plan.changes.filter((c) => c.imageUrl);
+  let done = 0;
+  onProgress({ phase: 'media', done, total: pictures.length });
+  const queue = [...pictures];
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+      for (let change = queue.shift(); change; change = queue.shift()) {
+        const stored = await storeJob({ key: change.id, url: change.imageUrl!, name: 'иконка.png', role: 'board-icon', elementId: change.id });
+        if (stored) change.icon = `media:${stored.id}.${stored.ext}`;
+        else {
+          plan.exact--;
+          plan.missing++;
+          if (!plan.shapes.includes('image: не скачалась')) plan.shapes.push('image: не скачалась');
+        }
+        done++;
+        onProgress({ phase: 'media', done, total: pictures.length });
+      }
+    }),
+  );
+  onProgress({ phase: 'saving', done, total: pictures.length });
+  const elements = useStore.getState().elements;
+  const ops = plan.changes.filter((c) => c.icon && elements[c.id]).map((c) => updateOp(elements[c.id], { icon: c.icon }));
+  commit(ops);
+  return { ...plan, updated: ops.length };
+}
