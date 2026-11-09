@@ -38,12 +38,12 @@ const failed = await runSuite('stage 2c', 4336, async ({ page, check }) => {
   await dragTool(page, 'Доска', { x: 1300, y: 300 });
   await page.waitForSelector('.tile-input');
   await page.keyboard.press('Control+a');
-  await page.keyboard.type('Частина 1 (Від магії до науки та перших експериментів)');
+  await page.keyboard.type('Глава первая (От первых замыслов до готового сценария)');
   await page.keyboard.press('Enter');
-  const long = page.locator('.tile', { hasText: 'Частина 1' }).locator('.tile-title:not(.tile-measure)');
+  const long = page.locator('.tile', { hasText: 'Глава первая' }).locator('.tile-title:not(.tile-measure)');
   const shown = await long.locator('[aria-hidden="true"]').textContent();
-  check('a long title is cut at a word with "…"', shown.endsWith('…') && /\p{L}…$/u.test(shown) && 'Частина 1 (Від магії до науки та перших експериментів)'.startsWith(shown.slice(0, -1).trimEnd()), shown);
-  check('the full title shows on hover', (await long.getAttribute('title')) === 'Частина 1 (Від магії до науки та перших експериментів)');
+  check('a long title is cut at a word with "…"', shown.endsWith('…') && /\p{L}…$/u.test(shown) && 'Глава первая (От первых замыслов до готового сценария)'.startsWith(shown.slice(0, -1).trimEnd()), shown);
+  check('the full title shows on hover', (await long.getAttribute('title')) === 'Глава первая (От первых замыслов до готового сценария)');
   const lines = await long.evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
   check('a tile title takes at most two lines', lines <= 2, String(lines));
 
