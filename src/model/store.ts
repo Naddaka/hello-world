@@ -157,6 +157,9 @@ export const useStore = create<State>(() => ({
 const get = useStore.getState;
 const set = useStore.setState;
 
+/** A colour being picked: what the previewed elements had before (see previewMany). */
+let preview: { ids: string; before: Map<string, ElementPatch> } | null = null;
+
 function now() {
   return Date.now();
 }
@@ -260,10 +263,12 @@ export const actions = {
   },
 
   undo() {
+    actions.cancelPreview();
     applyHistory(history.undo());
   },
 
   redo() {
+    actions.cancelPreview();
     applyHistory(history.redo());
   },
 
@@ -333,12 +338,49 @@ export const actions = {
 
   /** Applies the same change to several elements as one undo step (the properties bar). */
   updateMany(ids: string[], patch: ElementPatch) {
+    if (preview) {
+      // Undo goes back to how things were before the live preview, not to its last frame.
+      const { before } = preview;
+      preview = null;
+      const now = get().elements;
+      commit([...before].filter(([id]) => now[id]).map(([id, was]) => updateOp(now[id], was)), false);
+    }
     const elements = get().elements;
     const ops = ids
       .map((id) => elements[id])
       .filter((e): e is ZElement => !!e && Object.entries(patch).some(([k, v]) => JSON.stringify((e as unknown as Record<string, unknown>)[k]) !== JSON.stringify(v)))
       .map((e) => updateOp(e, patch));
     commit(ops);
+  },
+
+  /**
+   * Shows a change while it is being picked (dragging in the colour panel) with
+   * no undo step; the following updateMany makes the one step from the state
+   * before the preview.
+   */
+  previewMany(ids: string[], patch: ElementPatch) {
+    const elements = get().elements;
+    const keys = Object.keys(patch);
+    if (!preview || preview.ids !== ids.join()) {
+      if (preview) actions.cancelPreview();
+      const before = new Map<string, ElementPatch>();
+      for (const id of ids) {
+        const e = elements[id] as unknown as Record<string, unknown> | undefined;
+        if (e) before.set(id, Object.fromEntries(keys.map((k) => [k, e[k] ?? null])) as ElementPatch);
+      }
+      preview = { ids: ids.join(), before };
+    }
+    const current = get().elements;
+    commit(ids.map((id) => current[id]).filter((e): e is ZElement => !!e).map((e) => updateOp(e, patch)), false);
+  },
+
+  /** Puts back what a preview changed. */
+  cancelPreview() {
+    if (!preview) return;
+    const { before } = preview;
+    preview = null;
+    const now = get().elements;
+    commit([...before].filter(([id]) => now[id]).map(([id, was]) => updateOp(now[id], was)), false);
   },
 
   /** Saves edits while typing without creating undo steps (synced notes follow along). */

@@ -4,6 +4,8 @@ import { GRID, type CardColor, type CellFormat, type CellKind, type TableElement
 import { colName, computeTable, FUNCTION_NAMES, type Value } from './formula';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
 import { shortcutKey } from '../ui/keys';
+import { cardStyle } from '../ui/colors';
+import { CustomColors } from '../ui/CustomColor';
 
 const num = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 10 });
 const money = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 });
@@ -339,6 +341,7 @@ function TableGrid({ element, editing }: { element: TableElement; editing: boole
           {FILLS.map((f) => (
             <button key={f} type="button" className={`swatch small${(fmt.fill ?? 'default') === f ? ' on' : ''}`} aria-label={`Заливка ${f}`} style={{ background: `var(--card-${f})` }} onClick={() => formatRange({ fill: f })} />
           ))}
+          <CustomColors value={fmt.fill} swatchClass="swatch small" onPick={(fill) => formatRange({ fill })} />
           <span className="fmt-sep" aria-hidden="true" />
           <button type="button" className="fmt" onClick={() => save(insertRow(current.current, rows))}>+ строка</button>
           <button type="button" className="fmt" onClick={() => save(insertCol(current.current, cols))}>+ колонка</button>
@@ -376,7 +379,7 @@ function TableGrid({ element, editing }: { element: TableElement; editing: boole
                   <td
                     key={c}
                     className={`zt-cell${isActive ? ' active' : ''}${editing && inRange(r, c) ? ' in-range' : ''}${shown.error ? ' error' : ''}`}
-                    style={{ textAlign: f?.align ?? (shown.numeric ? 'right' : 'left'), fontWeight: f?.bold ? 700 : undefined, background: f?.fill && f.fill !== 'default' ? `var(--card-${f.fill})` : undefined }}
+                    style={{ textAlign: f?.align ?? (shown.numeric ? 'right' : 'left'), fontWeight: f?.bold ? 700 : undefined, ...(f?.fill && f.fill !== 'default' ? { background: cardStyle(f.fill).background, color: cardStyle(f.fill).color } : {}) }}
                     onPointerDown={(e) => {
                       if (!editing) return;
                       e.stopPropagation();

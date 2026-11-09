@@ -116,7 +116,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .crumb.current:hover { background: transparent; }
 .crumb.drop { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .crumb-sep { color: var(--faint); }
-.crumb-badge { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+.crumb-badge { position: relative; overflow: hidden; width: 18px; height: 18px; flex: 0 0 18px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
 .spacer { flex: 1 1 auto; }
 .search {
   display: flex; align-items: center; gap: 8px; width: 240px; height: 34px; padding: 0 10px;
@@ -453,7 +453,8 @@ svg.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
 .label-query { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); font: 13px var(--font); color: var(--ink); outline: none; }
 .label-query:focus { border-color: var(--accent); }
 .label-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 300px; overflow-y: auto; }
-.label-row { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px; border-radius: 8px; }
+.label-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px; border-radius: 8px; }
+.label-colors { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 8px 23px; }
 .label-row:hover { background: var(--hover); }
 .label-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
 .label-dot { width: 12px; height: 12px; flex: 0 0 12px; border: 0; border-radius: 50%; cursor: pointer; padding: 0; }
@@ -795,3 +796,18 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .icon-cell.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .icon-cell.emoji { font-size: 22px; }
 .icon-picker-foot { display: flex; justify-content: space-between; padding: 6px 12px 10px; border-top: 1px solid var(--line); }
+
+/* The "+" at the end of a palette: a rainbow ring around the system colour picker. */
+.custom-color { position: relative; display: inline-block; flex: none; background: conic-gradient(#e5484d, #f5c400, #30a46c, #0ea5e9, #2f54eb, #8e4ec6, #e5484d) !important; }
+.custom-color::after { content: '+'; position: absolute; inset: 3px; display: grid; place-items: center; border-radius: inherit; background: var(--card); color: var(--ink-2); font: 600 13px/1 var(--font); pointer-events: none; }
+.custom-color input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.custom-color:focus-within { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+
+/* A board icon from the user's own picture fills its box, untinted. */
+.board-image { display: block; object-fit: cover; border-radius: 6px; }
+.tile-icon > .board-image, .tile-row-icon > .board-image, .crumb-badge > .board-image { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
+.icon-own { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 8px 18px; border: 1.5px dashed var(--line); border-radius: 12px; text-align: center; color: var(--muted); font-size: 12px; }
+.icon-own.drop { border-color: var(--accent); background: var(--accent-soft); }
+.icon-own .board-image { width: 96px; height: 96px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.icon-own p { margin: 0; max-width: 280px; }
+.icon-own .error { color: var(--danger); }

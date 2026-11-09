@@ -8,6 +8,7 @@ import { openMenu } from '../ui/ContextMenu';
 import { reveal } from '../ui/SearchPanel';
 import { GRID, type CardElement } from '../model/types';
 import { sizes } from './runtime';
+import { cardStyle } from '../ui/colors';
 
 const staticExtensions = noteExtensions();
 
@@ -173,9 +174,8 @@ export function NoteCard({ element, selected, editing, zoom }: { element: CardEl
   const cls = ['note', selected && 'selected', editing && 'editing', element.color === 'transparent' && 'transparent', element.locked && 'locked']
     .filter(Boolean)
     .join(' ');
-  const background = element.color === 'transparent' ? undefined : `var(--card-${element.color})`;
   return (
-    <div className={cls} style={{ background }}>
+    <div className={cls} style={cardStyle(element.color) as React.CSSProperties}>
       {editing ? <NoteEditor element={element} zoom={zoom} /> : <StaticNote element={element} />}
       {element.syncGroup && <SyncFooter element={element} />}
     </div>

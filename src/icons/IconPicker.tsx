@@ -1,13 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BoardColor } from '../model/types';
+import { boardTint } from '../ui/colors';
+import { isIconImageFile, storeIconImage } from './iconImage';
 import { BoardIcon, SUGGESTED_ICONS, loadEmoji, loadLucide, searchEmoji, searchLucide, type EmojiEntry, type LucideIcon } from './boardIcons';
 
-type Tab = 'icons' | 'emoji';
+type Tab = 'icons' | 'emoji' | 'own';
 const PAGE = 240;
 
 /** Picks a board icon from the Lucide set or emoji, with search in Russian or English. */
-export function IconPicker({ value, color, onPick, onClose, anchor }: { value: string | null | undefined; color: BoardColor; onPick: (icon: string | null) => void; onClose: () => void; anchor: DOMRect }) {
-  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : 'icons');
+export function IconPicker({ value, color, onPick, onClose, anchor }: { value: string | null | undefined; color: string; onPick: (icon: string | null) => void; onClose: () => void; anchor: DOMRect }) {
+  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') ? 'own' : 'icons');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [dropping, setDropping] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const pickRef = useRef(onPick);
+  pickRef.current = onPick;
+
+  const takeFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!isIconImageFile(file)) return setError('Это не изображение. Подойдут PNG, JPG, GIF, WebP или SVG.');
+    setError('');
+    setBusy(true);
+    try {
+      pickRef.current(await storeIconImage(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить изображение');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const takeFileRef = useRef(takeFile);
+  takeFileRef.current = takeFile;
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE);
   const [icons, setIcons] = useState<LucideIcon[] | null>(null);
@@ -22,6 +45,19 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
     input.current?.focus();
   }, []);
   useEffect(() => setLimit(PAGE), [query, tab, group]);
+  useEffect(() => {
+    if (tab !== 'own') return;
+    // A picture pasted while this tab is open becomes the icon (not a card on the board).
+    const onPaste = (e: ClipboardEvent) => {
+      const file = [...(e.clipboardData?.files ?? [])].find(isIconImageFile);
+      if (!file) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      void takeFileRef.current(file);
+    };
+    window.addEventListener('paste', onPaste, true);
+    return () => window.removeEventListener('paste', onPaste, true);
+  }, [tab]);
   useEffect(() => {
     const onDown = (e: PointerEvent) => !box.current?.contains(e.target as Node) && onClose();
     const onKey = (e: KeyboardEvent) => {
@@ -70,8 +106,11 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
           <button type="button" role="tab" aria-selected={tab === 'emoji'} className={tab === 'emoji' ? 'on' : ''} onClick={() => setTab('emoji')}>
             Эмодзи{emoji ? ` · ${emoji.emoji.length}` : ''}
           </button>
+          <button type="button" role="tab" aria-selected={tab === 'own'} className={tab === 'own' ? 'on' : ''} onClick={() => setTab('own')}>
+            Своё
+          </button>
         </div>
-        <input ref={input} className="icon-search" placeholder={tab === 'icons' ? 'Поиск: видео, деньги, учёба…' : 'Поиск: кот, огонь, праздник…'} value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Поиск иконки" />
+        {tab !== 'own' && <input ref={input} className="icon-search" placeholder={tab === 'icons' ? 'Поиск: видео, деньги, учёба…' : 'Поиск: кот, огонь, праздник…'} value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Поиск иконки" />}
         {tab === 'emoji' && !query.trim() && emoji && (
           <div className="icon-groups">
             {emoji.groups.map((g, i) =>
@@ -84,7 +123,7 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
           </div>
         )}
       </div>
-      <div className="icon-grid" style={{ color: `var(--board-${color}-fg)` }}>
+      <div className="icon-grid" style={{ color: boardTint(color).fg }}>
         {tab === 'icons' &&
           shownIcons.map(([name]) => (
             <button key={name} type="button" className={`icon-cell${value === `lucide:${name}` ? ' on' : ''}`} title={name} aria-label={name} onClick={() => onPick(`lucide:${name}`)}>
@@ -99,7 +138,42 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
           ))}
         {tab === 'icons' && icons && !shownIcons.length && <p className="col-empty">Ничего не нашлось — попробуйте другое слово или английское название</p>}
         {tab === 'emoji' && emoji && !shownEmoji.length && <p className="col-empty">Ничего не нашлось</p>}
-        {(!icons || !emoji) && <p className="col-empty">Загрузка…</p>}
+        {tab !== 'own' && (!icons || !emoji) && <p className="col-empty">Загрузка…</p>}
+        {tab === 'own' && (
+          <div
+            className={`icon-own${dropping ? ' drop' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDropping(true);
+            }}
+            onDragLeave={() => setDropping(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDropping(false);
+              void takeFile(e.dataTransfer.files[0]);
+            }}
+          >
+            {value?.startsWith('media:') && <BoardIcon icon={value} size={96} />}
+            <button type="button" className="btn-accent" disabled={busy} onClick={() => fileInput.current?.click()}>
+              {busy ? 'Сохраняю…' : value?.startsWith('media:') ? 'Заменить изображение…' : 'Выбрать изображение…'}
+            </button>
+            <p>Или перетащите файл сюда, или вставьте картинку из буфера (⌘V). PNG, JPG, GIF, WebP или SVG; большое изображение уменьшится до 320 пикселей.</p>
+            {error && <p className="error" role="alert">{error}</p>}
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/heic,.png,.jpg,.jpeg,.gif,.webp,.svg,.heic"
+              hidden
+              aria-label="Файл изображения"
+              onChange={(e) => {
+                void takeFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </div>
+        )}
       </div>
       <footer className="icon-picker-foot">
         <button type="button" className="link-btn" onClick={() => onPick(null)} disabled={!value}>

@@ -11,6 +11,9 @@ export const TRASH_RETENTION_DAYS = 90;
 /** Where an element lives inside its parent (a board or a column). */
 export type Section = 'CANVAS' | 'INBOX' | 'TRASH';
 
+/** A custom colour picked by the user, "#rrggbb"; shown as is in both themes. */
+export type HexColor = `#${string}`;
+
 /** Card background colors, stored as theme-independent keys. */
 export type CardColor = 'default' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'orange' | 'transparent';
 
@@ -43,7 +46,7 @@ export interface CardElement extends ElementBase {
   type: 'CARD';
   /** Rich text document (TipTap/ProseMirror JSON). */
   content: JSONContent;
-  color: CardColor;
+  color: CardColor | HexColor;
   /** Notes sharing a sync group always show the same text. */
   syncGroup?: string;
 }
@@ -51,12 +54,15 @@ export interface CardElement extends ElementBase {
 export interface BoardElement extends ElementBase {
   type: 'BOARD';
   title: string;
-  color: BoardColor;
+  color: BoardColor | HexColor;
   /** Offered in the template picker of empty boards. */
   isTemplate?: boolean;
   /** Set on the board that holds an import (so a later import of the same account replaces it). */
   importedFrom?: 'milanote';
-  /** Icon on the tile: "lucide:<name>" or "emoji:<character>"; the default board glyph when unset. */
+  /**
+   * Icon on the tile: "lucide:<name>", "emoji:<character>" or "media:<id>.<ext>"
+   * (a picture from the media library); the default board glyph when unset.
+   */
   icon?: string | null;
 }
 
@@ -193,7 +199,7 @@ export interface LineElement extends ElementBase {
   /** Sideways offset of the curve's middle, in canvas pixels (0 = straight). */
   bend: number;
   label: string;
-  color: LineColor;
+  color: LineColor | HexColor;
   weight: 1 | 2 | 3;
   /** Solid unless set. */
   style?: LineStyle;
@@ -215,8 +221,8 @@ export interface CellFormat {
   kind?: CellKind;
   align?: 'left' | 'center' | 'right';
   bold?: boolean;
-  /** Background, as a card colour key. */
-  fill?: CardColor;
+  /** Background, as a card colour key or a custom colour. */
+  fill?: CardColor | HexColor;
 }
 
 export interface TableElement extends ElementBase {
@@ -344,7 +350,7 @@ export interface ScriptElement extends ElementBase {
 export interface LabelElement extends ElementBase {
   type: 'LABEL';
   name: string;
-  color: LabelColor;
+  color: LabelColor | HexColor;
 }
 
 export type LabelColor = 'blue' | 'orange' | 'green' | 'purple' | 'pink' | 'yellow' | 'red' | 'gray';
@@ -390,7 +396,7 @@ export type ElementPatch = Partial<Omit<CardElement, 'id' | 'type' | 'color'>> &
   Partial<Omit<SketchElement, 'id' | 'type'>> &
   Partial<Omit<AliasElement, 'id' | 'type'>> &
   Partial<Omit<CommentElement, 'id' | 'type'>> &
-  Partial<Omit<ScriptElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor };
+  Partial<Omit<ScriptElement, 'id' | 'type'>> & { color?: CardColor | BoardColor | LineColor | LabelColor | HexColor };
 
 export const DEFAULT_WIDTH: Record<ElementType, number> = {
   CARD: 40,
@@ -430,7 +436,17 @@ export function mediaRefsOf(e: ZElement): MediaRef[] {
       return e.image ? [e.image] : [];
     case 'SKETCH':
       return e.backdrop ? [e.backdrop] : [];
+    case 'BOARD': {
+      const icon = iconMedia(e.icon);
+      return icon ? [icon] : [];
+    }
     default:
       return [];
   }
+}
+
+/** The stored picture of a board icon "media:<id>.<ext>", or null for other icons. */
+export function iconMedia(icon: string | null | undefined): MediaRef | null {
+  const m = icon?.match(/^media:([^./]+)\.([a-z0-9]{1,8})$/i);
+  return m ? { id: m[1], ext: m[2].toLowerCase() } : null;
 }

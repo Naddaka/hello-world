@@ -1,5 +1,6 @@
 import { PEN_COLORS, PEN_SIZES, setColor, useDrawTool } from './strokes';
 import { IconDraw } from '../ui/icons';
+import { CustomColors } from '../ui/CustomColor';
 
 /** Pen / eraser, colours and sizes; used on the board and in the sketch editor. */
 export function DrawToolbar({ onDone, doneLabel = 'Готово' }: { onDone: () => void; doneLabel?: string }) {
@@ -16,6 +17,7 @@ export function DrawToolbar({ onDone, doneLabel = 'Готово' }: { onDone: ()
       {PEN_COLORS.map((c) => (
         <button key={c} type="button" className={`pen-color${c === color && tool === 'pen' ? ' on' : ''}`} aria-label={`Цвет ${c}`} title="X — предыдущий цвет" style={{ background: c }} onClick={() => setColor(c)} />
       ))}
+      <CustomColors value={PEN_COLORS.includes(color) ? null : color} swatchClass="pen-color" onPick={(hex) => setColor(hex)} />
       <span className="fmt-sep" aria-hidden="true" />
       {PEN_SIZES.map((w, i) => (
         <button key={w} type="button" className={`fmt${size === i + 1 ? ' on' : ''}`} aria-label={`Толщина ${i + 1}`} title={`Толщина ${i + 1}`} onClick={() => useDrawTool.setState({ size: i + 1 })}>

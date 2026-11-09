@@ -8,6 +8,8 @@ import { usePresent } from '../ui/Presentation';
 import { BoardIcon } from '../icons/boardIcons';
 import { IconPicker } from '../icons/IconPicker';
 import { IconBoard } from '../ui/icons';
+import { boardTint } from '../ui/colors';
+import { CustomColors } from '../ui/CustomColor';
 
 /**
  * A bar over the selection with the properties of what is selected: colour,
@@ -86,6 +88,9 @@ export function PropertiesBar() {
   if (!visible || !chosen) return null;
   const ids = chosen.items.map((e) => e.id);
   const set = (patch: Parameters<typeof actions.updateMany>[1]) => actions.updateMany(ids, patch);
+  const preview = (patch: Parameters<typeof actions.previewMany>[1]) => actions.previewMany(ids, patch);
+  /** The colour all selected things share, if any. */
+  const shared = chosen.items.every((e) => (e as { color?: string }).color === (chosen.items[0] as { color?: string }).color) ? (chosen.items[0] as { color?: string }).color : null;
 
   let content: React.ReactNode = null;
   if (chosen.kind === 'LINE') {
@@ -98,6 +103,7 @@ export function PropertiesBar() {
           {LINE_COLORS.map((c) => (
             <button key={c.key} type="button" className={`pb-swatch${all('color', c.key) ? ' on' : ''}`} style={{ background: `var(--line-${c.key})` }} aria-label={c.label} aria-pressed={all('color', c.key)} title={c.label} onClick={() => set({ color: c.key })} />
           ))}
+          <CustomColors value={shared} swatchClass="pb-swatch" onPreview={(color) => preview({ color })} onPick={(color) => set({ color })} />
         </span>
         <span className="pb-sep" />
         <span className="pb-group" role="group" aria-label="Толщина">
@@ -142,7 +148,7 @@ export function PropertiesBar() {
     content = (
       <>
         <button ref={iconButton} type="button" className="pb-btn pb-icon" aria-label="Иконка доски" aria-expanded={!!picker} title="Иконка доски" onClick={() => setPicker(picker ? null : iconButton.current!.getBoundingClientRect())}>
-          <span style={{ color: `var(--board-${first.color}-fg)`, display: 'flex' }}>{first.icon ? <BoardIcon icon={first.icon} size={18} /> : <IconBoard size={18} />}</span>
+          <span style={{ color: boardTint(first.color).fg, display: 'flex' }}>{first.icon ? <BoardIcon icon={first.icon} size={18} /> : <IconBoard size={18} />}</span>
           Иконка
         </button>
         <span className="pb-sep" />
@@ -150,6 +156,7 @@ export function PropertiesBar() {
           {BOARD_COLORS.map((c) => (
             <button key={c} type="button" className={`pb-swatch${boards.every((b) => b.color === c) ? ' on' : ''}`} style={{ background: `var(--board-${c}-fg)` }} aria-label={COLOR_NAMES[c]} aria-pressed={boards.every((b) => b.color === c)} title={COLOR_NAMES[c]} onClick={() => set({ color: c })} />
           ))}
+          <CustomColors value={shared} swatchClass="pb-swatch" onPreview={(color) => preview({ color })} onPick={(color) => set({ color })} />
         </span>
       </>
     );
@@ -169,6 +176,7 @@ export function PropertiesBar() {
             onClick={() => set({ color: c })}
           />
         ))}
+        <CustomColors value={shared} swatchClass="pb-swatch card" onPreview={(color) => preview({ color })} onPick={(color) => set({ color })} />
       </span>
     );
   }

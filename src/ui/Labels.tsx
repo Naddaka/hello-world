@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { actions, allLabels, labelUsage, useStore } from '../model/store';
 import type { LabelColor } from '../model/types';
+import { labelTint } from './colors';
+import { CustomColors } from './CustomColor';
 
 const COLORS: LabelColor[] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow', 'red', 'gray'];
 
@@ -14,7 +16,7 @@ export function LabelChips({ ids }: { ids: string[] }) {
   return (
     <div className="label-chips">
       {labels.map((l) => l.type === 'LABEL' && (
-        <span key={l.id} className="label-chip" style={{ background: `var(--label-${l.color}-bg)`, color: `var(--label-${l.color}-fg)` }}>
+        <span key={l.id} className="label-chip" style={{ background: labelTint(l.color).bg, color: labelTint(l.color).fg }}>
           {l.name}
         </span>
       ))}
@@ -34,6 +36,7 @@ export function LabelPicker() {
   const elements = useStore((s) => s.elements);
   const [query, setQuery] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [coloring, setColoring] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const labels = useMemo(() => allLabels(elements), [elements]);
   const usage = useMemo(() => labelUsage(elements), [elements]);
@@ -77,8 +80,9 @@ export function LabelPicker() {
               className="label-dot"
               aria-label="Сменить цвет"
               title="Сменить цвет"
-              style={{ background: `var(--label-${l.color}-fg)` }}
-              onClick={() => actions.updateLabel(l.id, { color: COLORS[(COLORS.indexOf(l.color) + 1) % COLORS.length] })}
+              aria-expanded={coloring === l.id}
+              style={{ background: labelTint(l.color).dot }}
+              onClick={() => setColoring(coloring === l.id ? null : l.id)}
             />
             {renaming === l.id ? (
               <input
@@ -115,6 +119,14 @@ export function LabelPicker() {
             >
               ✕
             </button>
+            {coloring === l.id && (
+              <span className="label-colors" role="group" aria-label={`Цвет метки ${l.name}`}>
+                {COLORS.map((c) => (
+                  <button key={c} type="button" className={`pb-swatch${l.color === c ? ' on' : ''}`} style={{ background: `var(--label-${c}-fg)` }} aria-label={c} aria-pressed={l.color === c} onClick={() => actions.updateLabel(l.id, { color: c })} />
+                ))}
+                <CustomColors value={l.color} swatchClass="pb-swatch" onPreview={(hex) => actions.previewMany([l.id], { color: hex })} onPick={(hex) => actions.updateMany([l.id], { color: hex })} />
+              </span>
+            )}
           </li>
         ))}
         {q && !exact && (

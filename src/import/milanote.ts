@@ -9,6 +9,7 @@ import {
   type CommentMessage,
   type LabelColor,
   type LineColor,
+  type HexColor,
   type LineEnd,
   type MediaRef,
   type Section,
@@ -16,6 +17,7 @@ import {
   type ZElement,
 } from '../model/types';
 import { milanoteDoc, milanotePlain } from './milanoteText';
+import { isHexColor, luminance } from '../ui/colors';
 
 /**
  * Converts a Milanote export (see milanoteExporter.js) into Zadum elements.
@@ -57,7 +59,7 @@ export interface MediaJob {
   svg?: string;
   name: string;
   /** What the file is for, so a failure can be explained. */
-  role: 'image' | 'file' | 'link-image' | 'drawing';
+  role: 'image' | 'file' | 'link-image' | 'drawing' | 'board-icon';
   elementId: string;
 }
 
@@ -206,8 +208,22 @@ function familyOf(value: unknown): Family | null {
   return 'pink';
 }
 
-function cardColor(value: unknown): CardColor {
+/**
+ * A colour the user mixed in Milanote's own picker (an exact value such as
+ * {space: 'HEX', value: '#7cd651'} or '#7cd651'), as opposed to a palette name
+ * like 'BLUE', which becomes our matching preset. Near-white means "no colour".
+ */
+export function customHex(value: unknown): HexColor | null {
+  if (typeof value === 'string' && (NAMED_HEX[value.toUpperCase()] || /^[a-z_]+$/i.test(value))) return null;
+  const hex = colorHex(value);
+  if (!hex || !isHexColor(hex)) return null;
+  return luminance(hex) > 0.94 ? null : hex;
+}
+
+function cardColor(value: unknown): CardColor | HexColor {
   if (typeof value === 'string' && value.toUpperCase() === 'TRANSPARENT') return 'transparent';
+  const custom = customHex(value);
+  if (custom) return custom;
   const f = familyOf(value);
   switch (f) {
     case null:
@@ -221,13 +237,17 @@ function cardColor(value: unknown): CardColor {
   }
 }
 
-function boardColor(value: unknown, fallback: BoardColor): BoardColor {
+function boardColor(value: unknown, fallback: BoardColor): BoardColor | HexColor {
+  const custom = customHex(value);
+  if (custom) return custom;
   const f = familyOf(value);
   if (!f) return fallback;
   return f === 'red' ? 'pink' : f;
 }
 
-function lineColor(value: unknown): LineColor {
+function lineColor(value: unknown): LineColor | HexColor {
+  const custom = customHex(value);
+  if (custom) return custom;
   const f = familyOf(value);
   switch (f) {
     case 'blue':
@@ -245,10 +265,47 @@ function lineColor(value: unknown): LineColor {
   }
 }
 
-function labelColor(value: unknown, index: number): LabelColor {
+function labelColor(value: unknown, index: number): LabelColor | HexColor {
+  const custom = customHex(value);
+  if (custom) return custom;
   const f = familyOf(value);
   const cycle: LabelColor[] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow', 'red', 'gray'];
   return f ?? cycle[index % cycle.length];
+}
+
+const PICTOGRAPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+
+/**
+ * A board's icon in Milanote ({type: 'emoji' | 'icon' | 'image' | 'letter', id, …})
+ * as our icon value: an emoji character, a Lucide icon of the same name, or a
+ * picture to download ("pending:<key>" until it is stored). Letters have no
+ * equivalent; the board keeps the default glyph.
+ */
+export function boardIconOf(value: unknown): { icon: string } | { imageUrl: string } | null {
+  const o = obj(value);
+  const type = str(o.type).toLowerCase();
+  const candidates = [o.emoji, o.native, o.char, o.unicode, o.value, o.id, o.name].filter((v): v is string => typeof v === 'string' && !!v.trim());
+  if (type === 'emoji' || (!type && candidates.some((c) => PICTOGRAPH.test(c)))) {
+    const char = candidates.find((c) => PICTOGRAPH.test(c));
+    if (char) return { icon: `emoji:${char.trim()}` };
+    // Code points such as "1f3ac" or "1f1fa-1f1e6".
+    const code = candidates.find((c) => /^[0-9a-f]{4,6}(-[0-9a-f]{4,6})*$/i.test(c));
+    if (code) return { icon: `emoji:${String.fromCodePoint(...code.split('-').map((h) => parseInt(h, 16)))}` };
+    return null;
+  }
+  if (type === 'image' || type === 'upload' || type === 'custom') {
+    const url = imageUrl(o.image) ?? imageUrl(o.url) ?? imageUrl(o.src) ?? imageUrl(o);
+    return url && /^https?:/i.test(url) ? { imageUrl: url } : null;
+  }
+  if (type === 'icon') {
+    const name = str(o.id || o.name)
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/[\s_]+/g, '-')
+      .toLowerCase()
+      .replace(/^icon-/, '');
+    return /^[a-z0-9-]+$/.test(name) ? { icon: `lucide:${name}` } : null;
+  }
+  return null;
 }
 
 const BOARD_CYCLE: BoardColor[] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow'];
@@ -441,6 +498,14 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
           width: DEFAULT_WIDTH.BOARD,
           title: special?.title ?? (milanotePlain(content.title) || 'Без названия'),
           color: boardColor(content.color ?? content.secondaryColor ?? obj(content.icon).color, BOARD_CYCLE[boardCount.n++ % BOARD_CYCLE.length]),
+          ...(() => {
+            const icon = boardIconOf(content.icon);
+            if (!icon) return {};
+            if ('icon' in icon) return { icon: icon.icon };
+            const key = `icon-${id}`;
+            media.push({ key, url: icon.imageUrl, name: fileNameFromUrl(icon.imageUrl, 'иконка.png'), role: 'board-icon', elementId: zid });
+            return { icon: `${PENDING}${key}` };
+          })(),
           ...(content.isTemplate || special?.template || (rawParent && specialRoots.get(rawParent)?.template) ? { isTemplate: true } : {}),
         };
       }
@@ -907,6 +972,11 @@ export function finalizeImport(plan: ImportPlan, results: Map<string, StoredMedi
         color: 'default',
         content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `⚠ Не удалось сохранить: ${e.name}`, marks: [{ type: 'italic' }] }] }] },
       } as ZElement;
+    }
+    if (e.type === 'BOARD' && e.icon?.startsWith(PENDING)) {
+      const got = results.get(e.icon.slice(PENDING.length));
+      const { icon: _pending, ...rest } = e;
+      return got ? { ...e, icon: `media:${got.id}.${got.ext}` } : rest;
     }
     if (e.type === 'LINK') {
       const key = pendingKey(e.image);

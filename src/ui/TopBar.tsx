@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { exportBoard, type BoardExportFormat } from '../doc/boardExport';
 import { openMilanoteImport } from '../import/MilanoteImport';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
+import { boardTint, isHexColor, textOn } from './colors';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
 // Full-window views (documents) also need room for the window buttons.
@@ -77,7 +78,7 @@ export function TopBar() {
                 {board.id === HOME_ID ? (
                   <IconHome size={14} />
                 ) : current ? (
-                  <span className="crumb-badge" style={{ background: `var(--board-${board.color}-fg)`, color: 'var(--app)' }}>
+                  <span className="crumb-badge" style={{ background: boardTint(board.color).fg, color: isHexColor(board.color) ? textOn(board.color) : 'var(--app)' }}>
                     {board.icon ? <BoardIcon icon={board.icon} size={12} /> : <IconBoard size={11} strokeWidth={2.4} />}
                   </span>
                 ) : null}

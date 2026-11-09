@@ -5,6 +5,7 @@ import { actions } from '../model/store';
 import type { BoardElement } from '../model/types';
 import { IconBoard, IconShortcut } from '../ui/icons';
 import { plural } from '../ui/plural';
+import { boardTint } from '../ui/colors';
 
 function TitleInput({ element }: { element: BoardElement }) {
   const [value, setValue] = useState(element.title);
@@ -35,7 +36,7 @@ function TitleInput({ element }: { element: BoardElement }) {
 }
 
 export function BoardTile({ element, selected, editing, dropActive, count, compact = false, shortcut = false }: { element: BoardElement; selected: boolean; editing: boolean; dropActive: boolean; count: number; compact?: boolean; shortcut?: boolean }) {
-  const c = element.color;
+  const t = boardTint(element.color);
   const badge = shortcut && (
     <span className="shortcut-badge" title="Ярлык: ведёт на доску в другом месте" aria-label="Ярлык">
       <IconShortcut size={12} />
@@ -45,7 +46,7 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
     // Inside a column or panel: a horizontal row instead of a large tile.
     return (
       <div className={`tile-row${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
-        <span className="tile-row-icon" style={{ position: 'relative', background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)` }}>
+        <span className="tile-row-icon" style={{ position: 'relative', background: t.bg, color: t.fg }}>
           {element.icon ? <BoardIcon icon={element.icon} size={20} /> : <IconBoard size={20} strokeWidth={1.8} />}
           {badge}
         </span>
@@ -58,7 +59,7 @@ export function BoardTile({ element, selected, editing, dropActive, count, compa
   }
   return (
     <div className={`tile${selected ? ' selected' : ''}${dropActive ? ' drop' : ''}`} data-drop-board={element.id}>
-      <div className="tile-icon" style={{ background: `var(--board-${c}-bg)`, color: `var(--board-${c}-fg)`, boxShadow: `inset 0 0 0 1px var(--board-${c}-ring)` }}>
+      <div className="tile-icon" style={{ background: t.bg, color: t.fg, boxShadow: `inset 0 0 0 1px ${t.ring}` }}>
         {element.icon ? <BoardIcon icon={element.icon} size={40} /> : <IconBoard size={38} strokeWidth={1.6} />}
         {badge}
       </div>

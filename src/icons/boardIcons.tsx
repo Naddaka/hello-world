@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
+import { iconMedia } from '../model/types';
+import { useMediaSrc } from '../storage/media';
+import { IconBoard } from '../ui/icons';
 
 /**
  * Board icons: the Lucide set (2000+ line icons, ISC licence) and emoji with
  * Russian names (Emojibase, MIT). Both are loaded on demand, the first time a
  * board with an icon is shown or the picker is opened. An icon is stored as
- * "lucide:<name>" or "emoji:<character>".
+ * "lucide:<name>" or "emoji:<character>", or "media:<id>.<ext>" for a picture
+ * of the user's own, which fills the tile.
  */
 
 export type LucideIcon = [name: string, svg: string, tags: string];
@@ -26,8 +30,19 @@ export function loadEmoji() {
   return emoji;
 }
 
+/** A picture of the user's own, covering the icon's box. */
+function ImageIcon({ icon, size }: { icon: string; size: number }) {
+  const src = useMediaSrc(iconMedia(icon));
+  return src ? <img className="board-image" src={src} width={size} height={size} alt="" draggable={false} /> : <span className="board-image" style={{ width: size, height: size }} />;
+}
+
 /** The icon of a board, drawn in the tile's colour. */
 export function BoardIcon({ icon, size }: { icon: string; size: number }) {
+  if (icon.startsWith('media:')) return <ImageIcon icon={icon} size={size} />;
+  return <GlyphIcon icon={icon} size={size} />;
+}
+
+function GlyphIcon({ icon, size }: { icon: string; size: number }) {
   const [set, setSet] = useState(lucideReady);
   const isLucide = icon.startsWith('lucide:');
   useEffect(() => {
@@ -41,6 +56,8 @@ export function BoardIcon({ icon, size }: { icon: string; size: number }) {
     );
   }
   const found = set?.get(icon.slice(7));
+  // An unknown name (e.g. a Milanote icon with no Lucide twin) shows the usual board glyph.
+  if (set && !found) return <IconBoard size={size} strokeWidth={1.7} />;
   return (
     <svg
       width={size}

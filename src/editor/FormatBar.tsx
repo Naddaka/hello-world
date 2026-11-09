@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { actions } from '../model/store';
-import type { CardColor } from '../model/types';
+import type { CardColor, HexColor } from '../model/types';
+import { cardSwatch } from '../ui/colors';
+import { CustomColors } from '../ui/CustomColor';
 import {
   IconBullets,
   IconCenter,
@@ -37,7 +39,7 @@ function Btn({ label, on, onClick, children, style }: { label: string; on?: bool
   );
 }
 
-export function FormatBar({ editor, cardId, color, zoom, inline = false }: { editor: Editor; cardId?: string; color?: CardColor; zoom: number; inline?: boolean }) {
+export function FormatBar({ editor, cardId, color, zoom, inline = false }: { editor: Editor; cardId?: string; color?: CardColor | HexColor; zoom: number; inline?: boolean }) {
   const [popup, setPopup] = useState<Popup>(null);
   const [href, setHref] = useState('');
   const state = useEditorState({
@@ -126,7 +128,7 @@ export function FormatBar({ editor, cardId, color, zoom, inline = false }: { edi
       <span className="fmt-sep" aria-hidden="true" />
       <div style={{ position: 'relative' }}>
         <Btn label="Цвет карточки" onClick={() => toggle('color')}>
-          <span style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line)', background: color === 'transparent' ? 'transparent' : `var(--card-${color})` }} />
+          <span style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line)', background: cardSwatch(color) ?? 'transparent' }} />
         </Btn>
         {popup === 'color' && (
           <div className="popover panel" style={{ left: 'auto', right: 0 }}>
@@ -143,6 +145,7 @@ export function FormatBar({ editor, cardId, color, zoom, inline = false }: { edi
                   onClick={() => { actions.update(cardId, { color: c.key }); setPopup(null); }}
                 />
               ))}
+              <CustomColors value={color} swatchClass="swatch" onPreview={(hex) => actions.previewMany([cardId], { color: hex })} onPick={(hex) => actions.updateMany([cardId], { color: hex })} />
             </div>
           </div>
         )}

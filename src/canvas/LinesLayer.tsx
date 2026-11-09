@@ -5,6 +5,7 @@ import { GRID, type ElementFields, type LineColor, type LineElement, type LineEn
 import { arrowHead, bendFor, lineGeometry, type Pt } from './lineGeometry';
 import { screenToCanvas, useSizeVersion } from './runtime';
 import { openMenu, type MenuEntry } from '../ui/ContextMenu';
+import { lineStroke } from '../ui/colors';
 
 export const LINE_STYLES: { key: LineStyle; label: string }[] = [
   { key: 'solid', label: 'Сплошная' },
@@ -120,7 +121,7 @@ function LineView({ line, elements, boardId, selected, editing }: { line: LineEl
   if (!geo) return null;
   const { a, b, ctrl, mid } = geo;
   const d = `M ${a.x} ${a.y} Q ${ctrl.x} ${ctrl.y} ${b.x} ${b.y}`;
-  const stroke = `var(--line-${line.color})`;
+  const stroke = lineStroke(line.color);
   const w = line.weight === 1 ? 1.5 : line.weight === 2 ? 2.25 : 3.5;
   const dash = dashFor(line.style, w);
 

@@ -3,7 +3,7 @@ import { getSchema, type JSONContent } from '@tiptap/core';
 import { Node } from '@tiptap/pm/model';
 import fixture from '../../e2e/fixtures/milanote-export.json';
 import { noteExtensions } from '../editor/extensions';
-import { convertMilanote, finalizeImport, isMilanoteExport, type MilanoteExport, type StoredMedia } from './milanote';
+import { boardIconOf, convertMilanote, customHex, finalizeImport, isMilanoteExport, type MilanoteExport, type StoredMedia } from './milanote';
 import { draftToDoc, milanoteDoc, milanotePlain } from './milanoteText';
 import exporterSource from './milanoteExporter.js?raw';
 import type { ZElement } from '../model/types';
@@ -89,7 +89,7 @@ describe('Milanote conversion', () => {
     expect(byId['mn-c2'].z).toBeLessThan(byId['mn-c1'].z);
     expect(byId['mn-c1'].z).toBeLessThan(byId['mn-c3'].z);
     expect(byId['mn-c2']).toMatchObject({ color: 'yellow' });
-    expect(byId['mn-c3']).toMatchObject({ color: 'green', labels: ['mn-label-lab1'] });
+    expect(byId['mn-c3']).toMatchObject({ color: '#7cd651', labels: ['mn-label-lab1'] });
     expect(byId['mn-label-lab1']).toMatchObject({ type: 'LABEL', name: 'Важно', color: 'red', parentId: null });
   });
 
@@ -227,5 +227,38 @@ describe('Milanote exporter script', () => {
     expect(isMilanoteExport(exported)).toBe(true);
     expect(Object.keys(exported.elements).sort()).toEqual(['a', 'far', 'n', 'root', 's']);
     expect(messages.at(-1)!.kind).toBe('done');
+  });
+});
+
+describe('Milanote board icons and custom colours', () => {
+  it('maps every kind of board icon', () => {
+    expect(boardIconOf({ type: 'emoji', id: '🎬' })).toEqual({ icon: 'emoji:🎬' });
+    expect(boardIconOf({ type: 'emoji', id: '1f3ac' })).toEqual({ icon: 'emoji:🎬' });
+    expect(boardIconOf({ type: 'icon', id: 'CameraRoll' })).toEqual({ icon: 'lucide:camera-roll' });
+    expect(boardIconOf({ type: 'image', image: { original: 'https://media.invalid/i/me.png' } })).toEqual({ imageUrl: 'https://media.invalid/i/me.png' });
+    expect(boardIconOf({ type: 'letter', id: 'A' })).toBeNull();
+    expect(boardIconOf(undefined)).toBeNull();
+  });
+
+  it('keeps colours mixed in Milanote and maps palette names to presets', () => {
+    expect(customHex({ space: 'HEX', value: '#7cd651' })).toBe('#7cd651');
+    expect(customHex('#ff8d48')).toBe('#ff8d48');
+    expect(customHex('BLUE')).toBeNull();
+    expect(customHex('TABLE_DEFAULT_HEADER_BACKGROUND_COLOR')).toBeNull();
+    expect(customHex('#ffffff')).toBeNull();
+  });
+
+  it('downloads picture icons and drops the ones that fail', () => {
+    const copy = structuredClone(data) as MilanoteExport;
+    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'image', image: { original: 'https://media.invalid/i/b1.png' } };
+    (copy.elements.b3.content as Record<string, unknown>).icon = { type: 'image', url: 'https://media.invalid/i/b3.png' };
+    (copy.elements.t1.content as Record<string, unknown>).icon = { type: 'emoji', id: '🎥' };
+    const plan = convertMilanote(copy, 0);
+    expect(plan.media.filter((m) => m.role === 'board-icon').map((m) => m.key).sort()).toEqual(['icon-b1', 'icon-b3']);
+    const done = Object.fromEntries(finalizeImport(plan, new Map([['icon-b1', { id: 'p1', ext: 'png' }], ['icon-b3', null]])).map((e) => [e.id, e]));
+    expect(done['mn-b1']).toMatchObject({ type: 'BOARD', icon: 'media:p1.png' });
+    expect(done['mn-b3']).not.toHaveProperty('icon');
+    expect(done['mn-t1']).toMatchObject({ icon: 'emoji:🎥' });
+    expect(plan.report.failedMedia).not.toContainEqual(expect.objectContaining({ url: 'https://media.invalid/i/b3.png' }));
   });
 });
