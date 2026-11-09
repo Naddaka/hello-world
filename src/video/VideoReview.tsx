@@ -10,6 +10,7 @@ import { DEFAULT_FPS, FRAME_RATES, canDropFrame, chooseFps, clock, frameMiddle, 
 import { shortcutKey } from '../ui/keys';
 import { freeSpot } from '../canvas/placement';
 import { confirmDialog } from '../ui/Confirm';
+import { setPosterFromFrame } from './posters';
 
 /** Which video or audio file is open for review. */
 export const useReview = create<{ id: string | null }>(() => ({ id: null }));
@@ -242,6 +243,21 @@ function Review({ file }: { file: FileElement }) {
             <input type="checkbox" checked={df} onChange={(e) => actions.update(file.id, { dropFrame: e.target.checked })} />
             DF
           </label>
+        )}
+        {isVideo && (
+          <button
+            type="button"
+            className="ibtn wide"
+            title="Показывать этот кадр на карточке видео, пока оно не запущено"
+            onClick={async () => {
+              if (!video.current) return;
+              video.current.pause();
+              const ok = await setPosterFromFrame(file, video.current);
+              actions.showToast(ok ? `Обложка — кадр ${tc(video.current.currentTime)}` : 'Не удалось взять кадр');
+            }}
+          >
+            Кадр на обложку
+          </button>
         )}
         {isVideo && (
           <button

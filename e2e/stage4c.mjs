@@ -9,6 +9,27 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   await (await chooser).setFiles(path.resolve('e2e/fixtures/clip.webm'));
   await page.waitForSelector('.layer .file-card video');
   check('a video lands on the board', true);
+  // A poster frame is made so the card is not black before playing.
+  await page.waitForFunction(() => document.querySelector('.layer .file-card video')?.getAttribute('poster')?.startsWith('blob:'), null, { timeout: 15000 });
+  const poster = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const px = ctx.getImageData(0, 0, c.width, c.height).data;
+          let lit = 0;
+          for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] > 60) lit++;
+          resolve({ w: img.naturalWidth, h: img.naturalHeight, lit: lit / (px.length / 4) });
+        };
+        img.src = document.querySelector('.layer .file-card video').getAttribute('poster');
+      }),
+  );
+  check('the video card shows a poster frame, not black', poster.w === 640 && poster.h === 360 && poster.lit > 0.5, JSON.stringify(poster));
 
   await page.locator('.layer .file-card .file-name').dblclick();
   await page.waitForSelector('.vr-overlay video');
@@ -72,6 +93,13 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   const chapters = readFileSync(await (await download).path(), 'utf8');
   check('YouTube chapter rules are checked', warning.includes('короче 10 секунд'), warning);
   check('and as YouTube chapters', chapters === '0:00 Начало\n0:02 Пересветить небо\n0:03 Звук громче\n', JSON.stringify(chapters));
+
+  // Any frame can become the card's poster.
+  const posterBefore = await page.evaluate(() => document.querySelector('.layer .file-card video')?.getAttribute('poster'));
+  await page.click('.vr-overlay >> text=Кадр на обложку');
+  await page.waitForSelector('.toast:has-text("Обложка — кадр 00:00:02:01")');
+  const posterAfter = await page.evaluate(() => document.querySelector('.layer .file-card video')?.getAttribute('poster'));
+  check('the frame on screen can be made the poster', !!posterAfter && posterAfter !== posterBefore);
 
   // Frame grab.
   await page.click('.vr-overlay >> text=Стоп-кадр в карточку');

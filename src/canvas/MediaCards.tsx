@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ensurePoster } from '../video/posters';
 import { actions } from '../model/store';
 import type { FileElement, ImageElement, LinkElement } from '../model/types';
 import { media, useMediaSrc } from '../storage/media';
@@ -62,6 +63,10 @@ export function ImageCard({ element, selected, editing }: { element: ImageElemen
 export function FileCard({ element, selected }: { element: FileElement; selected: boolean }) {
   const src = useMediaSrc(element.media);
   const kind = element.mime.startsWith('video/') ? 'video' : element.mime.startsWith('audio/') ? 'audio' : 'file';
+  const poster = useMediaSrc(element.poster ?? null);
+  useEffect(() => {
+    if (kind === 'video' && !element.poster) ensurePoster(element);
+  }, [kind, element]);
   const [duration, setDuration] = useState(0);
   const markers = element.markers ?? [];
   const openCount = markers.filter((m) => !m.done).length;
@@ -75,6 +80,7 @@ export function FileCard({ element, selected }: { element: FileElement; selected
           src={src}
           controls
           preload="metadata"
+          poster={poster ?? undefined}
           autoPlay={element.autoplay}
           muted={element.autoplay}
           loop={element.loop}

@@ -154,6 +154,8 @@ export interface FileElement extends ElementBase {
   dropFrame?: boolean;
   /** Where the file was imported from on disk, so editing software can link to the original. */
   sourcePath?: string;
+  /** A still shown on the video card until it plays. */
+  poster?: MediaRef | null;
 }
 
 export interface LinkElement extends ElementBase {
@@ -413,8 +415,9 @@ export const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragrap
 export function mediaRefsOf(e: ZElement): MediaRef[] {
   switch (e.type) {
     case 'IMAGE':
-    case 'FILE':
       return [e.media];
+    case 'FILE':
+      return e.poster ? [e.media, e.poster] : [e.media];
     case 'LINK':
       return e.image ? [e.image] : [];
     case 'SKETCH':
