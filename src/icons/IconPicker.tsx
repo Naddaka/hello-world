@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { boardTint } from '../ui/colors';
 import { isIconImageFile, storeIconImage } from './iconImage';
+import { letterIcon } from './letters';
 import { BoardIcon, SUGGESTED_ICONS, loadEmoji, loadLucide, searchEmoji, searchLucide, type EmojiEntry, type LucideIcon } from './boardIcons';
 
 type Tab = 'icons' | 'emoji' | 'own';
@@ -8,7 +9,7 @@ const PAGE = 240;
 
 /** Picks a board icon from the Lucide set or emoji, with search in Russian or English. */
 export function IconPicker({ value, color, onPick, onClose, anchor }: { value: string | null | undefined; color: string; onPick: (icon: string | null) => void; onClose: () => void; anchor: DOMRect }) {
-  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') ? 'own' : 'icons');
+  const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') || value?.startsWith('letter:') ? 'own' : 'icons');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [dropping, setDropping] = useState(false);
@@ -161,6 +162,18 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
             </button>
             <p>Или перетащите файл сюда, или вставьте картинку из буфера (⌘V). PNG, JPG, GIF, WebP или SVG; большое изображение уменьшится до 320 пикселей.</p>
             {error && <p className="error" role="alert">{error}</p>}
+            <form
+              className="icon-letter"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const text = letterIcon(new FormData(e.currentTarget).get('letter')?.toString() ?? '');
+                if (text) onPick(`letter:${text}`);
+              }}
+            >
+              <label htmlFor="icon-letter">Или буквы:</label>
+              <input id="icon-letter" name="letter" maxLength={2} placeholder="АБ" defaultValue={value?.startsWith('letter:') ? value.slice(7) : ''} onKeyDown={(e) => e.stopPropagation()} />
+              <button type="submit" className="link-btn">Поставить</button>
+            </form>
             <input
               ref={fileInput}
               type="file"

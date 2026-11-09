@@ -814,3 +814,7 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .icon-own .board-image { width: 96px; height: 96px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
 .icon-own p { margin: 0; max-width: 280px; }
 .icon-own .error { color: var(--danger); }
+
+.board-letter { font-weight: 700; letter-spacing: -0.02em; }
+.icon-letter { display: flex; align-items: center; gap: 8px; }
+.icon-letter input { width: 52px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 600 14px var(--font); text-align: center; text-transform: uppercase; }

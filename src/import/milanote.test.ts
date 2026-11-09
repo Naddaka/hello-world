@@ -251,7 +251,9 @@ describe('Milanote board icons and custom colours', () => {
     expect(boardIconOf({ type: 'emoji', id: '1f3ac' })).toEqual({ icon: 'emoji:🎬' });
     expect(boardIconOf({ type: 'icon', id: 'CameraRoll' })).toEqual({ icon: 'lucide:camera-roll' });
     expect(boardIconOf({ type: 'image', image: { original: 'https://media.invalid/i/me.png' } })).toEqual({ imageUrl: 'https://media.invalid/i/me.png' });
-    expect(boardIconOf({ type: 'letter', id: 'A' })).toBeNull();
+    expect(boardIconOf({ type: 'letter', id: 'a' })).toEqual({ icon: 'letter:A' });
+    expect(boardIconOf({ type: 'letter', id: 'Шк' })).toEqual({ icon: 'letter:ШК' });
+    expect(boardIconOf({ type: 'letter', id: 'too long' })).toBeNull();
     expect(boardIconOf(undefined)).toBeNull();
   });
 
@@ -280,7 +282,7 @@ describe('Milanote board icons and custom colours', () => {
 
   it('reports icons it does not understand by their shape, never their contents', () => {
     const copy = structuredClone(data) as MilanoteExport;
-    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'letter', id: 'Ш', color: 'BLUE' };
+    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'letter', id: '!?', color: 'BLUE' };
     (copy.elements.b3.content as Record<string, unknown>).icon = { kind: 'sticker', ref: 'secret-name' };
     (copy.elements.t1.content as Record<string, unknown>).icon = { color: 'RED' };
     const { report } = convertMilanote(copy, 0);

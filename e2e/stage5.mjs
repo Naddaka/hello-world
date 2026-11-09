@@ -54,7 +54,10 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
   await page.screenshot({ path: `${OUT}/92-board-picture.png` });
   await bar.locator('text=Иконка').click();
   check('the picker opens on the picture tab', (await page.locator('.icon-picker [role="tab"][aria-selected="true"]').textContent()) === 'Своё');
-  await page.keyboard.press('Escape');
+  await page.fill('#icon-letter', 'зд');
+  await page.click('.icon-letter button[type="submit"]');
+  check('one or two letters can be the icon', (await tile.locator('.board-letter').textContent()) === 'ЗД');
+  await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
 
   // --- a line: colour, weight, style, arrows

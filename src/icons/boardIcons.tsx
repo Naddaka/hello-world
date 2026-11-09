@@ -48,6 +48,14 @@ function GlyphIcon({ icon, size }: { icon: string; size: number }) {
   useEffect(() => {
     if (isLucide && !set) void loadLucide().then(setSet);
   }, [isLucide, set]);
+  if (icon.startsWith('letter:')) {
+    const text = icon.slice(7);
+    return (
+      <span className="board-letter" style={{ fontSize: size * (text.length > 1 ? 0.72 : 0.95), lineHeight: 1 }} aria-hidden="true">
+        {text}
+      </span>
+    );
+  }
   if (icon.startsWith('emoji:')) {
     return (
       <span className="board-emoji" style={{ fontSize: size * 1.05, lineHeight: 1 }} aria-hidden="true">

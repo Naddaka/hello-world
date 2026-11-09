@@ -18,6 +18,9 @@ import {
 } from '../model/types';
 import { milanoteDoc, milanotePlain } from './milanoteText';
 import { isHexColor, luminance } from '../ui/colors';
+import { letterIcon } from '../icons/letters';
+
+export { letterIcon };
 
 /**
  * Converts a Milanote export (see milanoteExporter.js) into Zadum elements.
@@ -283,8 +286,7 @@ const PICTOGRAPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
 /**
  * A board's icon in Milanote ({type: 'emoji' | 'icon' | 'image' | 'letter', id, …})
  * as our icon value: an emoji character, a Lucide icon of the same name, or a
- * picture to download ("pending:<key>" until it is stored). Letters have no
- * equivalent; the board keeps the default glyph.
+ * picture to download ("pending:<key>" until it is stored), or one or two letters.
  */
 /** Whether Milanote's icon field holds an icon at all (it may only carry the tile colour). */
 function hasIcon(value: unknown): boolean {
@@ -317,6 +319,10 @@ export function boardIconOf(value: unknown): { icon: string } | { imageUrl: stri
   if (type === 'image' || type === 'upload' || type === 'custom') {
     const url = imageUrl(o.image) ?? imageUrl(o.url) ?? imageUrl(o.src) ?? imageUrl(o);
     return url && /^https?:/i.test(url) ? { imageUrl: url } : null;
+  }
+  if (type === 'letter' || type === 'letters' || type === 'text') {
+    const text = letterIcon(candidates.find((c) => letterIcon(c)) ?? '');
+    return text ? { icon: `letter:${text}` } : null;
   }
   if (type === 'icon') {
     const name = str(o.id || o.name)
