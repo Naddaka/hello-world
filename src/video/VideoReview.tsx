@@ -6,7 +6,7 @@ import type { FileElement, MarkerColor, VideoMarker } from '../model/types';
 import { media, useMediaSrc } from '../storage/media';
 import { fileName, saveFile } from '../storage/files';
 import { isTauri } from '../storage/repo';
-import { DEFAULT_FPS, FRAME_RATES, canDropFrame, nearestStandardFps, clock, frameMiddle, frameOf, snapFps, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters, youtubeChapterProblems } from './markers';
+import { DEFAULT_FPS, FRAME_RATES, canDropFrame, chooseFps, clock, frameMiddle, frameOf, sortMarkers, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters, youtubeChapterProblems } from './markers';
 import { shortcutKey } from '../ui/keys';
 import { freeSpot } from '../canvas/placement';
 import { confirmDialog } from '../ui/Confirm';
@@ -103,8 +103,9 @@ function Review({ file }: { file: FileElement }) {
     const found = (raw: number, variable: boolean) => {
       if (cancelled || !Number.isFinite(raw) || raw < 1 || raw > 240) return;
       if (useStore.getState().elements[file.id]?.type === 'FILE' && (useStore.getState().elements[file.id] as FileElement).fps == null) {
-        // Editing software works with standard rates: a variable-rate file gets the nearest one.
-        actions.setLive(file.id, { fps: variable ? nearestStandardFps(raw) : snapFps(raw), fpsDetected: true, fpsVariable: variable });
+        // Editing software works with standard rates: near ones are rounded to them.
+        const { fps: chosen, rounded } = chooseFps(raw, variable);
+        actions.setLive(file.id, { fps: chosen, fpsDetected: true, fpsVariable: variable, fpsRounded: rounded });
       }
     };
     const measure = () => {
@@ -216,20 +217,22 @@ function Review({ file }: { file: FileElement }) {
             title={
               file.fpsVariable
                 ? 'У файла переменная частота кадров: взята ближайшая стандартная, с которой работают монтажные программы'
-                : file.fpsDetected
+                : file.fpsRounded
+                  ? 'Частота файла чуть отличается от стандартной (например, у записи экрана) — взята стандартная'
+                  : file.fpsDetected
                   ? 'Определено по файлу'
                   : file.fps == null
                     ? 'Не определено — выберите частоту'
                     : 'Выбрано вручную'
             }
-            onChange={(e) => actions.update(file.id, { fps: Number(e.target.value), fpsDetected: false, fpsVariable: false })}
+            onChange={(e) => actions.update(file.id, { fps: Number(e.target.value), fpsDetected: false, fpsVariable: false, fpsRounded: false })}
           >
             {[...new Set([...FRAME_RATES, fps])]
               .sort((a, b) => a - b)
               .map((r) => (
                 <option key={r} value={r}>
                   {r}
-                  {file.fpsDetected && r === fps ? (file.fpsVariable ? ' — переменная частота' : ' (по файлу)') : ''}
+                  {file.fpsDetected && r === fps ? (file.fpsVariable ? ' — переменная частота' : file.fpsRounded ? ' (≈ по файлу)' : ' (по файлу)') : ''}
                 </option>
               ))}
           </select>

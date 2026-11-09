@@ -21,6 +21,22 @@ export function snapFps(raw: number): number {
 const EDIT_RATES = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
 export const nearestStandardFps = (raw: number) => EDIT_RATES.reduce((best, r) => (Math.abs(r - raw) < Math.abs(best - raw) ? r : best));
 
+/**
+ * The rate to work with for a detected one. Exact standard rates are kept; a
+ * constant rate a little off the standard (a screen recording at 60.525) and a
+ * variable rate near one are rounded to it ("rounded" says so); anything far
+ * from every standard rate (a variable 8.4 fps clip) is kept as it is rather
+ * than turned into something it is not.
+ */
+export function chooseFps(raw: number, variable: boolean): { fps: number; rounded: boolean } {
+  const exact = snapFps(raw);
+  if (!variable && FRAME_RATES.includes(exact)) return { fps: exact, rounded: false };
+  const nearest = nearestStandardFps(raw);
+  const off = Math.abs(nearest - raw) / nearest;
+  if (off < (variable ? 0.1 : 0.02)) return { fps: nearest, rounded: nearest !== raw };
+  return { fps: Math.round(raw * 1000) / 1000, rounded: false };
+}
+
 /** Drop-frame timecode exists only for the NTSC rates 29.97 and 59.94. */
 export const canDropFrame = (fps: number) => Math.abs(fps - 29.97) < 0.01 || Math.abs(fps - 59.94) < 0.01;
 

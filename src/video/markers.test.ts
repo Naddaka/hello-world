@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoMarker } from '../model/types';
-import { canDropFrame, nearestStandardFps, clock, frameMiddle, framesToTimecode, snapFps, youtubeChapterProblems, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
+import { canDropFrame, chooseFps, nearestStandardFps, clock, frameMiddle, framesToTimecode, snapFps, youtubeChapterProblems, timecode, toFcpxml, toMarkersCsv, toPremiereXml, toResolveEdl, toYoutubeChapters } from './markers';
 
 const m = (time: number, text: string, extra: Partial<VideoMarker> = {}): VideoMarker => ({ id: `m${time}`, time, text, color: 'blue', done: false, ...extra });
 const markers = [m(65.48, 'Пересветить небо', { color: 'red' }), m(2, 'Начать раньше'), m(3600 + 0.04, 'Титры', { done: true })];
@@ -71,6 +71,13 @@ describe('frame rates and drop-frame timecode', () => {
     expect(nearestStandardFps(30.246)).toBe(30);
     expect(nearestStandardFps(60.525)).toBe(60);
     expect(nearestStandardFps(29.563)).toBe(29.97);
+    // What the review uses for a detected rate.
+    expect(chooseFps(30, false)).toEqual({ fps: 30, rounded: false });
+    expect(chooseFps(29.97002997, false)).toEqual({ fps: 29.97, rounded: false });
+    expect(chooseFps(90000 / 1487, false)).toEqual({ fps: 60, rounded: true }); // screen recording, 60.525
+    expect(chooseFps(239 / 12, false)).toEqual({ fps: 19.917, rounded: false }); // far from any standard rate
+    expect(chooseFps(30.34, true)).toEqual({ fps: 30, rounded: true });
+    expect(chooseFps(8.4, true)).toEqual({ fps: 8.4, rounded: false }); // not turned into 23.976
     expect(canDropFrame(29.97)).toBe(true);
     expect(canDropFrame(30)).toBe(false);
   });

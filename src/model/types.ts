@@ -148,6 +148,8 @@ export interface FileElement extends ElementBase {
   fpsDetected?: boolean;
   /** The file has a variable frame rate; `fps` is the nearest standard rate. */
   fpsVariable?: boolean;
+  /** The detected rate was a little off a standard one and was rounded to it. */
+  fpsRounded?: boolean;
   /** Drop-frame timecode (29.97 and 59.94 only). */
   dropFrame?: boolean;
   /** Where the file was imported from on disk, so editing software can link to the original. */
