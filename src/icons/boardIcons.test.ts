@@ -3,8 +3,8 @@ import lucide from './lucide.json';
 import emojiData from './emoji-ru.json';
 import { RU_ICON_WORDS, SUGGESTED_ICONS, englishTerms, searchEmoji, searchLucide, type EmojiEntry, type LucideIcon } from './boardIcons';
 
-const icons = lucide as LucideIcon[];
-const emoji = (emojiData as { emoji: EmojiEntry[] }).emoji;
+const icons = lucide as unknown as LucideIcon[];
+const emoji = (emojiData as unknown as { emoji: EmojiEntry[] }).emoji;
 
 describe('board icons', () => {
   it('has the full sets', () => {
