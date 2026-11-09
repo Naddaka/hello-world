@@ -19,7 +19,7 @@ export function reveal(element: ZElement) {
   const board = containingBoard(elements, element.id);
   if (!board) return;
   if (useStore.getState().boardId !== board) actions.openBoard(board);
-  if (element.section === 'INBOX') {
+  if (element.section === 'INBOX' && element.parentId === board) {
     if (useStore.getState().panel !== 'inbox') actions.setPanel('inbox');
   } else {
     const anchor = elements[element.parentId ?? '']?.type === 'COLUMN' ? elements[element.parentId!] : element;

@@ -158,6 +158,8 @@ export interface FileElement extends ElementBase {
   sourcePath?: string;
   /** A still shown on the video card until it plays. */
   poster?: MediaRef | null;
+  /** The poster was checked not to be a black frame. */
+  posterChecked?: boolean;
 }
 
 export interface LinkElement extends ElementBase {

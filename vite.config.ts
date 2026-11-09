@@ -9,7 +9,8 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_ENV_'],
   build: {
     target: 'safari15',
-    sourcemap: true,
+    // Source maps help in development, but are not shipped inside the app (they were 5 MB).
+    sourcemap: process.env.TAURI_ENV_PLATFORM ? process.env.TAURI_ENV_DEBUG === 'true' : true,
   },
   test: {
     environment: 'jsdom',

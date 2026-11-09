@@ -65,6 +65,14 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
   check('the bar hides while a note is edited', (await bar.count()) === 0);
   await page.keyboard.press('Escape');
 
+  // An empty Unsorted panel does not stay open on the next board.
+  await page.click('.inbox-btn');
+  check('the Unsorted panel opens', (await page.locator('.side-panel[aria-label="Неразобранное"]').count()) === 1);
+  await page.locator('.layer .tile', { hasText: 'Мой первый проект' }).dblclick();
+  await page.waitForSelector('.crumb.current:has-text("Мой первый проект")');
+  check('an empty Unsorted panel closes on another board', (await page.locator('.side-panel[aria-label="Неразобранное"]').count()) === 0);
+  await page.locator('.crumb', { hasText: 'Главная' }).click();
+
   await page.waitForTimeout(700);
   await page.reload();
   await page.waitForSelector('text=Добро пожаловать в Zadum');

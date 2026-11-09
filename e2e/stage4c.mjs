@@ -31,6 +31,35 @@ const failed = await runSuite('stage 4c', 4340, async ({ page, check }) => {
   );
   check('the video card shows a poster frame, not black', poster.w === 640 && poster.h === 360 && poster.lit > 0.5, JSON.stringify(poster));
 
+  // A clip that starts black: the poster comes from a later frame instead.
+  const chooser2 = page.waitForEvent('filechooser');
+  await page.click('.tool:has-text("Медиа")');
+  await (await chooser2).setFiles(path.resolve('e2e/fixtures/fade-in.webm'));
+  const fadeCard = page.locator('.layer .file-card', { hasText: 'fade-in.webm' });
+  await fadeCard.waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('.layer .file-card')].find((c) => c.textContent.includes('fade-in'))?.querySelector('video')?.getAttribute('poster')?.startsWith('blob:'), null, { timeout: 20000 });
+  const fadeLit = await fadeCard.locator('video').evaluate(
+    (v) =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const px = ctx.getImageData(0, 0, c.width, c.height).data;
+          let lit = 0;
+          for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] > 60) lit++;
+          resolve(lit / (px.length / 4));
+        };
+        img.src = v.getAttribute('poster');
+      }),
+  );
+  check('a clip that starts black gets a poster from a later frame', fadeLit > 0.5, String(fadeLit));
+  await fadeCard.click({ button: 'right' });
+  await page.click('.ctxmenu >> text=Удалить');
+
   await page.locator('.layer .file-card .file-name').dblclick();
   await page.waitForSelector('.vr-overlay video');
   await page.waitForFunction(() => document.querySelector('.vr-overlay video').readyState >= 2);

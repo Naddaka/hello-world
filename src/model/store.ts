@@ -170,6 +170,13 @@ function applyHistory(tx: Transaction | null) {
   schedulePersist(changed, removed);
 }
 
+/** The side panel to keep when moving to another board: an empty Unsorted panel is not left open there. */
+function panelOn(boardId: string): Panel {
+  const { panel, elements } = get();
+  if (panel === 'inbox' && inboxChildren(elements, boardId).length === 0) return null;
+  return panel;
+}
+
 function makeBase(parentId: string | null, x: number, y: number, z: number, width: number) {
   return { id: nanoid(), parentId, section: 'CANVAS' as const, x: Math.round(x), y: Math.round(y), width, z, createdAt: now(), updatedAt: now() };
 }
@@ -649,7 +656,7 @@ export const actions = {
   openBoard(id: string) {
     const { boardId, back, elements, viewedAt } = get();
     if (id === boardId || !elements[id] || elements[id].type !== 'BOARD') return;
-    set({ boardId: id, back: [...back, boardId], forward: [], selection: [], editingId: null, viewedAt: { ...viewedAt, [id]: now() } });
+    set({ boardId: id, back: [...back, boardId], forward: [], selection: [], editingId: null, viewedAt: { ...viewedAt, [id]: now() }, panel: panelOn(id) });
     schedulePrefs();
   },
 
@@ -657,14 +664,14 @@ export const actions = {
     const { back, boardId, forward } = get();
     const prev = back[back.length - 1];
     if (!prev) return;
-    set({ boardId: prev, back: back.slice(0, -1), forward: [boardId, ...forward], selection: [], editingId: null });
+    set({ boardId: prev, back: back.slice(0, -1), forward: [boardId, ...forward], selection: [], editingId: null, panel: panelOn(prev) });
   },
 
   goForward() {
     const { back, boardId, forward } = get();
     const next = forward[0];
     if (!next) return;
-    set({ boardId: next, back: [...back, boardId], forward: forward.slice(1), selection: [], editingId: null });
+    set({ boardId: next, back: [...back, boardId], forward: forward.slice(1), selection: [], editingId: null, panel: panelOn(next) });
   },
 
   goParent() {

@@ -65,7 +65,7 @@ export function FileCard({ element, selected }: { element: FileElement; selected
   const kind = element.mime.startsWith('video/') ? 'video' : element.mime.startsWith('audio/') ? 'audio' : 'file';
   const poster = useMediaSrc(element.poster ?? null);
   useEffect(() => {
-    if (kind === 'video' && !element.poster) ensurePoster(element);
+    if (kind === 'video' && !(element.poster && element.posterChecked)) ensurePoster(element);
   }, [kind, element]);
   const [duration, setDuration] = useState(0);
   const markers = element.markers ?? [];
