@@ -257,6 +257,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn prunes_only_old_unreferenced_library_files() {
+        let dir = std::env::temp_dir().join(format!("zadum-prune-{}", new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["aaa111.png", "bbb222.jpg", "ccc333.mp4.part", "notes.txt.bak", "ddd444.mov"] {
+            std::fs::write(dir.join(name), b"x").unwrap();
+        }
+        let keep: std::collections::HashSet<String> = ["aaa111".to_string()].into();
+        // Fresh files are never removed.
+        assert_eq!(prune_dir(&dir, &keep, std::time::Duration::from_secs(3600)), 0);
+        // Old enough: only unreferenced library files go.
+        assert_eq!(prune_dir(&dir, &keep, std::time::Duration::ZERO), 2);
+        let mut left: Vec<String> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        left.sort();
+        assert_eq!(left, ["aaa111.png", "ccc333.mp4.part", "notes.txt.bak"]);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        // Most of the library unused at once: nothing is removed.
+        let dir2 = std::env::temp_dir().join(format!("zadum-prune-{}", new_id()));
+        std::fs::create_dir_all(&dir2).unwrap();
+        for i in 0..12 {
+            std::fs::write(dir2.join(format!("f{i}.png")), b"x").unwrap();
+        }
+        assert_eq!(prune_dir(&dir2, &std::collections::HashSet::new(), std::time::Duration::ZERO), 0);
+        assert_eq!(std::fs::read_dir(&dir2).unwrap().count(), 12);
+        std::fs::remove_dir_all(&dir2).unwrap();
+    }
+
+    #[test]
     fn real_type_beats_a_misleading_name() {
         assert_eq!(choose_extension("изображение.jpg", "image/svg+xml"), "svg");
         assert_eq!(choose_extension("вставка", "image/png"), "png");
@@ -327,6 +355,51 @@ pub fn delete_media(app: AppHandle, files: Vec<String>) -> Result<usize, String>
         }
     }
     Ok(removed)
+}
+
+/// Removes library files no element refers to (left behind by a replaced board
+/// picture, an emptied trash, an undo history that is gone). `keep` holds the ids
+/// still in use; files younger than `min_age_secs` stay, so nothing being added
+/// right now (or pasted back from the clipboard soon) can be lost.
+#[tauri::command]
+pub fn prune_media(app: AppHandle, keep: Vec<String>, min_age_secs: u64) -> Result<usize, String> {
+    let dir = media_dir(&app)?;
+    let keep: std::collections::HashSet<String> = keep.into_iter().collect();
+    Ok(prune_dir(&dir, &keep, std::time::Duration::from_secs(min_age_secs.max(3600))))
+}
+
+fn prune_dir(dir: &Path, keep: &std::collections::HashSet<String>, min_age: std::time::Duration) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else { return 0 };
+    let now = std::time::SystemTime::now();
+    let mut library = 0usize;
+    let mut doomed = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        // Only library files ("<id>.<ext>"); downloads in progress (".part") and anything else stay.
+        if library_name(&name).is_err() {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else { continue };
+        if !meta.is_file() {
+            continue;
+        }
+        library += 1;
+        let id = name.split_once('.').map(|(id, _)| id).unwrap_or_default();
+        if keep.contains(id) {
+            continue;
+        }
+        let age = meta.modified().ok().and_then(|m| now.duration_since(m).ok());
+        if age.is_some_and(|a| a >= min_age) {
+            doomed.push(entry.path());
+        }
+    }
+    // A safety net against a damaged or swapped database: when most of the
+    // library looks unused, something is wrong with what we were told; keep it all.
+    if doomed.len() > 10 && doomed.len() * 2 > library {
+        eprintln!("prune_media: {} of {} files look unused; leaving them", doomed.len(), library);
+        return 0;
+    }
+    doomed.iter().filter(|p| std::fs::remove_file(p).is_ok()).count()
 }
 
 /// Accepts only plain library names ("<id>.<ext>"), never a path.

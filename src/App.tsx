@@ -21,6 +21,7 @@ import { ShotDialog } from './draw/ShotDialog';
 import { VideoReviewOverlay } from './video/VideoReview';
 import { ConfirmDialog } from './ui/Confirm';
 import { PropertiesBar } from './canvas/PropertiesBar';
+import { scheduleMediaCleanup } from './storage/mediaCleanup';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -47,6 +48,7 @@ export function App() {
   useEffect(() => {
     openRepo()
       .then((repo) => actions.init(repo))
+      .then(() => scheduleMediaCleanup())
       .catch((error) => {
         console.error(error);
         actions.showToast('Не удалось открыть хранилище данных');

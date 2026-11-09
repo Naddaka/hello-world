@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { actions } from '../model/store';
 import type { CardColor, HexColor } from '../model/types';
-import { cardSwatch } from '../ui/colors';
+import { HIGHLIGHTS, cardSwatch, highlightColor, isHexColor } from '../ui/colors';
 import { CustomColors } from '../ui/CustomColor';
 import {
   IconBullets,
@@ -15,6 +15,10 @@ import {
   IconQuote,
 } from '../ui/icons';
 
+const MARK_NAMES: Record<string, string> = { yellow: 'Жёлтое выделение', green: 'Зелёное выделение', blue: 'Голубое выделение', pink: 'Розовое выделение', purple: 'Сиреневое выделение', orange: 'Оранжевое выделение' };
+
+const markBackground = (c: string | null) => (c && isHexColor(c) ? c : `var(--hl-${c ?? 'yellow'})`);
+
 const COLORS: { key: CardColor; label: string }[] = [
   { key: 'default', label: 'Обычный' },
   { key: 'yellow', label: 'Жёлтый' },
@@ -26,7 +30,7 @@ const COLORS: { key: CardColor; label: string }[] = [
   { key: 'transparent', label: 'Прозрачный' },
 ];
 
-type Popup = null | 'style' | 'link' | 'color';
+type Popup = null | 'style' | 'link' | 'color' | 'mark';
 
 /** Prevents toolbar clicks from stealing focus from the editor. */
 const keepFocus = (e: React.MouseEvent) => e.preventDefault();
@@ -50,6 +54,7 @@ export function FormatBar({ editor, cardId, color, zoom, inline = false }: { edi
       underline: e.isActive('underline'),
       strike: e.isActive('strike'),
       highlight: e.isActive('highlight'),
+      markColor: e.isActive('highlight') ? highlightColor(e.getAttributes('highlight').color) ?? 'yellow' : null,
       bullet: e.isActive('bulletList'),
       ordered: e.isActive('orderedList'),
       task: e.isActive('taskList'),
@@ -104,8 +109,46 @@ export function FormatBar({ editor, cardId, color, zoom, inline = false }: { edi
       <Btn label="Подчёркнутый (⌘U)" on={state.underline} onClick={() => chain().toggleUnderline().run()} style={{ textDecoration: 'underline', fontWeight: 500 }}>Ч</Btn>
       <Btn label="Зачёркнутый (⌘⇧X)" on={state.strike} onClick={() => chain().toggleStrike().run()} style={{ textDecoration: 'line-through', fontWeight: 500 }}>З</Btn>
       <Btn label="Выделение (⌘J)" on={state.highlight} onClick={() => chain().toggleHighlight().run()}>
-        <span style={{ padding: '1px 4px', borderRadius: 3, background: 'var(--mark)' }}>А</span>
+        <span style={{ padding: '1px 4px', borderRadius: 3, background: markBackground(state.markColor) }}>А</span>
       </Btn>
+      <div style={{ position: 'relative', display: 'flex' }}>
+        <Btn label="Цвет выделения" on={popup === 'mark'} onClick={() => toggle('mark')} style={{ width: 16, minWidth: 16, padding: 0 }}>
+          <IconChevronDown size={11} />
+        </Btn>
+        {popup === 'mark' && (
+          <div className="popover panel" style={{ left: -60 }}>
+            <div className="swatches" role="group" aria-label="Цвет выделения">
+              {HIGHLIGHTS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={MARK_NAMES[c]}
+                  title={MARK_NAMES[c]}
+                  aria-pressed={state.markColor === c}
+                  className={`swatch${state.markColor === c ? ' on' : ''}`}
+                  style={{ background: `var(--hl-${c})` }}
+                  onMouseDown={keepFocus}
+                  onClick={() => {
+                    chain().unsetHighlight().setHighlight(c === 'yellow' ? undefined : { color: c }).run();
+                    setPopup(null);
+                  }}
+                />
+              ))}
+              <CustomColors
+                value={state.markColor}
+                swatchClass="swatch"
+                onPick={(hex) => {
+                  chain().unsetHighlight().setHighlight({ color: hex }).run();
+                  setPopup(null);
+                }}
+              />
+            </div>
+            <button type="button" className="link-btn" disabled={!state.highlight} onMouseDown={keepFocus} onClick={() => { chain().unsetHighlight().run(); setPopup(null); }} style={{ marginTop: 8 }}>
+              Без выделения
+            </button>
+          </div>
+        )}
+      </div>
       <span className="fmt-sep" aria-hidden="true" />
       <Btn label="Маркированный список (⌘⇧U)" on={state.bullet} onClick={() => chain().toggleBulletList().run()}><IconBullets size={16} /></Btn>
       <Btn label="Нумерованный список (⌘⇧O)" on={state.ordered} onClick={() => chain().toggleOrderedList().run()}><IconNumbers size={16} /></Btn>

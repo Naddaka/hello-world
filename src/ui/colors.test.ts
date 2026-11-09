@@ -52,3 +52,15 @@ describe('board pictures', () => {
     expect(iconSize(64, 64)).toEqual({ width: 64, height: 64 });
   });
 });
+
+describe('highlight colours', () => {
+  it('stores presets by name, custom colours as hex, the plain one as nothing', async () => {
+    const { highlightColor } = await import('./colors');
+    expect(highlightColor('green')).toBe('green');
+    expect(highlightColor('yellow')).toBeNull();
+    expect(highlightColor('var(--hl-pink)')).toBe('pink');
+    expect(highlightColor('#FF8800')).toBe('#ff8800');
+    expect(highlightColor('rgb(255, 136, 0)')).toBe('#ff8800');
+    expect(highlightColor('')).toBeNull();
+  });
+});

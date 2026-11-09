@@ -75,6 +75,11 @@ export interface ImportReport {
   /** Elements whose board was not part of the export; they go to the Milanote board's Unsorted panel. */
   orphans: number;
   unknownTypes: string[];
+  /**
+   * Board icons: how many came over, and the shapes (type and field names, never
+   * values) of those that did not, so an unfamiliar format shows up in the summary.
+   */
+  icons: { moved: number; skipped: number; shapes: string[] };
   /** Boards Milanote could not give us. */
   exportErrors: { boardId: string; message: string }[];
   /** Media that could not be downloaded (filled in by finalizeImport). */
@@ -281,7 +286,23 @@ const PICTOGRAPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
  * picture to download ("pending:<key>" until it is stored). Letters have no
  * equivalent; the board keeps the default glyph.
  */
+/** Whether Milanote's icon field holds an icon at all (it may only carry the tile colour). */
+function hasIcon(value: unknown): boolean {
+  if (typeof value === 'string') return !!value.trim();
+  const keys = Object.keys(obj(value)).filter((k) => k !== 'color' && obj(value)[k] != null && obj(value)[k] !== '');
+  return keys.length > 0;
+}
+
+/** "emoji: id, skin" — the type and field names of an icon, without its values. */
+export function iconShape(value: unknown): string {
+  if (typeof value === 'string') return 'строка';
+  const o = obj(value);
+  const keys = Object.keys(o).filter((k) => k !== 'type').sort();
+  return `${str(o.type) || 'без типа'}: ${keys.join(', ') || '—'}`;
+}
+
 export function boardIconOf(value: unknown): { icon: string } | { imageUrl: string } | null {
+  if (typeof value === 'string') return PICTOGRAPH.test(value) ? { icon: `emoji:${value.trim()}` } : null;
   const o = obj(value);
   const type = str(o.type).toLowerCase();
   const candidates = [o.emoji, o.native, o.char, o.unicode, o.value, o.id, o.name].filter((v): v is string => typeof v === 'string' && !!v.trim());
@@ -357,6 +378,7 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
     trashed: 0,
     orphans: 0,
     unknownTypes: [],
+    icons: { moved: 0, skipped: 0, shapes: [] },
     exportErrors: data.errors ?? [],
     failedMedia: [],
   };
@@ -499,8 +521,15 @@ export function convertMilanote(data: MilanoteExport, now = Date.now()): ImportP
           title: special?.title ?? (milanotePlain(content.title) || 'Без названия'),
           color: boardColor(content.color ?? content.secondaryColor ?? obj(content.icon).color, BOARD_CYCLE[boardCount.n++ % BOARD_CYCLE.length]),
           ...(() => {
+            if (!hasIcon(content.icon)) return {};
             const icon = boardIconOf(content.icon);
-            if (!icon) return {};
+            if (!icon) {
+              report.icons.skipped++;
+              const shape = iconShape(content.icon);
+              if (!report.icons.shapes.includes(shape)) report.icons.shapes.push(shape);
+              return {};
+            }
+            report.icons.moved++;
             if ('icon' in icon) return { icon: icon.icon };
             const key = `icon-${id}`;
             media.push({ key, url: icon.imageUrl, name: fileNameFromUrl(icon.imageUrl, 'иконка.png'), role: 'board-icon', elementId: zid });
@@ -976,7 +1005,11 @@ export function finalizeImport(plan: ImportPlan, results: Map<string, StoredMedi
     if (e.type === 'BOARD' && e.icon?.startsWith(PENDING)) {
       const got = results.get(e.icon.slice(PENDING.length));
       const { icon: _pending, ...rest } = e;
-      return got ? { ...e, icon: `media:${got.id}.${got.ext}` } : rest;
+      if (got) return { ...e, icon: `media:${got.id}.${got.ext}` };
+      plan.report.icons.moved--;
+      plan.report.icons.skipped++;
+      if (!plan.report.icons.shapes.includes('image: не скачалась')) plan.report.icons.shapes.push('image: не скачалась');
+      return rest;
     }
     if (e.type === 'LINK') {
       const key = pendingKey(e.image);

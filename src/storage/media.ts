@@ -29,6 +29,8 @@ interface MediaBackend {
   importUrl(url: string): Promise<MediaInfo | null>;
   /** Deletes stored files nothing refers to any more. */
   remove(refs: MediaRef[]): Promise<void>;
+  /** Deletes library files whose id is not in `keep` and that are older than `minAgeSecs`; resolves to how many went. */
+  prune(keep: string[], minAgeSecs: number): Promise<number>;
   /** Downloads a file of any size by URL (imports); rejects with the reason on failure. */
   download(url: string, name: string): Promise<MediaInfo>;
   src(ref: MediaRef): Promise<string>;
@@ -77,6 +79,7 @@ async function tauriBackend(): Promise<MediaBackend> {
     async remove(refs) {
       if (refs.length) await invoke('delete_media', { files: refs.map((r) => `${r.id}.${r.ext}`) });
     },
+    prune: (keep, minAgeSecs) => invoke<number>('prune_media', { keep, minAgeSecs }),
     src: async (ref) => convertFileSrc(pathOf(ref)),
     async preview(url) {
       try {
@@ -131,6 +134,8 @@ async function browserBackend(): Promise<MediaBackend> {
         urls.delete(r.id);
       }
     },
+    // Browser storage keeps no file dates, so there is no safe way to tell old leftovers apart.
+    prune: async () => 0,
     async download(url, name) {
       // Works for data: URLs and servers that allow cross-origin reads.
       const response = await fetch(url);

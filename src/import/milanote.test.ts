@@ -51,7 +51,7 @@ describe('Milanote text', () => {
     expect(doc.content![2]).toMatchObject({ type: 'blockquote' });
     expect(textOf(doc.content![2])).toBe('💡 Идея: снимать на 35 мм');
     expect(textOf(doc.content![3])).toBe('Позвонить @Рома цвет маркер');
-    // Text colour is dropped, bold kept; highlight loses its colour attribute.
+    // Text colour is dropped, bold kept; a yellow highlight is the plain one.
     expect(doc.content![3].content!.find((n) => n.text === ' цвет')!.marks).toEqual([{ type: 'bold' }]);
     expect(doc.content![3].content!.find((n) => n.text === ' маркер')!.marks).toEqual([{ type: 'highlight' }]);
   });
@@ -230,6 +230,21 @@ describe('Milanote exporter script', () => {
   });
 });
 
+describe('Milanote highlight colours', () => {
+  it('keeps the colour of a highlight and stays valid for the editor', () => {
+    const para = (color: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'highlight', attrs: { color } }] }] }] });
+    const marks = (color: string) => {
+      const doc = milanoteDoc(para(color));
+      assertValid(doc);
+      return doc.content![0].content![0].marks;
+    };
+    expect(marks('green')).toEqual([{ type: 'highlight', attrs: { color: 'green' } }]);
+    expect(marks('#12ab34')).toEqual([{ type: 'highlight', attrs: { color: '#12ab34' } }]);
+    expect(marks('yellow')).toEqual([{ type: 'highlight' }]);
+    expect(marks('CHARCOAL')).toEqual([{ type: 'highlight' }]);
+  });
+});
+
 describe('Milanote board icons and custom colours', () => {
   it('maps every kind of board icon', () => {
     expect(boardIconOf({ type: 'emoji', id: '🎬' })).toEqual({ icon: 'emoji:🎬' });
@@ -260,5 +275,16 @@ describe('Milanote board icons and custom colours', () => {
     expect(done['mn-b3']).not.toHaveProperty('icon');
     expect(done['mn-t1']).toMatchObject({ icon: 'emoji:🎥' });
     expect(plan.report.failedMedia).not.toContainEqual(expect.objectContaining({ url: 'https://media.invalid/i/b3.png' }));
+    expect(plan.report.icons).toEqual({ moved: 2, skipped: 1, shapes: ['image: не скачалась'] });
+  });
+
+  it('reports icons it does not understand by their shape, never their contents', () => {
+    const copy = structuredClone(data) as MilanoteExport;
+    (copy.elements.b1.content as Record<string, unknown>).icon = { type: 'letter', id: 'Ш', color: 'BLUE' };
+    (copy.elements.b3.content as Record<string, unknown>).icon = { kind: 'sticker', ref: 'secret-name' };
+    (copy.elements.t1.content as Record<string, unknown>).icon = { color: 'RED' };
+    const { report } = convertMilanote(copy, 0);
+    expect(report.icons).toEqual({ moved: 0, skipped: 2, shapes: ['letter: color, id', 'без типа: kind, ref'] });
+    expect(JSON.stringify(report.icons)).not.toContain('secret-name');
   });
 });

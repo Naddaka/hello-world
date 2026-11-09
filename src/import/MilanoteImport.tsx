@@ -288,6 +288,12 @@ function ImportDone({ report, rootId, onClose }: { report: ImportReport; rootId:
       </table>
       {report.trashed > 0 && <p className="side-hint mn-note">Из корзины Milanote не переносил: {report.trashed}.</p>}
       {report.orphans > 0 && <p className="side-hint mn-note">Без своей доски оказалось {report.orphans} — они в «Неразобранном» доски «Milanote».</p>}
+      {report.icons.moved + report.icons.skipped > 0 && (
+        <p className="side-hint mn-note">
+          Иконки досок: перенесено {report.icons.moved}
+          {report.icons.skipped > 0 && <>, не перенесено {report.icons.skipped} ({report.icons.shapes.join('; ')})</>}.
+        </p>
+      )}
       {report.unknownTypes.length > 0 && <p className="side-hint mn-note">Незнакомые типы (вместо них — заметки с пометкой): {report.unknownTypes.join(', ')}.</p>}
       {report.exportErrors.length > 0 && <p className="mn-warn">Milanote не отдал досок: {report.exportErrors.length}. Попробуйте импорт ещё раз позже.</p>}
       {report.failedMedia.length > 0 && (

@@ -56,6 +56,7 @@ pub fn run() {
             media::download_media,
             media::read_text_file,
             media::delete_media,
+            media::prune_media,
             media::media_frame_rate,
             media::write_file,
             media::print_window,

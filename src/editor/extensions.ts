@@ -4,6 +4,26 @@ import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Placeholder } from '@tiptap/extensions';
+import { highlightColor, isHexColor, textOn } from '../ui/colors';
+
+export { HIGHLIGHTS, highlightColor } from '../ui/colors';
+
+/** The highlight with a colour: presets follow the theme, a custom colour gets readable text. */
+const ColorHighlight = Highlight.extend({
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+        parseHTML: (el) => highlightColor(el.getAttribute('data-color') || el.style.backgroundColor),
+        renderHTML: (attrs) => {
+          const c = highlightColor(attrs.color);
+          if (!c) return {};
+          return isHexColor(c) ? { 'data-color': c, style: `background-color: ${c}; color: ${textOn(c)}` } : { 'data-color': c, style: `background-color: var(--hl-${c})` };
+        },
+      },
+    };
+  },
+}).configure({ multicolor: true });
 
 /** Small text style (⌘⇧9), rendered as <small>. */
 export const Small = Mark.create({
@@ -52,7 +72,7 @@ export function noteExtensions(placeholder?: string): Extensions {
       link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
       undoRedo: { depth: 200 },
     }),
-    Highlight,
+    ColorHighlight,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     TaskList,
     TaskItem.configure({ nested: true }),

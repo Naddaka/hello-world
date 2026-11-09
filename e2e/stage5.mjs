@@ -101,6 +101,16 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
 
   await welcome.dblclick();
   check('the bar hides while a note is edited', (await bar.count()) === 0);
+  // Highlight colours: presets and a custom one, kept after editing ends.
+  await page.locator('.layer .note .ProseMirror strong', { hasText: 'главная доска' }).dblclick();
+  await page.click('[aria-label="Цвет выделения"]');
+  await page.click('[aria-label="Зелёное выделение"]');
+  check('a highlight can be green', (await page.locator('.layer .note mark[data-color="green"]').count()) === 1);
+  await page.click('[aria-label="Цвет выделения"]');
+  await page.locator('.popover input[type="color"]').fill('#ff8800');
+  check('or any colour', (await page.locator('.layer .note mark[data-color="#ff8800"]').count()) === 1 && (await page.locator('.layer .note mark[data-color="green"]').count()) === 0);
+  check('the note stays in editing after picking a colour', (await page.locator('.layer .note.editing').count()) === 1);
+  await page.screenshot({ path: `${OUT}/95-highlight-colour.png` });
   await page.keyboard.press('Escape');
 
   // Labels: a palette with a custom colour instead of cycling through colours.
@@ -135,6 +145,7 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
   await page.waitForTimeout(700);
   await page.reload();
   await page.waitForSelector('text=Добро пожаловать в Zadum');
+  check('the highlight colour is kept', (await page.locator('.layer .note mark[data-color="#ff8800"]').count()) === 1);
   check('the custom colour is kept', (await page.locator('.layer .tile', { hasText: 'Мой первый проект' }).locator('.tile-icon').getAttribute('style')).includes('rgb(255, 51, 102)'));
   check('the icon is kept', (await page.locator('.layer .tile', { hasText: 'Мой первый проект' }).locator('.board-emoji').count()) === 1);
 });

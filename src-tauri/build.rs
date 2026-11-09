@@ -10,6 +10,7 @@ const COMMANDS: &[&str] = &[
     "download_media",
     "read_text_file",
     "delete_media",
+    "prune_media",
     "media_frame_rate",
     "write_file",
     "print_window",

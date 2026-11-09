@@ -114,3 +114,17 @@ export function rememberColor(hex: HexColor) {
     // Private mode or blocked storage: colours just are not remembered.
   }
 }
+
+// ----- text highlights -----
+
+/** Highlight colours drawn from the theme; "yellow" is the plain ⌘J highlight. */
+export const HIGHLIGHTS = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'] as const;
+
+/** A highlight colour as stored: a preset name, "#rrggbb", or null for the plain one. */
+export function highlightColor(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const v = value.trim().toLowerCase();
+  if ((HIGHLIGHTS as readonly string[]).includes(v)) return v === 'yellow' ? null : v;
+  if (v.startsWith('var(--hl-')) return highlightColor(v.slice(9, -1));
+  return normalizeHex(v);
+}

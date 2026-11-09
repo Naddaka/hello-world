@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/core';
 import { textToDoc } from '../model/text';
 import { EMPTY_DOC } from '../model/types';
+import { highlightColor } from '../ui/colors';
 
 /**
  * Milanote stores rich text in one of three shapes: a TipTap document (newer
@@ -27,6 +28,12 @@ interface DraftRaw {
 
 type Mark = { type: string; attrs?: Raw };
 
+/** A highlight keeping Milanote's colour when we have it (a palette name or an exact value). */
+function highlightMark(color: unknown): Mark {
+  const c = highlightColor(typeof color === 'string' && /^[a-z_]+$/i.test(color) ? color.toLowerCase().replace(/^gr[ae]y$/, '') : color);
+  return c ? { type: 'highlight', attrs: { color: c } } : { type: 'highlight' };
+}
+
 // ---------- Draft.js ----------
 
 function styleMark(style: string): Mark | null {
@@ -44,7 +51,7 @@ function styleMark(style: string): Mark | null {
     case 'HIGHLIGHT':
       return { type: 'highlight' };
     default:
-      return style.startsWith('BG-') ? { type: 'highlight' } : null;
+      return style.startsWith('BG-') ? highlightMark(style.slice(3)) : null;
   }
 }
 
@@ -207,6 +214,8 @@ function cleanMarks(marks: JSONContent['marks'], extra: Mark[] = []): Mark[] | u
     if (m.type === 'link') {
       const href = (m.attrs as Raw | undefined)?.href;
       if (typeof href === 'string' && href) out.push({ type: 'link', attrs: { href } });
+    } else if (m.type === 'highlight') {
+      out.push(highlightMark((m.attrs as Raw | undefined)?.color));
     } else {
       out.push({ type: m.type });
     }
