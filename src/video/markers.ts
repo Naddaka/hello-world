@@ -202,7 +202,8 @@ ${markerXml}
 /** Spreadsheet-friendly list (";" separated, with a BOM for Cyrillic). */
 export function toMarkersCsv(markers: VideoMarker[], fps: number, dropFrame = false): string {
   const q = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
-  const rows = sortMarkers(markers).map((m) => [timecode(m.time, fps, dropFrame), m.time.toFixed(3), q(m.text), m.done ? 'да' : 'нет'].join(';'));
+  // Seconds of the frame's start (what editors and ffmpeg show), not the middle the player seeks to.
+  const rows = sortMarkers(markers).map((m) => [timecode(m.time, fps, dropFrame), (frameOf(m.time, fps) / fps).toFixed(3), q(m.text), m.done ? 'да' : 'нет'].join(';'));
   return `﻿${['Таймкод;Секунды;Комментарий;Исправлено', ...rows].join('\r\n')}\r\n`;
 }
 

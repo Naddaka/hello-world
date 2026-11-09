@@ -94,6 +94,7 @@ const failed = await runSuite('stage 1a', 4331, async ({ page, check }) => {
   await page.keyboard.press('Enter');
   await page.waitForSelector('.crumb.current:has-text("Мой первый проект")');
   check('choosing a result opens its board and selects the card', await page.isVisible('.note.selected:has-text("Идея на потом")'));
+  check('the Enter that chose a result opens nothing else', (await page.locator('.side-panel[aria-label="Неразобранное"]').count()) === 0);
   await page.locator('.crumb', { hasText: 'Главная' }).click();
 
   // --- copy and paste

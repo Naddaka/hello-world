@@ -539,7 +539,20 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
                             title="Можно переименовать, например в начальную форму слова"
                             defaultValue={i.name}
                             onBlur={(e) => e.target.value.trim() !== i.name && setBreakdown(renameItem(breakdown, i.id, e.target.value))}
-                            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                            onKeyDown={(e) => {
+                              // Enter saves and Escape restores the name, without relying on losing focus.
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const value = e.currentTarget.value;
+                                e.currentTarget.blur();
+                                if (value.trim() !== i.name) setBreakdown(renameItem(breakdown, i.id, value));
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.currentTarget.value = i.name;
+                                e.currentTarget.blur();
+                              }
+                            }}
                           />
                           <span className="sp-bd-count">{counts.get(i.name) ?? 0} сц.</span>
                           <button type="button" className="ibtn sp-bd-del" aria-label={`Убрать «${i.name}» из разбора`} onClick={() => setBreakdown(breakdown.filter((x) => x.id !== i.id))}>

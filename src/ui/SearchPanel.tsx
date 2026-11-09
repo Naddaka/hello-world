@@ -67,6 +67,9 @@ export function SearchPanel() {
   }, [elements, query, sort, viewedAt]);
 
   const open = (e: ZElement) => {
+    // Drop focus first: otherwise WebKit hands the Enter that chose the result to whatever
+    // button ends up under the closed panel ("Неразобранное").
+    (document.activeElement as HTMLElement | null)?.blur();
     actions.setPanel('search');
     reveal(e);
   };
@@ -96,7 +99,10 @@ export function SearchPanel() {
                 e.preventDefault();
                 setActive((a) => Math.max(a - 1, 0));
               }
-              if (e.key === 'Enter' && results[active]) open(results[active]);
+              if (e.key === 'Enter' && results[active]) {
+                e.preventDefault();
+                open(results[active]);
+              }
             }}
           />
         </div>

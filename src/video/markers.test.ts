@@ -54,6 +54,10 @@ describe('marker exports', () => {
     expect(toFcpxml([m(1, 'x')], 29.97, { name: 'a', duration: 2 })).toContain('frameDuration="1001/30000s"');
   });
 
+  it('writes the start of the frame in CSV seconds', () => {
+    expect(toMarkersCsv([m(frameMiddle(51, 25), 'x')], 25)).toContain('00:00:02:01;2.040;x');
+  });
+
   it('writes CSV and YouTube chapters', () => {
     expect(toMarkersCsv([m(2, 'Сцена; дубль 2')], 25)).toBe('﻿Таймкод;Секунды;Комментарий;Исправлено\r\n00:00:02:00;2.000;"Сцена; дубль 2";нет\r\n');
     expect(toYoutubeChapters(markers)).toBe('0:00 Начало\n0:02 Начать раньше\n1:05 Пересветить небо\n1:00:00 Титры\n');
