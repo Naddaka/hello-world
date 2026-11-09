@@ -215,7 +215,7 @@ export function MilanoteImportDialog() {
               </label>
               <div className="mn-icons-actions">
                 {desktop && (
-                  <button type="button" className="ibtn wide" onClick={() => void refreshIcons()}>
+                  <button type="button" className="btn-accent" onClick={() => void refreshIcons()}>
                     Обновить иконки досок
                   </button>
                 )}

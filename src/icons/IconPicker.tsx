@@ -12,6 +12,7 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
   const [tab, setTab] = useState<Tab>(value?.startsWith('emoji:') ? 'emoji' : value?.startsWith('media:') || parseTextIcon(value) ? 'own' : 'icons');
   const [busy, setBusy] = useState(false);
   const current = parseTextIcon(value);
+  const [textError, setTextError] = useState(false);
   const [error, setError] = useState('');
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -170,14 +171,18 @@ export function IconPicker({ value, color, onPick, onClose, anchor }: { value: s
                 const form = new FormData(e.currentTarget);
                 const text = textIcon(form.get('text')?.toString() ?? '');
                 if (text) onPick(`${form.get('boxed') ? 'text-box' : 'text'}:${text}`);
+                else setTextError(true);
               }}
             >
               <label htmlFor="icon-text">Или текст:</label>
-              <input id="icon-text" name="text" maxLength={8} placeholder="12" defaultValue={current?.text ?? ''} onKeyDown={(e) => e.stopPropagation()} />
+              <input id="icon-text" name="text" maxLength={4} placeholder="12" aria-describedby="icon-text-hint" defaultValue={current?.text ?? ''} onChange={() => setTextError(false)} onKeyDown={(e) => e.stopPropagation()} />
               <label className="icon-boxed">
                 <input type="checkbox" name="boxed" defaultChecked={current?.boxed ?? false} /> в рамке
               </label>
               <button type="submit" className="link-btn">Поставить</button>
+              <p id="icon-text-hint" className={textError ? 'error' : undefined} role={textError ? 'alert' : undefined}>
+                До 4 знаков без пробелов: буквы, цифры, символы.
+              </p>
             </form>
             <input
               ref={fileInput}

@@ -273,6 +273,19 @@ describe('Milanote board icons and custom colours', () => {
     expect(decodeSvgSource('data:image/svg+xml;base64,' + b64(duotone))).toBe(duotone);
   });
 
+  it('fills Sketch-style glyphs (a coloured group inside a fill="none" group) with the board colour', () => {
+    const sketch = '<svg viewBox="0 0 24 24"><g fill="none" fill-rule="evenodd"><g fill="#000000"><path d="M2 2h20v20H2z"/></g></g></svg>';
+    expect(sanitizeSvg(sketch)).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><g fill-rule="evenodd" fill="none"><g fill="currentColor"><path d="M2 2h20v20H2z"></path></g></g></svg>');
+    expect(sanitizeSvg('<svg viewBox="0 0 24 24"><path fill="#ff0000" stroke="#00ff00" d="M1 1h2"/></svg>')).toContain('<path d="M1 1h2" fill="currentColor" stroke="currentColor">');
+  });
+
+  it('draws a glyph made of the secondary layer alone at full strength', () => {
+    const numberOnly = '<svg viewBox="0 0 24 24"><path class="fa-secondary" d="M1 1h2"/></svg>';
+    expect(sanitizeSvg(numberOnly)).not.toContain('opacity');
+    const grouped = '<svg viewBox="0 0 24 24"><g class="fa-secondary"><path d="M1 1h2"/></g><path class="fa-primary" d="M3 3h2"/></svg>';
+    expect(sanitizeSvg(grouped)).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><g opacity="0.4"><path d="M1 1h2"></path></g><path d="M3 3h2"></path></svg>');
+  });
+
   it('falls back to a number or a Lucide icon of the same meaning without the SVG', () => {
     expect(boardIconOf({ type: 'mn-svg', id: 'mn-square-12' })).toEqual({ icon: 'text-box:12', exact: false });
     expect(boardIconOf({ type: 'mn-svg', id: 'square-3' })).toEqual({ icon: 'text-box:3', exact: false });
@@ -333,6 +346,9 @@ describe('Milanote board icons and custom colours', () => {
     expect(plan).toMatchObject({ kept: 2, absent: 1, approx: 1 });
     const all = planIconRefresh(els, boards, true);
     expect(all.changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
+    // A glyph stored by an earlier import is drawn again from the export even without "replace".
+    const redraw = planIconRefresh({ ...els, 'mn-b1': { id: 'mn-b1', type: 'BOARD', icon: 'svg:<svg viewBox="0 0 1 1"></svg>' } }, boards, false);
+    expect(redraw.changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
   });
 
   it('keeps colours mixed in Milanote and maps palette names to presets', () => {

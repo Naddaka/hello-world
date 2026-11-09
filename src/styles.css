@@ -821,6 +821,8 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .board-svg svg { width: 100%; height: 100%; display: block; }
 .icon-letter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .icon-boxed { display: inline-flex; align-items: center; gap: 4px; }
+.icon-letter p { flex: 1 0 100%; margin: 0; font-size: 11px; color: var(--muted); }
+.icon-letter p.error { color: var(--danger); }
 .icon-letter input:not([type='checkbox']) { width: 64px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 600 14px var(--font); text-align: center; text-transform: uppercase; }
 
 .mn-icons p { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }

@@ -131,6 +131,7 @@ export async function refreshMilanoteIcons(
   onProgress({ phase: 'saving', done, total: pictures.length });
   const elements = useStore.getState().elements;
   const ops = plan.changes.filter((c) => c.icon && elements[c.id]).map((c) => updateOp(elements[c.id], { icon: c.icon }));
-  commit(ops);
+  // Icons are not edits: boards keep their "changed" time (recent lists stay in order).
+  commit(ops, true, false);
   return { ...plan, updated: ops.length };
 }

@@ -164,10 +164,11 @@ function now() {
   return Date.now();
 }
 
-/** Applies a transaction, records it for undo (unless `record` is false) and persists it. */
-export function commit(tx: Transaction, record = true) {
+/** Applies a transaction, records it for undo (unless `record` is false) and persists it, marking changed elements as edited now. */
+export function commit(tx: Transaction, record = true, stamp = true) {
   if (tx.length === 0) return;
-  const stamped = tx.map((op) => (op.kind === 'update' ? { ...op, after: { ...op.after, updatedAt: now() } } : op));
+  // `stamp` false: a cosmetic change (board icons from an import) that should not count as an edit.
+  const stamped = stamp ? tx.map((op) => (op.kind === 'update' ? { ...op, after: { ...op.after, updatedAt: now() } } : op)) : tx;
   const { elements, changed, removed } = applyTransaction(get().elements, stamped);
   if (record) history.record(stamped);
   set({ elements, canUndo: history.canUndo, canRedo: history.canRedo });

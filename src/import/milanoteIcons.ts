@@ -142,7 +142,7 @@ export interface IconRefreshPlan {
   /** Boards with an icon in Milanote that has no equivalent here. */
   missing: number;
   shapes: string[];
-  /** Boards that already have an icon in Zadum and were left alone. */
+  /** Boards that already have an icon in Zadum (other than an imported glyph) and were left alone. */
   kept: number;
   /** Boards of the export that are not (or no longer) in Zadum. */
   absent: number;
@@ -169,7 +169,10 @@ export function planIconRefresh(elements: Record<string, Raw>, boards: { id: str
       if (!plan.shapes.includes(shape)) plan.shapes.push(shape);
       continue;
     }
-    if (el.icon && !replace) {
+    // "svg:" icons only ever come from an import (they cannot be picked by hand), so a newer
+    // reading of the export may always redraw them.
+    const imported = typeof el.icon === 'string' && el.icon.startsWith('svg:');
+    if (el.icon && !replace && !imported) {
       plan.kept++;
       continue;
     }

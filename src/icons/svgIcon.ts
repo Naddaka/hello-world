@@ -66,9 +66,13 @@ export function decodeSvgSource(value: unknown): string | null {
   }
 }
 
+const ownSecondary = (el: Element) => /(^|\s)fa-secondary(\s|$)/.test(el.getAttribute('class') ?? '');
+/** Part of the secondary layer, by its own class or a group's. */
+const isSecondary = (el: Element): boolean => ownSecondary(el) || (!!el.parentElement && isSecondary(el.parentElement));
+
 const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
-function cleanNode(el: Element, depth: number): string {
+function cleanNode(el: Element, depth: number, faint: boolean): string {
   const name = el.localName;
   if (depth > 12 || !SHAPES.has(name)) return '';
   const attrs: string[] = [];
@@ -77,12 +81,14 @@ function cleanNode(el: Element, depth: number): string {
     if (rule && rule.test(value.trim())) attrs.push(`${a}="${esc(value.trim())}"`);
   }
   const fill = el.getAttribute('fill')?.trim().toLowerCase();
+  // Any real colour becomes the board colour; "none" stays none (Sketch exports wrap shapes in <g fill="none"><g fill="#000">).
   if (fill === 'none') attrs.push('fill="none"');
+  else if (fill) attrs.push('fill="currentColor"');
   const stroke = el.getAttribute('stroke')?.trim().toLowerCase();
   if (stroke && stroke !== 'none') attrs.push('stroke="currentColor"');
   // Two-tone glyphs: the secondary layer is drawn faint (Font Awesome's duotone convention).
-  if (/(^|\s)fa-secondary(\s|$)/.test(el.getAttribute('class') ?? '') && !el.hasAttribute('opacity')) attrs.push('opacity="0.4"');
-  const inner = [...el.children].map((c) => cleanNode(c, depth + 1)).join('');
+  if (faint && ownSecondary(el) && !el.hasAttribute('opacity')) attrs.push('opacity="0.4"');
+  const inner = [...el.children].map((c) => cleanNode(c, depth + 1, faint)).join('');
   // Nothing to draw: a path without (valid) geometry, an empty group, a shape without size.
   if (name === 'path' && !attrs.some((x) => x.startsWith('d='))) return '';
   if (name === 'g' && !inner) return '';
@@ -102,7 +108,11 @@ export function sanitizeSvg(markup: string | null | undefined): string | null {
     const h = parseFloat(root.getAttribute('height') ?? '');
     viewBox = w > 0 && h > 0 ? `0 0 ${w} ${h}` : '0 0 24 24';
   }
-  const inner = [...root.children].map((c) => cleanNode(c, 0)).join('');
+  // Two-tone: the secondary layer is faint next to the primary one. A glyph made of
+  // the secondary layer alone (Milanote's numbers) is drawn at full strength.
+  const shapes = [...root.querySelectorAll('*')].filter((n) => SHAPES.has(n.localName) && n.localName !== 'g');
+  const faint = shapes.some(isSecondary) && shapes.some((n) => !isSecondary(n));
+  const inner = [...root.children].map((c) => cleanNode(c, 0, faint)).join('');
   if (!inner || inner.length > MAX_OUTPUT) return null;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${esc(viewBox)}" fill="currentColor">${inner}</svg>`;
 }
