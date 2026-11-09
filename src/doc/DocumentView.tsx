@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { EditorContent, useEditor, type UseEditorOptions } from '@tiptap/react';
 import { generateHTML, type JSONContent } from '@tiptap/core';
-import { actions, useStore } from '../model/store';
+import { actions, onFlushEditors, useStore } from '../model/store';
 import { EMPTY_DOC, type CardElement, type DocumentElement } from '../model/types';
 import { docText } from '../model/text';
 import { noteExtensions } from '../editor/extensions';
@@ -95,6 +95,16 @@ function DocumentEditor({ element }: { element: DocumentElement }) {
     [element.id],
   );
   const editor = useEditor(options);
+  useEffect(
+    () =>
+      onFlushEditors(() => {
+        if (!timer.current) return;
+        clearTimeout(timer.current);
+        timer.current = null;
+        actions.setLive(element.id, latest.current);
+      }),
+    [element.id],
+  );
 
   useEffect(() => {
     editor?.commands.setTextSelection(editor.state.doc.content.size);

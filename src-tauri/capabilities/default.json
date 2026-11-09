@@ -30,6 +30,7 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "core:window:allow-set-fullscreen",
+    "core:window:allow-destroy",
     "allow-media-location",
     "allow-import-media-file",
     "allow-save-media-bytes",

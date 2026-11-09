@@ -3,7 +3,7 @@ import { EditorContent, useEditor, type UseEditorOptions } from '@tiptap/react';
 import { generateHTML, type JSONContent } from '@tiptap/core';
 import { noteExtensions } from '../editor/extensions';
 import { FormatBar } from '../editor/FormatBar';
-import { actions, boardPath, containingBoard, syncPeers, useStore } from '../model/store';
+import { actions, boardPath, containingBoard, onFlushEditors, syncPeers, useStore } from '../model/store';
 import { openMenu } from '../ui/ContextMenu';
 import { reveal } from '../ui/SearchPanel';
 import { GRID, type CardElement } from '../model/types';
@@ -106,6 +106,18 @@ function NoteEditor({ element, zoom }: { element: CardElement; zoom: number }) {
     editor.commands.setTextSelection(editor.state.doc.content.size);
     editor.view.focus();
   }, [editor]);
+
+  // Hand over the latest text at once when the app is closing.
+  useEffect(
+    () =>
+      onFlushEditors(() => {
+        if (!liveTimer.current) return;
+        clearTimeout(liveTimer.current);
+        liveTimer.current = null;
+        actions.setContentLive(current.current.id, latest.current);
+      }),
+    [],
+  );
 
   useEffect(() => {
     const id = element.id;

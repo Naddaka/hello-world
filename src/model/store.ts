@@ -71,6 +71,21 @@ function schedulePersist(changed: Iterable<string>, removed: Iterable<string>) {
   flushTimer = setTimeout(() => void flushPersist(), 250);
 }
 
+/** Editors that hold typed text for a moment before handing it to the store. */
+const pendingEditors = new Set<() => void>();
+
+/** Lets an editor hand over what was typed when the app is about to close or go to the background. */
+export function onFlushEditors(save: () => void): () => void {
+  pendingEditors.add(save);
+  return () => pendingEditors.delete(save);
+}
+
+/** Saves everything now: text still in open editors, then all changes not yet written. */
+export async function saveNow(): Promise<void> {
+  for (const save of pendingEditors) save();
+  await flushPersist();
+}
+
 export async function flushPersist(): Promise<void> {
   if (flushTimer) clearTimeout(flushTimer);
   flushTimer = null;

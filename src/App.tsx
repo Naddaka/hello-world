@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { actions, flushPersist, useStore } from './model/store';
+import { actions, saveNow, useStore } from './model/store';
 import { openRepo, isTauri } from './storage/repo';
 import { Canvas, dropPoint } from './canvas/Canvas';
 import { isOverViewport } from './canvas/runtime';
@@ -51,7 +51,7 @@ export function App() {
         console.error(error);
         actions.showToast('Не удалось открыть хранилище данных');
       });
-    const flush = () => void flushPersist();
+    const flush = () => void saveNow();
     const onHidden = () => document.visibilityState === 'hidden' && flush();
     window.addEventListener('beforeunload', flush);
     document.addEventListener('visibilitychange', onHidden);
@@ -75,7 +75,8 @@ export function App() {
       import('@tauri-apps/api/window').then(({ getCurrentWindow }) =>
         getCurrentWindow()
           .onCloseRequested(async () => {
-            await flushPersist();
+            // Everything is written before the window may close (closing it quits the app).
+            await saveNow();
           })
           .then((fn) => (unlisten = fn)),
       );

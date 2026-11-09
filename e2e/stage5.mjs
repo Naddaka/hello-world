@@ -73,6 +73,15 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
   check('an empty Unsorted panel closes on another board', (await page.locator('.side-panel[aria-label="Неразобранное"]').count()) === 0);
   await page.locator('.crumb', { hasText: 'Главная' }).click();
 
+  // Text typed a moment before the app goes away is not lost.
+  await page.mouse.dblclick(1150, 700);
+  await page.keyboard.type('Сохранено сразу');
+  await page.evaluate(() => Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }) || document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(300);
+  await page.reload();
+  await page.waitForSelector('text=Добро пожаловать в Zadum');
+  check('text typed just before leaving is saved', (await page.locator('.layer .note', { hasText: 'Сохранено сразу' }).count()) === 1);
+
   await page.waitForTimeout(700);
   await page.reload();
   await page.waitForSelector('text=Добро пожаловать в Zadum');

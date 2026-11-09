@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { EditorContent, useEditor, type Editor, type UseEditorOptions } from '@tiptap/react';
 import { TextSelection } from '@tiptap/pm/state';
 import { nanoid } from 'nanoid';
-import { actions, commit, useStore } from '../model/store';
+import { actions, commit, onFlushEditors, useStore } from '../model/store';
 import type { Op } from '../model/ops';
 import { DEFAULT_WIDTH, type BreakdownCategory, type BreakdownItem, type ScriptBlock, type ScriptBlockType, type ScriptElement, type ScriptFormat, type ScriptTitlePage } from '../model/types';
 import { IconScript } from '../ui/icons';
@@ -262,6 +262,16 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
     [element.id],
   );
   const editor = useEditor(options);
+  useEffect(
+    () =>
+      onFlushEditors(() => {
+        if (!timer.current) return;
+        clearTimeout(timer.current);
+        timer.current = null;
+        actions.setLive(element.id, latest.current);
+      }),
+    [element.id],
+  );
 
   // Kind indicator and suggestions follow the cursor.
   useEffect(() => {
