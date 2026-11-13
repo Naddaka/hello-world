@@ -144,6 +144,8 @@ export interface ImportedBoard {
   title: string;
   x: number;
   y: number;
+  /** Order among its siblings (in a column, the place in the list). */
+  z?: number;
   /** The board's content in the export (for its icon). */
   content: unknown;
 }
@@ -200,7 +202,18 @@ export function findImportedBoards(elements: Els, imported: ImportedBoard[]): Ma
       if (found.get(b.id)!.some((id) => str(elements[id]?.parentId) === p)) continue;
       const options = (liveKids.get(p) ?? []).filter((e) => e.type === kindOf(b) && !claimed.has(str(e.id)) && title(e.title) === title(b.title));
       const placed = options.filter((e) => e.x === b.x && e.y === b.y);
-      const pick = placed.length === 1 ? placed[0] : placed.length === 0 && options.length === 1 ? options[0] : undefined;
+      let pick = placed.length === 1 ? placed[0] : placed.length === 0 && options.length === 1 ? options[0] : undefined;
+      if (!pick && placed.length > 1) {
+        // Look-alike siblings (same kind, title and place, e.g. in one column): paired by their
+        // order, but only when the import has exactly as many of them still to place.
+        const twins = (kids.get(b.parentId ?? '') ?? []).filter((k) => kindOf(k) === kindOf(b) && title(k.title) === title(b.title) && k.x === b.x && k.y === b.y && !found.get(k.id)!.some((id) => str(elements[id]?.parentId) === p));
+        if (twins.length === placed.length && twins.every((k) => typeof k.z === 'number') && placed.every((e) => typeof e.z === 'number')) {
+          const zs = (list: { z?: unknown }[]) => list.map((e) => Number(e.z)).sort((m, n) => m - n);
+          const index = zs(twins).indexOf(Number(b.z));
+          const liveSorted = [...placed].sort((m, n) => Number(m.z) - Number(n.z));
+          if (new Set(zs(twins)).size === twins.length && new Set(zs(placed)).size === placed.length) pick = liveSorted[index];
+        }
+      }
       if (pick && add(b.id, str(pick.id))) progress = true;
     }
     return progress;

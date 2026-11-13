@@ -110,7 +110,7 @@ export async function refreshMilanoteIcons(
   const converted = convertMilanote(data).elements;
   const imported: ImportedBoard[] = converted.flatMap((e) =>
     e.type === 'BOARD' || e.type === 'COLUMN'
-      ? [{ id: e.id, type: e.type, parentId: e.parentId, title: e.title, x: e.x, y: e.y, content: data.elements[e.id.slice(MN_PREFIX.length)]?.content }]
+      ? [{ id: e.id, type: e.type, parentId: e.parentId, title: e.title, x: e.x, y: e.y, z: e.z, content: data.elements[e.id.slice(MN_PREFIX.length)]?.content }]
       : [],
   );
   const plan = planIconRefresh(useStore.getState().elements as unknown as Record<string, Record<string, unknown>>, imported, replace);

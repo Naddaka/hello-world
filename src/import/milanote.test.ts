@@ -445,6 +445,25 @@ describe('Milanote board icons and custom colours', () => {
     expect(found.get('mn-Q2')).toEqual([]);
   });
 
+  it('pairs look-alike siblings by their order when both sides have the same number of them', () => {
+    const icon = (n: string) => ({ icon: { type: 'string', string: n } });
+    const imported: ImportedBoard[] = [
+      { id: 'mn-P', type: 'BOARD', parentId: null, title: 'Папка', x: 0, y: 0, content: {} },
+      { id: 'mn-C', type: 'COLUMN', parentId: 'mn-P', title: 'Колонка', x: 0, y: 0, content: {} },
+      { id: 'mn-Q1', type: 'BOARD', parentId: 'mn-C', title: 'Сцены', x: 0, y: 0, z: 1, content: icon('1') },
+      { id: 'mn-Q2', type: 'BOARD', parentId: 'mn-C', title: 'Сцены', x: 0, y: 0, z: 2, content: icon('2') },
+      { id: 'mn-Z', type: 'BOARD', parentId: 'mn-P', title: 'Ещё', x: 5, y: 0, content: {} },
+    ];
+    const el = (id: string, type: string, parentId: string | null, title: string, z = 1) => ({ id, type, parentId, title, x: id === 'z2' ? 5 : 0, y: 0, z, section: 'CANVAS' });
+    const els = Object.fromEntries([el('p2', 'BOARD', null, 'Папка'), el('c2', 'COLUMN', 'p2', 'Колонка'), el('q2b', 'BOARD', 'c2', 'Сцены', 7), el('q2a', 'BOARD', 'c2', 'Сцены', 3), el('z2', 'BOARD', 'p2', 'Ещё')].map((e) => [e.id, e]));
+    const found = findImportedBoards(els, imported);
+    expect(found.get('mn-Q1')).toEqual(['q2a']);
+    expect(found.get('mn-Q2')).toEqual(['q2b']);
+    // One look-alike more on the live side: the order no longer says which is which.
+    const extra = { ...els, q2c: el('q2c', 'BOARD', 'c2', 'Сцены', 9) };
+    expect(findImportedBoards(extra, imported).get('mn-Q1')).toEqual([]);
+  });
+
   it('says when imported boards are only in the trash', () => {
     const boards = importedBoards();
     const els = asMap(convert().plan.elements.map((e) => (e.id === 'mn-H' ? ({ ...e, section: 'TRASH' } as ZElement) : e)));
