@@ -101,6 +101,29 @@ const failed = await runSuite(
     await page.keyboard.press('Control+Shift+z');
     await page.locator('.crumb').first().click();
 
+    // Copies: the import duplicated on the home board, the original in the trash.
+    const mnTile = page.locator('.layer .tile', { hasText: 'Milanote' });
+    await mnTile.click({ button: 'right' });
+    await page.click('.ctxmenu >> text=Дублировать');
+    await page.keyboard.press('Escape');
+    // The copy lies over the original, a little lower right: its top-left corner is free.
+    await mnTile.first().click({ button: 'right', position: { x: 6, y: 6 } });
+    await page.click('.ctxmenu >> text=Удалить');
+    check('the original import is in the trash, its copy on the board', (await mnTile.count()) === 1);
+    await mnTile.dblclick();
+    await page.waitForSelector('.crumb.current:has-text("Milanote")');
+    const copyClip = page.locator('.layer .tile', { hasText: 'Клип «Северный ветер»' });
+    await copyClip.click();
+    await page.locator('.props-bar').locator('text=Иконка').click();
+    await page.click('.icon-picker >> text=Без иконки');
+    await page.click('.topbar >> text=Импорт');
+    await page.setInputFiles('.modal input[aria-label="Файл экспорта для иконок"]', FIXTURE);
+    await page.waitForSelector('.modal >> text=Иконки обновлены у 1 доски');
+    check('icons reach copies of imported boards', await page.isVisible('.modal >> text=Из них копий импортированных досок: 1.'));
+    await page.click('.modal >> button:has-text("Готово")');
+    check('the copy has its glyph again', (await copyClip.locator('.board-svg svg').count()) === 1);
+    await page.locator('.crumb').first().click();
+
     await page.waitForTimeout(700);
     await page.reload();
     await page.waitForSelector('text=Добро пожаловать в Zadum');

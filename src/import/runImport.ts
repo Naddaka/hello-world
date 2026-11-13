@@ -3,7 +3,7 @@ import { HOME_ID, type ZElement } from '../model/types';
 import { otherImportRoots, planReplacement } from './replace';
 import { media } from '../storage/media';
 import { dataUrlToBlob } from '../storage/dataUrl';
-import { planIconRefresh, type IconRefreshPlan } from './milanoteIcons';
+import { inTrash, planIconRefresh, type IconRefreshPlan, type ImportedBoard } from './milanoteIcons';
 import { updateOp } from '../model/ops';
 import { convertMilanote, finalizeImport, MN_PREFIX, type ImportReport, type MediaJob, type MilanoteExport, type StoredMedia } from './milanote';
 
@@ -73,7 +73,8 @@ export async function importMilanote(
   // The Milanote board goes where the previous import was, or to the right of the home content.
   const root = elements.find((e) => e.id === plan.rootId)!;
   const previous = state[plan.rootId];
-  if (previous) {
+  // A previous import left in the trash is replaced too, but the new one goes on the home board, not into the trash.
+  if (previous && !inTrash(state as unknown as Record<string, Record<string, unknown>>, plan.rootId)) {
     Object.assign(root, { parentId: previous.parentId, section: previous.section, x: previous.x, y: previous.y, z: previous.z });
   } else {
     const home = Object.values(state).filter((e) => e.parentId === HOME_ID && e.section === 'CANVAS' && e.type !== 'LINE');
@@ -105,10 +106,12 @@ export async function refreshMilanoteIcons(
   replace: boolean,
   onProgress: (p: ImportProgress) => void = () => {},
 ): Promise<IconRefreshPlan & { updated: number }> {
-  const boards = Object.entries(data.elements)
-    .filter(([, e]) => e.elementType === 'BOARD')
-    .map(([id, e]) => ({ id, content: e.content }));
-  const plan = planIconRefresh(useStore.getState().elements as unknown as Record<string, Record<string, unknown>>, boards, replace, MN_PREFIX);
+  // Where each board sits after an import (titles and places find copies made by hand).
+  const converted = convertMilanote(data).elements;
+  const imported: ImportedBoard[] = converted
+    .filter((e) => e.type === 'BOARD')
+    .map((e) => ({ id: e.id, parentId: e.parentId, title: e.type === 'BOARD' ? e.title : '', x: e.x, y: e.y, content: data.elements[e.id.slice(MN_PREFIX.length)]?.content }));
+  const plan = planIconRefresh(useStore.getState().elements as unknown as Record<string, Record<string, unknown>>, imported, replace);
   const pictures = plan.changes.filter((c) => c.imageUrl);
   let done = 0;
   onProgress({ phase: 'media', done, total: pictures.length });
@@ -116,6 +119,13 @@ export async function refreshMilanoteIcons(
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
       for (let change = queue.shift(); change; change = queue.shift()) {
+        const same = pictures.find((p) => p !== change && p.imageUrl === change.imageUrl && p.icon);
+        if (same) {
+          // Several copies of one board share one downloaded picture.
+          change.icon = same.icon;
+          done++;
+          continue;
+        }
         const stored = await storeJob({ key: change.id, url: change.imageUrl!, name: 'иконка.png', role: 'board-icon', elementId: change.id });
         if (stored) change.icon = `media:${stored.id}.${stored.ext}`;
         else {

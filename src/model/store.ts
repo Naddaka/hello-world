@@ -900,6 +900,8 @@ function copyTree(elements: ElementMap, original: ZElement, parentId: string | n
   if (copy.type === 'TASK_LIST') copy.items = copy.items.map((item) => ({ ...item, id: nanoid() }));
   // Duplicates are ordinary notes; only "synced copy" links them.
   if (copy.type === 'CARD') delete copy.syncGroup;
+  // A copy of an imported board remembers which one it is (a later icon refresh finds it).
+  if (copy.type === 'BOARD' && !copy.importId && /^mn-/.test(original.id)) copy.importId = original.id;
   tx.push({ kind: 'create', element: copy });
   if (original.type === 'BOARD' || original.type === 'COLUMN') {
     for (const child of Object.values(elements)) {

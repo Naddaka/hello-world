@@ -294,7 +294,13 @@ export function MilanoteImportDialog() {
             </p>
             <IconSummary icons={step.result} />
             {step.result.kept > 0 && <p className="side-hint mn-note">Оставил как есть — у доски уже была иконка: {step.result.kept}.</p>}
-            {step.result.absent > 0 && <p className="side-hint mn-note">Нет в Zadum (не импортированы или удалены): {step.result.absent}.</p>}
+            {step.result.copies > 0 && <p className="side-hint mn-note">Из них копий импортированных досок: {step.result.copies}.</p>}
+            {step.result.absent > 0 && (
+              <p className={step.result.updated === 0 ? 'mn-warn' : 'side-hint mn-note'}>
+                Не нашлось на досках: {step.result.absent}
+                {step.result.trashed > 0 && <> (из них лежат только в корзине: {step.result.trashed} — восстановите их из корзины, и иконки можно будет обновить)</>}.
+              </p>
+            )}
             <footer className="modal-foot">
               <button type="button" className="btn-accent" onClick={close}>
                 Готово

@@ -3,7 +3,7 @@ import { getSchema, type JSONContent } from '@tiptap/core';
 import { Node } from '@tiptap/pm/model';
 import fixture from '../../e2e/fixtures/milanote-export.json';
 import { noteExtensions } from '../editor/extensions';
-import { boardIconFrom, MN_ICON_TO_LUCIDE, planIconRefresh } from './milanoteIcons';
+import { boardIconFrom, findImportedBoards, MN_ICON_TO_LUCIDE, planIconRefresh, type ImportedBoard } from './milanoteIcons';
 import { decodeSvgSource, sanitizeSvg } from '../icons/svgIcon';
 import { boardIconOf, convertMilanote, customHex, finalizeImport, isMilanoteExport, type MilanoteExport, type StoredMedia } from './milanote';
 import { draftToDoc, milanoteDoc, milanotePlain } from './milanoteText';
@@ -340,21 +340,67 @@ describe('Milanote board icons and custom colours', () => {
     expect(JSON.stringify(report.icons)).not.toContain('secret-name');
   });
 
-  it('refreshes icons of imported boards only, keeping icons chosen by hand', () => {
-    const boards = Object.entries(data.elements).filter(([, e]) => e.elementType === 'BOARD').map(([id, e]) => ({ id, content: e.content }));
-    const els = {
-      'mn-b1': { id: 'mn-b1', type: 'BOARD', icon: 'lucide:film' },
-      'mn-b2': { id: 'mn-b2', type: 'BOARD' },
-      'mn-b3': { id: 'mn-b3', type: 'BOARD', icon: 'text:7' },
-    };
+  const importedBoards = (): ImportedBoard[] =>
+    convert()
+      .plan.elements.filter((e) => e.type === 'BOARD')
+      .map((e) => ({ id: e.id, parentId: e.parentId, title: e.type === 'BOARD' ? e.title : '', x: e.x, y: e.y, content: data.elements[e.id.slice(3)]?.content }));
+  const asMap = (els: ZElement[]) => Object.fromEntries(els.map((e) => [e.id, e])) as unknown as Record<string, Record<string, unknown>>;
+
+  it('refreshes icons of imported boards, keeping icons chosen by hand', () => {
+    const boards = importedBoards();
+    const els = asMap(convert().plan.elements.map((e) => (e.type === 'BOARD' ? ({ ...e, icon: e.id === 'mn-b1' ? 'lucide:film' : e.id === 'mn-b3' ? 'text:7' : undefined } as ZElement) : e)));
+    delete els['mn-t1'];
     const plan = planIconRefresh(els, boards, false);
     expect(plan.changes).toEqual([{ id: 'mn-b2', icon: 'text-box:12' }]);
-    expect(plan).toMatchObject({ kept: 2, absent: 1, approx: 1 });
-    const all = planIconRefresh(els, boards, true);
-    expect(all.changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
+    expect(plan).toMatchObject({ kept: 2, absent: 1, trashed: 0, approx: 1, copies: 0 });
+    expect(planIconRefresh(els, boards, true).changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
     // A glyph stored by an earlier import is drawn again from the export even without "replace".
-    const redraw = planIconRefresh({ ...els, 'mn-b1': { id: 'mn-b1', type: 'BOARD', icon: 'svg:<svg viewBox="0 0 1 1"></svg>' } }, boards, false);
+    const redraw = planIconRefresh({ ...els, 'mn-b1': { ...els['mn-b1'], icon: 'svg:<svg viewBox="0 0 1 1"></svg>' } }, boards, false);
     expect(redraw.changes.map((c) => c.id)).toEqual(['mn-b1', 'mn-b2']);
+  });
+
+  it('finds copies of the imported tree when the original is in the trash', () => {
+    const boards = importedBoards();
+    const originals = convert().plan.elements;
+    // The user copied the whole import to the home board and trashed the original container.
+    const copy: Record<string, string> = {};
+    const copied = originals
+      .filter((e) => e.type === 'BOARD' || e.type === 'ALIAS')
+      .map((e) => {
+        copy[e.id] = `copy-${e.id}`;
+        return e;
+      })
+      .map((e) => ({ ...e, icon: undefined, id: copy[e.id], parentId: e.id === 'mn-H' ? 'home' : (copy[e.parentId ?? ''] ?? e.parentId), ...(e.id === 'mn-H' ? { x: 40, y: 2 } : {}) }) as ZElement);
+    const trashedRoot = originals.map((e) => (e.id === 'mn-H' ? ({ ...e, section: 'TRASH' } as ZElement) : e));
+    const home = { id: 'home', type: 'BOARD', parentId: null, section: 'CANVAS', title: 'Главная', x: 0, y: 0 } as unknown as ZElement;
+    const els = asMap([home, ...trashedRoot, ...copied]);
+    const found = findImportedBoards(els, boards);
+    expect(found.get('mn-H')).toEqual(['copy-mn-H']);
+    expect(found.get('mn-b1')).toEqual(['copy-mn-b1']);
+    expect(found.get('mn-b3')).toEqual(['copy-mn-b3']);
+    const plan = planIconRefresh(els, boards, false);
+    expect(plan.changes.map((c) => c.id).sort()).toEqual(['copy-mn-b1', 'copy-mn-b2', 'copy-mn-b3', 'copy-mn-t1']);
+    expect(plan.copies).toBe(4);
+    // Nothing goes to the boards in the trash.
+    expect(plan.changes.some((c) => c.id.startsWith('mn-'))).toBe(false);
+  });
+
+  it('says when imported boards are only in the trash', () => {
+    const boards = importedBoards();
+    const els = asMap(convert().plan.elements.map((e) => (e.id === 'mn-H' ? ({ ...e, section: 'TRASH' } as ZElement) : e)));
+    const plan = planIconRefresh(els, boards, false);
+    expect(plan.changes).toEqual([]);
+    expect(plan.trashed).toBe(plan.absent);
+    expect(plan.trashed).toBe(4);
+  });
+
+  it('copies of imported boards remember where they came from', async () => {
+    const { actions, useStore, __resetForTests } = await import('../model/store');
+    __resetForTests();
+    useStore.setState({ elements: asMap([{ id: 'mn-x', type: 'BOARD', parentId: 'home', section: 'CANVAS', title: 'Б', x: 0, y: 0, z: 1, width: 8 } as unknown as ZElement]) as never, boardId: 'home' });
+    actions.duplicate(['mn-x']);
+    const copyEl = Object.values(useStore.getState().elements).find((e) => e.id !== 'mn-x');
+    expect(copyEl).toMatchObject({ type: 'BOARD', importId: 'mn-x' });
   });
 
   it('keeps colours mixed in Milanote and maps palette names to presets', () => {

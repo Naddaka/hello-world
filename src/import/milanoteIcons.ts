@@ -134,6 +134,87 @@ export function boardIconFrom(content: unknown): { match: IconMatch | null; pres
   return { match: null, present: false, shape: '' };
 }
 
+/** A board as the import makes it: where it sits and what it is called. */
+export interface ImportedBoard {
+  /** Its id in Zadum ("mn-<Milanote id>"). */
+  id: string;
+  parentId: string | null;
+  title: string;
+  x: number;
+  y: number;
+  /** The board's content in the export (for its icon). */
+  content: unknown;
+}
+
+type Els = Record<string, Raw>;
+
+/** In the trash, itself or through a board or column it sits in. */
+export function inTrash(elements: Els, id: string): boolean {
+  for (let el = elements[id], hops = 0; el && hops < 200; el = elements[str(el.parentId)], hops++) if (el.section === 'TRASH') return true;
+  return false;
+}
+
+/**
+ * The live boards in Zadum that stand for each imported board: the imported
+ * board itself, copies that remember it (importId), and copies made before
+ * they did, found by structure — the same title and place under a board that
+ * already matched, and at the top a board with the same title and mostly the
+ * same boards inside. Boards in the trash do not count.
+ */
+export function findImportedBoards(elements: Els, imported: ImportedBoard[]): Map<string, string[]> {
+  const found = new Map<string, string[]>(imported.map((b) => [b.id, []]));
+  const claimed = new Set<string>();
+  const live = Object.values(elements).filter((e) => e.type === 'BOARD' && !inTrash(elements, str(e.id)));
+  const childBoards = new Map<string, Raw[]>();
+  for (const e of live) {
+    const list = childBoards.get(str(e.parentId)) ?? [];
+    list.push(e);
+    childBoards.set(str(e.parentId), list);
+  }
+  const add = (importId: string, id: string) => {
+    if (claimed.has(id)) return;
+    claimed.add(id);
+    found.get(importId)?.push(id);
+  };
+  for (const b of imported) if (elements[b.id] && !inTrash(elements, b.id)) add(b.id, b.id);
+  for (const e of live) if (typeof e.importId === 'string' && found.has(e.importId)) add(e.importId, str(e.id));
+
+  const byId = new Map(imported.map((b) => [b.id, b]));
+  const kids = new Map<string, ImportedBoard[]>();
+  for (const b of imported) if (b.parentId && byId.has(b.parentId)) kids.set(b.parentId, [...(kids.get(b.parentId) ?? []), b]);
+  const titleOf = (e: Raw) => str(e.title).trim();
+
+  // Tops of the imported tree with no live counterpart: a board of the same title holding mostly the same boards.
+  for (const top of imported.filter((b) => !b.parentId || !byId.has(b.parentId))) {
+    if (found.get(top.id)!.length) continue;
+    const wanted = new Set((kids.get(top.id) ?? []).map((k) => k.title.trim()));
+    if (!wanted.size) continue;
+    for (const e of live) {
+      if (claimed.has(str(e.id)) || titleOf(e) !== top.title.trim()) continue;
+      const inside = (childBoards.get(str(e.id)) ?? []).map(titleOf);
+      const shared = inside.filter((t) => wanted.has(t)).length;
+      if (shared * 2 >= wanted.size) add(top.id, str(e.id));
+    }
+  }
+
+  // Down the tree: under each counterpart of the parent, the board with the same title and place.
+  const queue = imported.filter((b) => !b.parentId || !byId.has(b.parentId)).map((b) => b.id);
+  for (let i = 0; i < queue.length; i++) {
+    const parent = queue[i];
+    for (const child of kids.get(parent) ?? []) {
+      queue.push(child.id);
+      for (const p of found.get(parent) ?? []) {
+        const options = (childBoards.get(p) ?? []).filter((e) => !claimed.has(str(e.id)) && titleOf(e) === child.title.trim());
+        if (found.get(child.id)!.some((id) => str(elements[id]?.parentId) === p)) continue;
+        const exact = options.find((e) => e.x === child.x && e.y === child.y);
+        const pick = exact ?? (options.length === 1 ? options[0] : undefined);
+        if (pick) add(child.id, str(pick.id));
+      }
+    }
+  }
+  return found;
+}
+
 export interface IconRefreshPlan {
   /** Boards to change: an icon value, or a picture still to download. */
   changes: { id: string; icon?: string; imageUrl?: string }[];
@@ -144,24 +225,30 @@ export interface IconRefreshPlan {
   shapes: string[];
   /** Boards that already have an icon in Zadum (other than an imported glyph) and were left alone. */
   kept: number;
-  /** Boards of the export that are not (or no longer) in Zadum. */
+  /** Imported boards with no live board in Zadum. */
   absent: number;
+  /** Of those, how many are only in the trash. */
+  trashed: number;
+  /** Changes that land on copies of imported boards (not on the imported board itself). */
+  copies: number;
 }
 
 /**
- * Which imported boards ("mn-<Milanote id>") get which icon from a saved
- * export, touching nothing else. Boards that already have an icon keep it
- * unless `replace` is set (an icon chosen by hand is never lost by default).
+ * Which live boards get which icon from a saved export, touching nothing
+ * else: every board that stands for an imported one (see findImportedBoards).
+ * Boards that already have an icon keep it unless `replace` is set (an icon
+ * chosen by hand is never lost by default).
  */
-export function planIconRefresh(elements: Record<string, Raw>, boards: { id: string; content: unknown }[], replace: boolean, prefix = 'mn-'): IconRefreshPlan {
-  const plan: IconRefreshPlan = { changes: [], exact: 0, approx: 0, missing: 0, shapes: [], kept: 0, absent: 0 };
-  for (const board of boards) {
+export function planIconRefresh(elements: Els, imported: ImportedBoard[], replace: boolean): IconRefreshPlan {
+  const plan: IconRefreshPlan = { changes: [], exact: 0, approx: 0, missing: 0, shapes: [], kept: 0, absent: 0, trashed: 0, copies: 0 };
+  const found = findImportedBoards(elements, imported);
+  for (const board of imported) {
     const { match, present, shape } = boardIconFrom(board.content);
     if (!present) continue;
-    const id = `${prefix}${board.id}`;
-    const el = elements[id];
-    if (!el || el.type !== 'BOARD') {
+    const targets = found.get(board.id) ?? [];
+    if (!targets.length) {
       plan.absent++;
+      if (elements[board.id]) plan.trashed++;
       continue;
     }
     if (!match) {
@@ -169,20 +256,24 @@ export function planIconRefresh(elements: Record<string, Raw>, boards: { id: str
       if (!plan.shapes.includes(shape)) plan.shapes.push(shape);
       continue;
     }
-    // "svg:" icons only ever come from an import (they cannot be picked by hand), so a newer
-    // reading of the export may always redraw them.
-    const imported = typeof el.icon === 'string' && el.icon.startsWith('svg:');
-    if (el.icon && !replace && !imported) {
-      plan.kept++;
-      continue;
-    }
-    if ('icon' in match) {
-      if (el.icon === match.icon) continue;
-      plan[match.exact ? 'exact' : 'approx']++;
-      plan.changes.push({ id, icon: match.icon });
-    } else {
-      plan.exact++;
-      plan.changes.push({ id, imageUrl: match.imageUrl });
+    for (const id of targets) {
+      const el = elements[id];
+      // "svg:" icons only ever come from an import (they cannot be picked by hand), so a newer
+      // reading of the export may always redraw them.
+      const imported = typeof el.icon === 'string' && el.icon.startsWith('svg:');
+      if (el.icon && !replace && !imported) {
+        plan.kept++;
+        continue;
+      }
+      if ('icon' in match) {
+        if (el.icon === match.icon) continue;
+        plan[match.exact ? 'exact' : 'approx']++;
+        plan.changes.push({ id, icon: match.icon });
+      } else {
+        plan.exact++;
+        plan.changes.push({ id, imageUrl: match.imageUrl });
+      }
+      if (id !== board.id) plan.copies++;
     }
   }
   return plan;

@@ -59,6 +59,8 @@ export interface BoardElement extends ElementBase {
   isTemplate?: boolean;
   /** Set on the board that holds an import (so a later import of the same account replaces it). */
   importedFrom?: 'milanote';
+  /** On a copy of an imported board: the imported board it was copied from ("mn-<id>"), so imports can still find it. */
+  importId?: string;
   /**
    * Icon on the tile: "lucide:<name>", "emoji:<character>" or "media:<id>.<ext>"
    * (a picture from the media library); the default board glyph when unset.
