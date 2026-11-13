@@ -282,6 +282,12 @@ describe('Milanote board icons and custom colours', () => {
   it('draws a glyph made of the secondary layer alone at full strength', () => {
     const numberOnly = '<svg viewBox="0 0 24 24"><path class="fa-secondary" d="M1 1h2"/></svg>';
     expect(sanitizeSvg(numberOnly)).not.toContain('opacity');
+    // Milanote's two-digit numbers: the whole glyph sits under opacity 0.4.
+    const allFaint = '<svg viewBox="0 0 24 24"><g fill="none" opacity="0.4"><g fill="#000000"><path d="M1 1h2"/></g></g></svg>';
+    expect(sanitizeSvg(allFaint)).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><g fill="none"><g fill="currentColor"><path d="M1 1h2"></path></g></g></svg>');
+    // Framed numbers: a faint frame next to a solid digit keeps its opacity.
+    const framed = '<svg viewBox="0 0 24 24"><path opacity="0.4" d="M0 0h24v24H0z"/><path d="M8 8h8v8H8z"/></svg>';
+    expect(sanitizeSvg(framed)).toContain('<path opacity="0.4" d="M0 0h24v24H0z">');
     const grouped = '<svg viewBox="0 0 24 24"><g class="fa-secondary"><path d="M1 1h2"/></g><path class="fa-primary" d="M3 3h2"/></svg>';
     expect(sanitizeSvg(grouped)).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><g opacity="0.4"><path d="M1 1h2"></path></g><path d="M3 3h2"></path></svg>');
   });

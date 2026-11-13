@@ -70,14 +70,21 @@ const ownSecondary = (el: Element) => /(^|\s)fa-secondary(\s|$)/.test(el.getAttr
 /** Part of the secondary layer, by its own class or a group's. */
 const isSecondary = (el: Element): boolean => ownSecondary(el) || (!!el.parentElement && isSecondary(el.parentElement));
 
+/** Under an opacity below 1, on the shape itself or a group around it. */
+const isTranslucent = (el: Element): boolean => {
+  const o = parseFloat(el.getAttribute('opacity') ?? '');
+  return (Number.isFinite(o) && o < 1) || (!!el.parentElement && el.parentElement.localName !== 'svg' && isTranslucent(el.parentElement));
+};
+
 const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
-function cleanNode(el: Element, depth: number, faint: boolean): string {
+function cleanNode(el: Element, depth: number, faint: boolean, dropOpacity = false): string {
   const name = el.localName;
   if (depth > 12 || !SHAPES.has(name)) return '';
   const attrs: string[] = [];
   for (const { name: a, value } of [...el.attributes]) {
     const rule = ATTRS[a];
+    if (dropOpacity && a === 'opacity') continue;
     if (rule && rule.test(value.trim())) attrs.push(`${a}="${esc(value.trim())}"`);
   }
   const fill = el.getAttribute('fill')?.trim().toLowerCase();
@@ -88,7 +95,7 @@ function cleanNode(el: Element, depth: number, faint: boolean): string {
   if (stroke && stroke !== 'none') attrs.push('stroke="currentColor"');
   // Two-tone glyphs: the secondary layer is drawn faint (Font Awesome's duotone convention).
   if (faint && ownSecondary(el) && !el.hasAttribute('opacity')) attrs.push('opacity="0.4"');
-  const inner = [...el.children].map((c) => cleanNode(c, depth + 1, faint)).join('');
+  const inner = [...el.children].map((c) => cleanNode(c, depth + 1, faint, dropOpacity)).join('');
   // Nothing to draw: a path without (valid) geometry, an empty group, a shape without size.
   if (name === 'path' && !attrs.some((x) => x.startsWith('d='))) return '';
   if (name === 'g' && !inner) return '';
@@ -108,11 +115,14 @@ export function sanitizeSvg(markup: string | null | undefined): string | null {
     const h = parseFloat(root.getAttribute('height') ?? '');
     viewBox = w > 0 && h > 0 ? `0 0 ${w} ${h}` : '0 0 24 24';
   }
-  // Two-tone: the secondary layer is faint next to the primary one. A glyph made of
-  // the secondary layer alone (Milanote's numbers) is drawn at full strength.
+  // Two-tone: a faint layer only makes sense next to a full-strength one. A glyph
+  // whose every shape is faint — all in the secondary layer, or under an
+  // opacity below 1 (Milanote's numbers) — is drawn at full strength.
   const shapes = [...root.querySelectorAll('*')].filter((n) => SHAPES.has(n.localName) && n.localName !== 'g');
-  const faint = shapes.some(isSecondary) && shapes.some((n) => !isSecondary(n));
-  const inner = [...root.children].map((c) => cleanNode(c, 0, faint)).join('');
+  const dim = (n: Element) => isSecondary(n) || isTranslucent(n);
+  const solid = shapes.some((n) => !dim(n));
+  const faint = solid && shapes.some(isSecondary);
+  const inner = [...root.children].map((c) => cleanNode(c, 0, faint, !solid)).join('');
   if (!inner || inner.length > MAX_OUTPUT) return null;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${esc(viewBox)}" fill="currentColor">${inner}</svg>`;
 }
