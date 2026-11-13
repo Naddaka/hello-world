@@ -9,6 +9,7 @@ import { reveal } from '../ui/SearchPanel';
 import { GRID, type CardElement } from '../model/types';
 import { sizes } from './runtime';
 import { cardStyle } from '../ui/colors';
+import { LabelChips } from '../ui/Labels';
 
 const staticExtensions = noteExtensions();
 
@@ -176,6 +177,7 @@ export function NoteCard({ element, selected, editing, zoom }: { element: CardEl
     .join(' ');
   return (
     <div className={cls} style={cardStyle(element.color) as React.CSSProperties}>
+      {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} onCard />}
       {editing ? <NoteEditor element={element} zoom={zoom} /> : <StaticNote element={element} />}
       {element.syncGroup && <SyncFooter element={element} />}
     </div>

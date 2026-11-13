@@ -47,6 +47,11 @@ export function CommentThread({ element, autoFocus = false }: { element: Comment
               e.preventDefault();
               send();
             }
+            if (e.key === 'Escape') {
+              // Back to the compact view.
+              e.currentTarget.blur();
+              if (useStore.getState().editingId === element.id) actions.setEditing(null);
+            }
           }}
         />
         <button type="submit" className="btn-accent" disabled={!draft.trim()}>Отправить</button>
@@ -58,11 +63,37 @@ export function CommentThread({ element, autoFocus = false }: { element: Comment
   );
 }
 
-export function CommentCard({ element, selected }: { element: CommentElement; selected: boolean }) {
+/** A comment read at a glance: who, when and what. Reactions and the reply field open on double-click. */
+function CompactThread({ element }: { element: CommentElement }) {
   return (
-    <div className={`note comment-card${selected ? ' selected' : ''}`}>
-      <div className="comment-head"><IconComment size={15} /> Комментарий</div>
-      <CommentThread element={element} autoFocus={element.messages.length === 0} />
+    <div className="comment compact" title="Двойной клик — ответить, реакции">
+      {element.messages.map((m, i) => (
+        <div key={m.id} className="comment-msg">
+          <div className="comment-meta">
+            {i === 0 ? <IconComment size={14} /> : <span className="comment-reply-mark" aria-hidden="true">↳</span>}
+            <b>Вы</b>
+            <span>{timeFmt.format(m.at)}</span>
+          </div>
+          <div className="comment-text">{m.text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function CommentCard({ element, selected, editing = false }: { element: CommentElement; selected: boolean; editing?: boolean }) {
+  // A new comment opens ready for typing; a written one stays compact until double-clicked.
+  const open = editing || element.messages.length === 0;
+  return (
+    <div className={`note comment-card${open ? '' : ' compact'}${selected ? ' selected' : ''}`}>
+      {open ? (
+        <>
+          <div className="comment-head"><IconComment size={15} /> Комментарий</div>
+          <CommentThread element={element} autoFocus />
+        </>
+      ) : (
+        <CompactThread element={element} />
+      )}
     </div>
   );
 }

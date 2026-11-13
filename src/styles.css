@@ -413,6 +413,7 @@ figure.media-card { margin: 0; }
 /* ---------- stage 1: lines ---------- */
 :root {
   --line-default: #8a93a3; --line-blue: #2f54eb; --line-red: #e5484d; --line-green: #30a46c; --line-orange: #f76b15; --line-purple: #8e4ec6;
+  --label-on: #ffffff;
   --label-blue-bg: #e7eeff; --label-blue-fg: #2a44c4;
   --label-orange-bg: #ffefe3; --label-orange-fg: #9a3412;
   --label-green-bg: #e3f6ea; --label-green-fg: #166534;
@@ -424,6 +425,7 @@ figure.media-card { margin: 0; }
 }
 :root[data-theme='dark'] {
   --line-default: #7d8594; --line-blue: #7b93ff; --line-red: #ff7a7f; --line-green: #5fd38d; --line-orange: #ff9b5a; --line-purple: #c4a9ff;
+  --label-on: #16181d;
   --label-blue-bg: #1e2643; --label-blue-fg: #9db0ff;
   --label-orange-bg: #33231a; --label-orange-fg: #ffb07a;
   --label-green-bg: #17291f; --label-green-fg: #7fd9a0;
@@ -451,6 +453,9 @@ svg.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
 /* ---------- stage 1: labels ---------- */
 .label-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .label-chip { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+/* Labels on a note: solid tags along its top edge. */
+.label-chips.on-card { margin: 0 0 8px; gap: 5px; }
+.label-chips.on-card .label-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 9px; border-radius: 10px; font-size: 11px; font-weight: 650; letter-spacing: 0.01em; line-height: 1; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 1px 2px rgba(16, 24, 40, 0.12); }
 .label-picker { position: fixed; z-index: 2100; width: 280px; padding: 8px; border-radius: 14px; }
 .label-query { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); font: 13px var(--font); color: var(--ink); outline: none; }
 .label-query:focus { border-color: var(--accent); }
@@ -543,7 +548,7 @@ svg.drawing { display: block; overflow: visible; }
 svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; }
 .sketch-card .sketch-surface { position: relative; background: #ffffff; }
 .sketch-svg, .annotations { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.sketch-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #8a93a3; }
+.sketch-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.5; padding: 8px; font-size: 12px; color: #8a93a3; }
 .sketch-overlay { position: fixed; inset: 0; z-index: 1250; background: var(--canvas); display: flex; flex-direction: column; }
 .sketch-title { font-size: 14px; font-weight: 600; }
 .aspect-pick { display: flex; gap: 2px; margin-left: 16px; }
@@ -567,6 +572,14 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .sync-footer:hover { background: var(--accent-soft); }
 .el.attach-target > :first-child { box-shadow: 0 0 0 3px var(--accent), var(--shadow-pop) !important; }
 .comment-card { padding: 12px 14px; }
+.comment-card.compact { padding: 9px 12px 10px; cursor: default; }
+.comment.compact { gap: 8px; }
+.comment.compact .comment-msg { gap: 2px; }
+.comment.compact .comment-meta { gap: 5px; color: var(--muted); }
+.comment.compact .comment-meta svg { color: var(--accent); flex: none; }
+.comment.compact .comment-meta b { color: var(--ink-2); font-weight: 600; }
+.comment.compact .comment-text { font-size: 13px; line-height: 1.45; user-select: none; -webkit-user-select: none; }
+.comment-reply-mark { width: 14px; text-align: center; color: var(--faint); }
 .comment-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
 .comment { display: flex; flex-direction: column; gap: 10px; }
 .comment-msg { display: flex; flex-direction: column; gap: 4px; }

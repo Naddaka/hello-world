@@ -22,6 +22,7 @@ import { VideoReviewOverlay } from './video/VideoReview';
 import { ConfirmDialog } from './ui/Confirm';
 import { PropertiesBar } from './canvas/PropertiesBar';
 import { scheduleMediaCleanup } from './storage/mediaCleanup';
+import { dropOnFrame, hoverFrame } from './draw/frameDrop';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -64,13 +65,17 @@ export function App() {
       import('@tauri-apps/api/webview').then(({ getCurrentWebview }) =>
         getCurrentWebview()
           .onDragDropEvent((event) => {
-            if (event.payload.type !== 'drop' || event.payload.paths.length === 0) return;
             const ratio = window.devicePixelRatio || 1;
+            if (event.payload.type === 'leave') return hoverFrame(null);
             const x = event.payload.position.x / ratio;
             const y = event.payload.position.y / ratio;
-            if (!isOverViewport(x, y)) return;
+            // While dragging: show which storyboard frame would take the picture.
+            if (event.payload.type === 'over' || event.payload.type === 'enter') return hoverFrame(x, y);
+            if (event.payload.paths.length === 0 || !isOverViewport(x, y)) return hoverFrame(null);
+            const rest = dropOnFrame(x, y, event.payload.paths);
+            if (!rest.length) return;
             const { point, parent } = dropPoint(x, y);
-            void addFiles(event.payload.paths, point, parent);
+            void addFiles(rest, point, parent);
           })
           .then((fn) => (unlistenDrop = fn)),
       );

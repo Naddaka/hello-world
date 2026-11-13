@@ -3,20 +3,24 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { actions, allLabels, labelUsage, useStore } from '../model/store';
 import type { LabelColor } from '../model/types';
-import { labelTint } from './colors';
+import { isHexColor, labelTint, textOn } from './colors';
+
+/** A solid tag: the label's strong colour, with text that reads on it. */
+const labelTag = (color: string): React.CSSProperties =>
+  isHexColor(color) ? { background: color, color: textOn(color) } : { background: `var(--label-${color}-fg)`, color: 'var(--label-on)' };
 import { CustomColors } from './CustomColor';
 
 const COLORS: LabelColor[] = ['blue', 'orange', 'green', 'purple', 'pink', 'yellow', 'red', 'gray'];
 
-/** Coloured chips of an element's labels. */
-export function LabelChips({ ids }: { ids: string[] }) {
+/** Coloured chips of an element's labels; on a note they sit at its top as solid tags. */
+export function LabelChips({ ids, onCard = false }: { ids: string[]; onCard?: boolean }) {
   const elements = useStore((s) => s.elements);
   const labels = ids.map((id) => elements[id]).filter((l) => l?.type === 'LABEL');
   if (labels.length === 0) return null;
   return (
-    <div className="label-chips">
+    <div className={`label-chips${onCard ? ' on-card' : ''}`}>
       {labels.map((l) => l.type === 'LABEL' && (
-        <span key={l.id} className="label-chip" style={{ background: labelTint(l.color).bg, color: labelTint(l.color).fg }}>
+        <span key={l.id} className="label-chip" style={onCard ? labelTag(l.color) : { background: labelTint(l.color).bg, color: labelTint(l.color).fg }}>
           {l.name}
         </span>
       ))}

@@ -10,6 +10,7 @@ import { IconPicker } from '../icons/IconPicker';
 import { IconBoard } from '../ui/icons';
 import { boardTint } from '../ui/colors';
 import { CustomColors } from '../ui/CustomColor';
+import { openLabelPicker } from '../ui/Labels';
 
 /**
  * A bar over the selection with the properties of what is selected: colour,
@@ -162,7 +163,26 @@ export function PropertiesBar() {
     );
   } else {
     const cards = chosen.items as CardElement[];
+    const labelled = cards.some((n) => n.labels?.length);
     content = (
+      <>
+      <button
+        type="button"
+        className={`pb-btn pb-icon${labelled ? ' on' : ''}`}
+        aria-label="Метки"
+        title="Метки"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          openLabelPicker(r.left, r.bottom + 8, ids);
+        }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z" />
+          <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" />
+        </svg>
+        Метки
+      </button>
+      <span className="pb-sep" />
       <span className="pb-group" role="group" aria-label="Цвет заметки">
         {CARD_COLORS.map((c) => (
           <button
@@ -178,6 +198,7 @@ export function PropertiesBar() {
         ))}
         <CustomColors value={shared} swatchClass="pb-swatch card" onPreview={(color) => preview({ color })} onPick={(color) => set({ color })} />
       </span>
+      </>
     );
   }
 

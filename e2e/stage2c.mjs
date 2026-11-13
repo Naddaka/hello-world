@@ -74,11 +74,12 @@ const failed = await runSuite('stage 2c', 4336, async ({ page, check }) => {
   check('a comment can be posted', await page.isVisible('.comment-text:has-text("Пересветить небо")'));
   await page.locator('.comment-card .reaction').first().click();
   check('a reaction can be added', (await page.locator('.reaction.on').count()) === 1);
-  const head = await centre(page.locator('.comment-head'));
+  await page.keyboard.press('Escape');
+  const head = await centre(page.locator('.layer .comment-card'));
   await drag(page, head, await centre(page.locator('.layer .tile', { hasText: 'Мой первый проект' }).first().locator('.tile-icon')));
   check('dropping a comment on a board tile moves it into that board', (await page.locator('.layer .comment-card').count()) === 0);
   await page.keyboard.press('Control+z');
-  const head2 = await centre(page.locator('.comment-head'));
+  const head2 = await centre(page.locator('.layer .comment-card'));
   await drag(page, head2, await centre(notes('Добро пожаловать').first()));
   check('dropping a comment on a card pins it as a marker', (await page.locator('.layer .comment-card').count()) === 0 && (await page.locator('.comment-marker').count()) === 1);
   await page.click('.comment-marker');

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs && node e2e/stage2c.mjs && node e2e/stage3.mjs && node e2e/stage4a.mjs && node e2e/stage4b.mjs && node e2e/stage4c.mjs && node e2e/stage5.mjs",
+    "e2e": "node e2e/run.mjs && node e2e/stage1.mjs && node e2e/stage1b.mjs && node e2e/stage1c.mjs && node e2e/stage2a.mjs && node e2e/stage2b.mjs && node e2e/stage2c.mjs && node e2e/stage3.mjs && node e2e/stage4a.mjs && node e2e/stage4b.mjs && node e2e/stage4c.mjs && node e2e/stage5.mjs && node e2e/stage6.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

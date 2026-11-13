@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { actions, useStore } from '../model/store';
 import { GRID } from '../model/types';
 import { isOverViewport, screenToCanvas } from './runtime';
+import { moveImageIntoFrame } from '../draw/frameDrop';
 
 /** Where the dragged elements would land. `null` means the board canvas. */
 export type DropTarget =
@@ -10,6 +11,7 @@ export type DropTarget =
   | { kind: 'inbox' }
   | { kind: 'trash' }
   | { kind: 'attach'; id: string }
+  | { kind: 'frame'; id: string }
   | null;
 
 interface DragState {
@@ -35,6 +37,12 @@ function dropAt(x: number, y: number, dragged: string[]): DropTarget {
   if (dragged.length === 1 && elements[dragged[0]]?.type === 'COMMENT') {
     const target = el.closest<HTMLElement>('[data-element-id]')?.dataset.elementId;
     if (target && target !== dragged[0] && elements[target] && elements[target].type !== 'COMMENT') return { kind: 'attach', id: target };
+  }
+  // A single image card dropped onto a storyboard frame becomes the frame's picture.
+  if (dragged.length === 1 && elements[dragged[0]]?.type === 'IMAGE') {
+    const target = el.closest<HTMLElement>('[data-element-id]')?.dataset.elementId;
+    const frame = target ? elements[target] : undefined;
+    if (frame && frame.type === 'SKETCH' && !frame.locked) return { kind: 'frame', id: frame.id };
   }
   if (el.closest('[data-drop-inbox]')) return { kind: 'inbox' };
   const columnEl = el.closest<HTMLElement>('[data-drop-column]');
@@ -94,6 +102,7 @@ export function startElementDrag(e: { clientX: number; clientY: number }, ids: s
     if (drop?.kind === 'inbox') return actions.moveToInbox(movable, boardId);
     if (drop?.kind === 'trash') return actions.trash(movable);
     if (drop?.kind === 'attach') return actions.update(movable[0], { attachedTo: drop.id });
+    if (drop?.kind === 'frame') return moveImageIntoFrame(movable[0], drop.id);
     if (!isOverViewport(ev.clientX, ev.clientY) || (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest('.toolbar, .side-panel')) return;
     const zoom = useStore.getState().cameras[boardId]?.zoom ?? 1;
     const moves = movable

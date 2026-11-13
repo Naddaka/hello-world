@@ -105,12 +105,12 @@ export function useShortcuts() {
         else if (!el.locked && el.section !== 'TRASH') actions.setEditing(el.id);
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length > 0) {
         e.preventDefault();
-        // As in the reference app, notes with text are only deleted from the menu,
-        // so they are never lost to a stray key press.
-        const deletable = selected.filter((el) => !el.locked && !(el.type === 'CARD' && hasText(el)));
+        // A stray Delete never takes a note with text; Ctrl/⌘ + Backspace (or Delete) does, on purpose.
+        const deliberate = e.ctrlKey || e.metaKey;
+        const deletable = selected.filter((el) => !el.locked && (deliberate || !(el.type === 'CARD' && hasText(el))));
         if (deletable.length) actions.trash(deletable.map((el) => el.id));
-        if (deletable.length < selected.length) {
-          actions.showToast('Заметки с текстом удаляются через меню (правый клик → Удалить) — чтобы не потерять их случайно');
+        if (deletable.length < selected.length && !deliberate) {
+          actions.showToast('Заметку с текстом удаляет Ctrl+Backspace (или ⌘+Backspace) — так её не удалить случайно');
         }
       } else if (e.key.startsWith('Arrow') && selected.length > 0) {
         e.preventDefault();

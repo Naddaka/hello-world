@@ -28,6 +28,7 @@ import { openShotDialog } from '../draw/ShotDialog';
 import { exportTableCsv } from '../table/csv';
 import { isReviewable, openReview } from '../video/VideoReview';
 import { descendants } from '../model/store';
+import { useFrameDrop } from '../draw/frameDrop';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -100,7 +101,8 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       items.push({ label: 'Сделать кадром раскадровки', run: () => (actions.update(element.id, { shot: emptyShot() }), openShotDialog(element.id)) });
     }
     items.push({
-      label: element.backdrop ? 'Заменить изображение под рисунком…' : 'Изображение под рисунком…',
+      label: element.backdrop ? 'Заменить изображение…' : 'Изображение в кадр…',
+      hint: 'или перетащите',
       run: async () => {
         const lib = await media();
         const [file] = await lib.pickFiles();
@@ -110,6 +112,7 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       },
     });
     if (element.backdrop) items.push({ label: 'Убрать изображение', run: () => actions.update(element.id, { backdrop: null }) });
+    if (element.strokes.length) items.push({ label: 'Стереть рисунок', run: () => actions.update(element.id, { strokes: [] }) });
     if (framesOn(boardId).length) items.push({ label: 'Shot list по кадрам доски', run: () => { const id = makeShotList(boardId); if (id) actions.select([id]); } });
     for (const a of ASPECTS) items.push({ label: `${Math.abs(element.aspect - a.value) < 0.01 ? '● ' : ''}Формат ${a.label}`, run: () => actions.update(element.id, { aspect: a.value }) });
   }
@@ -150,7 +153,7 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
       element.locked ? { label: 'Открепить', run: () => actions.setLocked(ids, false) } : { label: 'Закрепить на месте', run: () => actions.setLocked(ids, true) },
     );
   }
-  items.push('sep', { label: 'Удалить', danger: true, disabled: Boolean(element.locked), run: () => actions.trash(ids) });
+  items.push('sep', { label: 'Удалить', hint: navigator.platform.includes('Mac') ? '⌘⌫' : 'Ctrl+⌫', danger: true, disabled: Boolean(element.locked), run: () => actions.trash(ids) });
   return items;
 }
 
@@ -174,7 +177,8 @@ export function ElementView({
   const zoom = useStore((s) => (s.cameras[s.boardId] ?? currentCamera()).zoom);
   const drag = useDrag((s) => (s.ids.includes(element.id) ? s : null));
   const dropActive = useDrag((s) => s.drop?.kind === 'board' && s.drop.id === (element.type === 'ALIAS' ? element.targetId : element.id));
-  const attachTarget = useDrag((s) => s.drop?.kind === 'attach' && s.drop.id === element.id);
+  const attachTarget = useDrag((s) => (s.drop?.kind === 'attach' || s.drop?.kind === 'frame') && s.drop.id === element.id);
+  const fileTarget = useFrameDrop((s) => s.id === element.id);
   const aliasTarget = useStore((s) => (element.type === 'ALIAS' ? s.elements[element.targetId] : undefined));
   const aliasCount = useStore((s) => (element.type === 'ALIAS' && aliasTarget ? countChildren(s.elements, element.targetId) : 0));
   const [liveWidth, setLiveWidth] = useState<number | null>(null);
@@ -286,7 +290,7 @@ export function ElementView({
   return (
     <div
       ref={ref}
-      className={`el${drag ? ' dragging' : ''}${mode === 'list' ? ' in-list' : ''}${attachTarget ? ' attach-target' : ''}`}
+      className={`el${drag ? ' dragging' : ''}${mode === 'list' ? ' in-list' : ''}${attachTarget || fileTarget ? ' attach-target' : ''}`}
       data-element-id={element.id}
       data-col-item={mode === 'list' ? element.id : undefined}
       style={style}
@@ -307,7 +311,7 @@ export function ElementView({
       {element.type === 'SCRIPT' && <ScriptTile element={element} selected={selected} />}
       {element.type === 'DRAWING' && <DrawingView element={element} selected={selected} />}
       {element.type === 'SKETCH' && <SketchCard element={element} selected={selected} />}
-      {element.type === 'COMMENT' && <CommentCard element={element} selected={selected} />}
+      {element.type === 'COMMENT' && <CommentCard element={element} selected={selected} editing={editing} />}
       {element.type === 'ALIAS' &&
         (aliasTarget?.type === 'BOARD' && aliasTarget.section !== 'TRASH' ? (
           <BoardTile element={aliasTarget} selected={selected} editing={false} dropActive={dropActive} count={aliasCount} compact={mode === 'list'} shortcut />
@@ -315,7 +319,7 @@ export function ElementView({
           <div className="tile broken"><div className="tile-icon" /><div className="tile-title">Доска удалена</div></div>
         ))}
       {element.type !== 'COMMENT' && <CommentMarkers elementId={element.id} />}
-      {element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
+      {element.type !== 'CARD' && element.labels && element.labels.length > 0 && <LabelChips ids={element.labels} />}
       {resizable && <span className="resize" role="presentation" onPointerDown={onResizeDown} />}
       {lineHandle && <span className="line-from" title="Потяните, чтобы провести линию" role="presentation" onPointerDown={(e) => startLineFrom(element.id, e)} />}
     </div>

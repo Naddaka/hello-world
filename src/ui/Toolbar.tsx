@@ -68,7 +68,12 @@ function create(kind: Kind, gx: number, gy: number, clientX?: number, clientY?: 
   else if (kind === 'LINE') actions.select([actions.insert(newLine({ elementId: null, x: gx, y: gy }, { elementId: null, x: gx + 24, y: gy }), boardId, 0, 0, 0)]);
   else if (kind === 'COLOR_SWATCH') addSwatch({ x: gx, y: gy }, parent);
   else if (kind === 'DRAW') startBoardDrawing();
-  else if (kind === 'COMMENT') actions.select([actions.insert(newCommentFields(), parent, gx, gy)]);
+  else if (kind === 'COMMENT') {
+    // A new comment stays open (for a follow-up or a reaction) until the user clicks away.
+    const id = actions.insert(newCommentFields(), parent, gx, gy);
+    actions.select([id]);
+    actions.setEditing(id);
+  }
   else if (kind === 'SKETCH') openSketchEditor(actions.insert(newSketchFields(), parent, gx, gy));
   else if (kind === 'TABLE') {
     const fields = newTableFields();

@@ -44,7 +44,7 @@ export function SketchCard({ element, selected }: { element: SketchElement; sele
       )}
       <div className="sketch-surface" style={{ aspectRatio: `${element.aspect}`, backgroundImage: backdrop ? `url("${backdrop}")` : undefined }}>
         <StrokesSvg strokes={element.strokes} aspect={element.aspect} className="sketch-svg" />
-        {element.strokes.length === 0 && !backdrop && <span className="sketch-empty">Двойной клик — рисовать</span>}
+        {element.strokes.length === 0 && !backdrop && <span className="sketch-empty">Двойной клик — рисовать<br />или перетащите сюда картинку</span>}
       </div>
       {element.caption && <figcaption>{element.caption}</figcaption>}
     </figure>

@@ -126,7 +126,7 @@ const failed = await runSuite('properties', 4341, async ({ page, check }) => {
   check('a label dot opens its palette', (await page.locator('.label-colors .pb-swatch').count()) >= 9);
   await page.locator('.label-colors input[type="color"]').fill('#c026d3');
   await page.screenshot({ path: `${OUT}/94-label-colour.png` });
-  check('a label takes a custom colour', await page.locator('.label-chip', { hasText: 'Срочно' }).first().evaluate((el) => el.style.background.includes('color-mix')));
+  check('a label takes a custom colour', await page.locator('.label-chip', { hasText: 'Срочно' }).first().evaluate((el) => getComputedStyle(el).backgroundColor === 'rgb(192, 38, 211)' && getComputedStyle(el).color === 'rgb(255, 255, 255)'));
   await page.mouse.click(1200, 820);
 
   // An empty Unsorted panel does not stay open on the next board.

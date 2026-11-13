@@ -13,6 +13,7 @@ import { addFiles, addLink } from '../model/importing';
 import { asUrl } from '../model/embeds';
 import { openMenu } from '../ui/ContextMenu';
 import { IconInbox, IconMinus, IconPlus } from '../ui/icons';
+import { dropOnFrame, frameAt, hoverFrame, putUrlInFrame } from '../draw/frameDrop';
 
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -214,17 +215,29 @@ export function Canvas() {
       }}
       onPointerLeave={() => (lastPointer.valid = false)}
       onDragOver={(e) => {
-        if ([...e.dataTransfer.types].some((t) => t === 'Files' || t === 'text/uri-list')) e.preventDefault();
+        if ([...e.dataTransfer.types].some((t) => t === 'Files' || t === 'text/uri-list')) {
+          e.preventDefault();
+          hoverFrame(e.clientX, e.clientY);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!ref.current?.contains(e.relatedTarget as Node | null)) hoverFrame(null);
       }}
       onDrop={(e) => {
         // Browser drops (the desktop app receives file paths through Tauri instead).
         e.preventDefault();
         const { point, parent } = dropPoint(e.clientX, e.clientY);
         const files = [...e.dataTransfer.files];
-        if (files.length) void addFiles(files, point, parent);
-        else {
+        if (files.length) {
+          // A picture dropped on a storyboard frame goes into the frame.
+          const rest = dropOnFrame(e.clientX, e.clientY, files);
+          if (rest.length) void addFiles(rest, point, parent);
+        } else {
           const url = asUrl(e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'));
-          if (url) addLink(url, point, parent);
+          const frame = url ? frameAt(e.clientX, e.clientY) : null;
+          hoverFrame(null);
+          if (url && frame) void putUrlInFrame(frame, url);
+          else if (url) addLink(url, point, parent);
         }
       }}
     >

@@ -84,7 +84,7 @@ const failed = await runSuite('stage 4b', 4339, async ({ page, check }) => {
   // a picture under the drawing
   await first.click({ button: 'right' });
   const chooser = page.waitForEvent('filechooser');
-  await page.click('.ctxmenu >> text=Изображение под рисунком…');
+  await page.click('.ctxmenu >> text=Изображение в кадр…');
   await (await chooser).setFiles(path.resolve('e2e/fixtures/location.png'));
   await page.waitForFunction(() => [...document.querySelectorAll('.frame-card .sketch-surface')].some((el) => el.style.backgroundImage.includes('blob:')));
   check('a frame can have a picture under the drawing', true);
