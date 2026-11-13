@@ -342,8 +342,8 @@ describe('Milanote board icons and custom colours', () => {
 
   const importedBoards = (): ImportedBoard[] =>
     convert()
-      .plan.elements.filter((e) => e.type === 'BOARD')
-      .map((e) => ({ id: e.id, parentId: e.parentId, title: e.type === 'BOARD' ? e.title : '', x: e.x, y: e.y, content: data.elements[e.id.slice(3)]?.content }));
+      .plan.elements.filter((e) => e.type === 'BOARD' || e.type === 'COLUMN')
+      .map((e) => ({ id: e.id, type: e.type as 'BOARD' | 'COLUMN', parentId: e.parentId, title: e.type === 'BOARD' || e.type === 'COLUMN' ? e.title : '', x: e.x, y: e.y, content: data.elements[e.id.slice(3)]?.content }));
   const asMap = (els: ZElement[]) => Object.fromEntries(els.map((e) => [e.id, e])) as unknown as Record<string, Record<string, unknown>>;
 
   it('refreshes icons of imported boards, keeping icons chosen by hand', () => {
@@ -383,6 +383,66 @@ describe('Milanote board icons and custom colours', () => {
     expect(plan.copies).toBe(4);
     // Nothing goes to the boards in the trash.
     expect(plan.changes.some((c) => c.id.startsWith('mn-'))).toBe(false);
+  });
+
+  it('finds boards inside columns when only the content of the import root was copied', () => {
+    // Import: root R › board A (with column C1 › board X "Сцены", column C2 › board Y "Сцены") and board B.
+    const imp = (id: string, type: 'BOARD' | 'COLUMN', parentId: string | null, title: string, x: number, y: number, icon?: unknown): ImportedBoard => ({ id, type, parentId, title, x, y, content: icon ? { icon } : {} });
+    const glyph = (n: string) => ({ type: 'string', string: n });
+    const imported = [
+      imp('mn-R', 'BOARD', 'home', 'Milanote', 0, 0),
+      imp('mn-A', 'BOARD', 'mn-R', 'Проект', 0, 0, glyph('1')),
+      imp('mn-C1', 'COLUMN', 'mn-A', 'День 1', 0, 0),
+      imp('mn-C2', 'COLUMN', 'mn-A', 'День 2', 20, 0),
+      imp('mn-X', 'BOARD', 'mn-C1', 'Сцены', 0, 1, glyph('2')),
+      imp('mn-Y', 'BOARD', 'mn-C2', 'Сцены', 0, 1, glyph('3')),
+      imp('mn-B', 'BOARD', 'mn-R', 'Одинокая', 10, 0, glyph('4')),
+    ];
+    const el = (id: string, type: string, parentId: string | null, title: string, x: number, y: number, section = 'CANVAS') => ({ id, type, parentId, title, x, y, section });
+    const els = Object.fromEntries(
+      [
+        el('home', 'BOARD', null, 'Главная', 0, 0),
+        // The originals, in the trash with their container.
+        el('mn-R', 'BOARD', 'home', 'Milanote', 0, 0, 'TRASH'),
+        el('mn-A', 'BOARD', 'mn-R', 'Проект', 0, 0),
+        el('mn-B', 'BOARD', 'mn-R', 'Одинокая', 10, 0),
+        // Copies of R's content on the home board (no copy of R itself), made before copies remembered anything.
+        el('a2', 'BOARD', 'home', 'Проект', 30, 5),
+        el('c1', 'COLUMN', 'a2', 'День 1', 0, 0),
+        el('c2', 'COLUMN', 'a2', 'День 2', 20, 0),
+        el('x2', 'BOARD', 'c1', 'Сцены', 0, 1),
+        el('y2', 'BOARD', 'c2', 'Сцены', 0, 1),
+        el('b2', 'BOARD', 'home', 'Одинокая', 44, 5),
+      ].map((e) => [e.id, e]),
+    );
+    const found = findImportedBoards(els, imported);
+    expect(found.get('mn-R')).toEqual([]);
+    expect(found.get('mn-A')).toEqual(['a2']);
+    // Same title and place in two columns: the columns tell them apart.
+    expect(found.get('mn-X')).toEqual(['x2']);
+    expect(found.get('mn-Y')).toEqual(['y2']);
+    // A board with nothing inside: its title is the only one of its kind on both sides.
+    expect(found.get('mn-B')).toEqual(['b2']);
+    const plan = planIconRefresh(els, imported, false);
+    expect(Object.fromEntries(plan.changes.map((c) => [c.id, c.icon]))).toEqual({ a2: 'text:1', x2: 'text:2', y2: 'text:3', b2: 'text:4' });
+    expect(plan).toMatchObject({ copies: 4, absent: 0, trashed: 0 });
+  });
+
+  it('skips a board it cannot tell apart', () => {
+    const imported: ImportedBoard[] = [
+      { id: 'mn-P', type: 'BOARD', parentId: null, title: 'Папка', x: 0, y: 0, content: {} },
+      { id: 'mn-Q1', type: 'BOARD', parentId: 'mn-P', title: 'Сцены', x: 0, y: 0, content: { icon: { type: 'string', string: '1' } } },
+      { id: 'mn-Q2', type: 'BOARD', parentId: 'mn-P', title: 'Сцены', x: 0, y: 0, content: { icon: { type: 'string', string: '2' } } },
+    ];
+    const els = {
+      p2: { id: 'p2', type: 'BOARD', parentId: null, section: 'CANVAS', title: 'Папка', x: 0, y: 0 },
+      q1: { id: 'q1', type: 'BOARD', parentId: 'p2', section: 'CANVAS', title: 'Сцены', x: 0, y: 0 },
+      q2: { id: 'q2', type: 'BOARD', parentId: 'p2', section: 'CANVAS', title: 'Сцены', x: 0, y: 0 },
+    };
+    const found = findImportedBoards(els, imported);
+    expect(found.get('mn-P')).toEqual(['p2']);
+    expect(found.get('mn-Q1')).toEqual([]);
+    expect(found.get('mn-Q2')).toEqual([]);
   });
 
   it('says when imported boards are only in the trash', () => {

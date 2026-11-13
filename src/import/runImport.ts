@@ -108,37 +108,38 @@ export async function refreshMilanoteIcons(
 ): Promise<IconRefreshPlan & { updated: number }> {
   // Where each board sits after an import (titles and places find copies made by hand).
   const converted = convertMilanote(data).elements;
-  const imported: ImportedBoard[] = converted
-    .filter((e) => e.type === 'BOARD')
-    .map((e) => ({ id: e.id, parentId: e.parentId, title: e.type === 'BOARD' ? e.title : '', x: e.x, y: e.y, content: data.elements[e.id.slice(MN_PREFIX.length)]?.content }));
+  const imported: ImportedBoard[] = converted.flatMap((e) =>
+    e.type === 'BOARD' || e.type === 'COLUMN'
+      ? [{ id: e.id, type: e.type, parentId: e.parentId, title: e.title, x: e.x, y: e.y, content: data.elements[e.id.slice(MN_PREFIX.length)]?.content }]
+      : [],
+  );
   const plan = planIconRefresh(useStore.getState().elements as unknown as Record<string, Record<string, unknown>>, imported, replace);
   const pictures = plan.changes.filter((c) => c.imageUrl);
+  // One download per picture, shared by all copies of a board.
+  const urls = [...new Set(pictures.map((c) => c.imageUrl!))];
+  const stored = new Map<string, StoredMedia | null>();
   let done = 0;
-  onProgress({ phase: 'media', done, total: pictures.length });
-  const queue = [...pictures];
+  onProgress({ phase: 'media', done, total: urls.length });
+  const queue = [...urls];
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
-      for (let change = queue.shift(); change; change = queue.shift()) {
-        const same = pictures.find((p) => p !== change && p.imageUrl === change.imageUrl && p.icon);
-        if (same) {
-          // Several copies of one board share one downloaded picture.
-          change.icon = same.icon;
-          done++;
-          continue;
-        }
-        const stored = await storeJob({ key: change.id, url: change.imageUrl!, name: 'иконка.png', role: 'board-icon', elementId: change.id });
-        if (stored) change.icon = `media:${stored.id}.${stored.ext}`;
-        else {
-          plan.exact--;
-          plan.missing++;
-          if (!plan.shapes.includes('image: не скачалась')) plan.shapes.push('image: не скачалась');
-        }
+      for (let url = queue.shift(); url; url = queue.shift()) {
+        stored.set(url, await storeJob({ key: url, url, name: 'иконка.png', role: 'board-icon', elementId: '' }));
         done++;
-        onProgress({ phase: 'media', done, total: pictures.length });
+        onProgress({ phase: 'media', done, total: urls.length });
       }
     }),
   );
-  onProgress({ phase: 'saving', done, total: pictures.length });
+  for (const change of pictures) {
+    const got = stored.get(change.imageUrl!);
+    if (got) change.icon = `media:${got.id}.${got.ext}`;
+    else {
+      plan.exact--;
+      plan.missing++;
+      if (!plan.shapes.includes('image: не скачалась')) plan.shapes.push('image: не скачалась');
+    }
+  }
+  onProgress({ phase: 'saving', done, total: urls.length });
   const elements = useStore.getState().elements;
   const ops = plan.changes.filter((c) => c.icon && elements[c.id]).map((c) => updateOp(elements[c.id], { icon: c.icon }));
   // Icons are not edits: boards keep their "changed" time (recent lists stay in order).

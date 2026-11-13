@@ -138,6 +138,8 @@ export function boardIconFrom(content: unknown): { match: IconMatch | null; pres
 export interface ImportedBoard {
   /** Its id in Zadum ("mn-<Milanote id>"). */
   id: string;
+  /** Boards, and the columns between them (boards often sit in columns). */
+  type?: 'BOARD' | 'COLUMN';
   parentId: string | null;
   title: string;
   x: number;
@@ -157,60 +159,84 @@ export function inTrash(elements: Els, id: string): boolean {
 /**
  * The live boards in Zadum that stand for each imported board: the imported
  * board itself, copies that remember it (importId), and copies made before
- * they did, found by structure — the same title and place under a board that
- * already matched, and at the top a board with the same title and mostly the
- * same boards inside. Boards in the trash do not count.
+ * they did, found by structure. Columns are matched along the way, since most
+ * boards sit in one: under a container that already matched, the child of the
+ * same kind with the same title and place, or the only one with that title.
+ * An imported board whose parent found nothing is matched on its own: a live
+ * board of the same title holding mostly the same boards, or the only live
+ * board with that title. Ambiguous cases are skipped, never guessed, and
+ * nothing in the trash counts.
  */
 export function findImportedBoards(elements: Els, imported: ImportedBoard[]): Map<string, string[]> {
+  const kindOf = (b: ImportedBoard) => b.type ?? 'BOARD';
   const found = new Map<string, string[]>(imported.map((b) => [b.id, []]));
   const claimed = new Set<string>();
-  const live = Object.values(elements).filter((e) => e.type === 'BOARD' && !inTrash(elements, str(e.id)));
-  const childBoards = new Map<string, Raw[]>();
-  for (const e of live) {
-    const list = childBoards.get(str(e.parentId)) ?? [];
-    list.push(e);
-    childBoards.set(str(e.parentId), list);
-  }
+  const live = Object.values(elements).filter((e) => (e.type === 'BOARD' || e.type === 'COLUMN') && !inTrash(elements, str(e.id)));
+  const liveKids = new Map<string, Raw[]>();
+  for (const e of live) liveKids.set(str(e.parentId), [...(liveKids.get(str(e.parentId)) ?? []), e]);
   const add = (importId: string, id: string) => {
-    if (claimed.has(id)) return;
+    if (claimed.has(id)) return false;
     claimed.add(id);
     found.get(importId)?.push(id);
+    return true;
   };
-  for (const b of imported) if (elements[b.id] && !inTrash(elements, b.id)) add(b.id, b.id);
-  for (const e of live) if (typeof e.importId === 'string' && found.has(e.importId)) add(e.importId, str(e.id));
-
   const byId = new Map(imported.map((b) => [b.id, b]));
+  for (const b of imported) if (elements[b.id] && !inTrash(elements, b.id)) add(b.id, b.id);
+  for (const e of live) if (typeof e.importId === 'string' && byId.has(e.importId)) add(e.importId, str(e.id));
+
   const kids = new Map<string, ImportedBoard[]>();
   for (const b of imported) if (b.parentId && byId.has(b.parentId)) kids.set(b.parentId, [...(kids.get(b.parentId) ?? []), b]);
-  const titleOf = (e: Raw) => str(e.title).trim();
+  const title = (v: unknown) => str(v).trim();
+  /** Titles of the nearest boards inside (looking through columns). */
+  const boardsInsideImported = (id: string): string[] => (kids.get(id) ?? []).flatMap((k) => (kindOf(k) === 'BOARD' ? [title(k.title)] : boardsInsideImported(k.id)));
+  const boardsInsideLive = (id: string): string[] => (liveKids.get(id) ?? []).flatMap((k) => (k.type === 'BOARD' ? [title(k.title)] : boardsInsideLive(str(k.id))));
+  const importedTitleCount = new Map<string, number>();
+  for (const b of imported) if (kindOf(b) === 'BOARD') importedTitleCount.set(title(b.title), (importedTitleCount.get(title(b.title)) ?? 0) + 1);
 
-  // Tops of the imported tree with no live counterpart: a board of the same title holding mostly the same boards.
-  for (const top of imported.filter((b) => !b.parentId || !byId.has(b.parentId))) {
-    if (found.get(top.id)!.length) continue;
-    const wanted = new Set((kids.get(top.id) ?? []).map((k) => k.title.trim()));
-    if (!wanted.size) continue;
-    for (const e of live) {
-      if (claimed.has(str(e.id)) || titleOf(e) !== top.title.trim()) continue;
-      const inside = (childBoards.get(str(e.id)) ?? []).map(titleOf);
-      const shared = inside.filter((t) => wanted.has(t)).length;
-      if (shared * 2 >= wanted.size) add(top.id, str(e.id));
+  /** Under the counterparts of its parent: the same kind, title and place — or the only one of that kind and title. */
+  const matchUnderParent = (b: ImportedBoard): boolean => {
+    let progress = false;
+    for (const p of found.get(b.parentId ?? '') ?? []) {
+      if (found.get(b.id)!.some((id) => str(elements[id]?.parentId) === p)) continue;
+      const options = (liveKids.get(p) ?? []).filter((e) => e.type === kindOf(b) && !claimed.has(str(e.id)) && title(e.title) === title(b.title));
+      const placed = options.filter((e) => e.x === b.x && e.y === b.y);
+      const pick = placed.length === 1 ? placed[0] : placed.length === 0 && options.length === 1 ? options[0] : undefined;
+      if (pick && add(b.id, str(pick.id))) progress = true;
     }
-  }
+    return progress;
+  };
 
-  // Down the tree: under each counterpart of the parent, the board with the same title and place.
-  const queue = imported.filter((b) => !b.parentId || !byId.has(b.parentId)).map((b) => b.id);
-  for (let i = 0; i < queue.length; i++) {
-    const parent = queue[i];
-    for (const child of kids.get(parent) ?? []) {
-      queue.push(child.id);
-      for (const p of found.get(parent) ?? []) {
-        const options = (childBoards.get(p) ?? []).filter((e) => !claimed.has(str(e.id)) && titleOf(e) === child.title.trim());
-        if (found.get(child.id)!.some((id) => str(elements[id]?.parentId) === p)) continue;
-        const exact = options.find((e) => e.x === child.x && e.y === child.y);
-        const pick = exact ?? (options.length === 1 ? options[0] : undefined);
-        if (pick) add(child.id, str(pick.id));
+  /** A board matched on its own, when its parent found nothing. */
+  const matchAlone = (b: ImportedBoard): boolean => {
+    const t = title(b.title);
+    const free = live.filter((e) => e.type === 'BOARD' && !claimed.has(str(e.id)) && title(e.title) === t);
+    const wanted = new Set(boardsInsideImported(b.id));
+    if (wanted.size) {
+      const holding = free.filter((e) => boardsInsideLive(str(e.id)).filter((x) => wanted.has(x)).length * 2 >= wanted.size);
+      if (holding.length) return holding.map((e) => add(b.id, str(e.id))).some(Boolean);
+    }
+    // No boards inside to compare: only a title that is unique on both sides.
+    if (free.length === 1 && importedTitleCount.get(t) === 1 && !live.some((e) => e.type === 'BOARD' && claimed.has(str(e.id)) && title(e.title) === t)) return add(b.id, str(free[0].id));
+    return false;
+  };
+
+  // Parents first (the import lists children after their parents, but do not rely on it).
+  const depth = (b: ImportedBoard): number => {
+    let d = 0;
+    for (let p = b.parentId ? byId.get(b.parentId) : undefined; p && d < 200; p = p.parentId ? byId.get(p.parentId) : undefined) d++;
+    return d;
+  };
+  const ordered = [...imported].sort((a, b) => depth(a) - depth(b));
+  for (let round = 0; round < 6; round++) {
+    let progress = false;
+    for (const b of ordered) {
+      if (b.parentId && byId.has(b.parentId) && found.get(b.parentId)!.length) {
+        if (matchUnderParent(b)) progress = true;
+      } else if (kindOf(b) === 'BOARD' && !found.get(b.id)!.length) {
+        if (matchAlone(b)) progress = true;
       }
     }
+    if (!progress) break;
   }
   return found;
 }
@@ -243,6 +269,7 @@ export function planIconRefresh(elements: Els, imported: ImportedBoard[], replac
   const plan: IconRefreshPlan = { changes: [], exact: 0, approx: 0, missing: 0, shapes: [], kept: 0, absent: 0, trashed: 0, copies: 0 };
   const found = findImportedBoards(elements, imported);
   for (const board of imported) {
+    if ((board.type ?? 'BOARD') !== 'BOARD') continue;
     const { match, present, shape } = boardIconFrom(board.content);
     if (!present) continue;
     const targets = found.get(board.id) ?? [];

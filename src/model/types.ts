@@ -92,6 +92,8 @@ export interface ColumnElement extends ElementBase {
   type: 'COLUMN';
   title: string;
   collapsed: boolean;
+  /** On a copy of an imported column: the column it was copied from ("mn-<id>"). */
+  importId?: string;
 }
 
 export interface TaskItem {
