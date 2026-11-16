@@ -130,6 +130,8 @@ export interface ImageElement extends ElementBase {
   showCaption: boolean;
   /** Drawing over the image, in units of 1000 per image width. */
   annotations?: Stroke[];
+  /** What is in the picture and the text on it, as described by AI; makes the image findable by search. */
+  aiText?: string;
 }
 
 export type MarkerColor = 'blue' | 'red' | 'green' | 'yellow' | 'purple';

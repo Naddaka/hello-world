@@ -27,7 +27,7 @@ export function elementText(e: ZElement): string {
     case 'TASK_LIST':
       return [e.showTitle ? e.title : '', ...e.items.map((i) => `${i.done ? '☑' : '☐'} ${i.text}`)].filter(Boolean).join('\n');
     case 'IMAGE':
-      return [e.caption, e.name].filter(Boolean).join('\n');
+      return [e.caption, e.name, e.aiText].filter(Boolean).join('\n');
     case 'FILE':
       return e.name;
     case 'LINK':

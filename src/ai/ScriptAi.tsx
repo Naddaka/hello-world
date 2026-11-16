@@ -11,7 +11,7 @@ import { freeSpot } from '../canvas/placement';
 import { newDocumentFields } from '../doc/DocumentView';
 import { IconSparkle } from '../ui/icons';
 import { openAiJob } from './AiDialog';
-import { Markdown } from './Markdown';
+import { Markdown } from './MarkdownView';
 import { markdownToDoc } from './markdown';
 import { ask, type AiAnswer } from './run';
 import { costOf, openAiSettings } from './settings';

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { IconSparkle } from '../ui/icons';
-import { Markdown } from './Markdown';
+import { Markdown } from './MarkdownView';
 import { AiError, ask, estimate, roughTokens, toAiError, type AiAnswer, type AiHooks, type AiRequest } from './run';
 import { modelInfo, money, openAiSettings, refreshKeys, setAiSettings, useAiSettings } from './settings';
 
@@ -16,6 +16,8 @@ export interface AiJob<T> {
   /** What leaves the computer, in plain words: «сценарий „Маяк“ целиком». */
   sends: string;
   request: AiRequest;
+  /** For jobs made of many requests (a batch of pictures): the rough total input, shown instead of counting `request`. */
+  approxTokens?: number;
   /** A custom runner (an agent with tools); by default one question with `request`. */
   run?: (hooks: AiHooks & { onStatus: (status: string) => void }) => Promise<AiAnswer<T>>;
   /** The proposal with its own accept buttons. */
@@ -86,10 +88,11 @@ function Job({ job }: { job: AiJob<any> }) {
     setPhase({ kind: 'checking' });
     const keys = await refreshKeys();
     if (!keys.anthropic) return setPhase({ kind: 'no-key' });
-    const size = roughTokens(`${job.request.system}${job.request.context ?? ''}${job.request.prompt}`) + (job.request.images?.length ?? 0) * 1500;
+    const size = job.approxTokens ?? roughTokens(`${job.request.system}${job.request.context ?? ''}${job.request.prompt}`) + (job.request.images?.length ?? 0) * 1500;
     const first = !useAiSettings.getState().consent;
     if (!first && size < CONFIRM_TOKENS) return void start();
     if (size < CONFIRM_TOKENS) return setPhase({ kind: 'confirm', tokens: null, cost: null });
+    if (job.approxTokens) return setPhase({ kind: 'confirm', tokens: job.approxTokens, cost: (job.approxTokens * modelInfo(useAiSettings.getState().model).input) / 1_000_000 });
     try {
       const counted = await estimate(job.request);
       setPhase({ kind: 'confirm', tokens: counted.tokens, cost: counted.cost });
@@ -143,7 +146,7 @@ function Job({ job }: { job: AiJob<any> }) {
             <p>В Anthropic (Claude) будет отправлено: <b>{job.sends}</b>. Больше ничего из приложения не уходит.</p>
             {phase.tokens !== null && phase.cost !== null && (
               <p className="ai-price">
-                Объём: {phase.tokens.toLocaleString('ru-RU')} токенов. Чтение обойдётся {money(phase.cost)}, плюс ответ. Модель: {modelInfo(model).label}.
+                Объём: {job.approxTokens ? 'около ' : ''}{phase.tokens.toLocaleString('ru-RU')} токенов. Чтение обойдётся {money(phase.cost)}, плюс ответ. Модель: {modelInfo(model).label}.
               </p>
             )}
             <p className="side-hint" style={{ padding: 0 }}>Ответ появится как предложение — в приложении ничего не изменится, пока вы его не примете.</p>

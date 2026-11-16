@@ -907,3 +907,17 @@ svg.drawing.selected { outline: 2px dashed var(--accent); outline-offset: 4px; b
 .ai-script-preview p[data-kind='parenthetical'] { margin: 0 0 0 26%; }
 .ai-script-preview p[data-kind='transition'] { text-align: right; text-transform: uppercase; }
 .ai-script-preview .sub { color: var(--muted); font-family: var(--font); }
+
+.ai-ask { width: 100%; resize: vertical; min-height: 76px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--field); color: var(--ink); font: 14px/1.45 var(--font); outline: none; user-select: text; }
+.ai-ask:focus { border-color: var(--accent); }
+.ai-question { margin: 0 0 6px !important; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); font-weight: 500; }
+.ai-ask-form { display: flex; gap: 8px; margin-top: 12px; }
+.ai-ask-form input { flex: 1 1 auto; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); color: var(--ink); font: 13px var(--font); outline: none; }
+.ai-ask-form input:focus { border-color: var(--accent); }
+.ai-ask-form .btn-accent { height: 34px; }
+.ai-md a[href^='https://zadum.local/card/'] { text-decoration: none; padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); font-size: 12px; white-space: nowrap; cursor: pointer; }
+.ai-md a[href^='https://zadum.local/card/']:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+.ai-group-title { width: 100%; height: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ink); font: 600 13px var(--font); outline: none; }
+.ai-group-title:hover, .ai-group-title:focus { border-color: var(--line); background: var(--field); }
+.ai-group-notes { list-style: disc; margin: 2px 0 4px 26px; padding: 0; color: var(--ink-2); }
+.ai-group-notes li { display: list-item; padding: 1px 0; border: 0; font-size: 12.5px; }

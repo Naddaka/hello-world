@@ -29,6 +29,7 @@ import { exportTableCsv } from '../table/csv';
 import { isReviewable, openReview } from '../video/VideoReview';
 import { descendants } from '../model/store';
 import { useFrameDrop } from '../draw/frameDrop';
+import { describeImages } from '../ai/boardAi';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -120,6 +121,7 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
     items.push({ label: 'Рисовать на изображении', run: () => openSketchEditor(element.id) });
     if (element.annotations?.length) items.push({ label: 'Убрать рисунок', run: () => actions.update(element.id, { annotations: [] }) });
     items.push({ label: element.showCaption ? 'Скрыть подпись' : 'Подпись', run: () => (element.showCaption ? actions.update(element.id, { showCaption: false }) : actions.setEditing(element.id)) });
+    items.push({ label: element.aiText ? 'ИИ: описать заново' : 'ИИ: описать картинку', hint: 'для поиска', run: () => describeImages([element]) });
     items.push({ label: 'Открыть файл', run: async () => (await media()).openMedia(element.media) });
     items.push({ label: 'Показать в Finder', run: async () => (await media()).revealMedia(element.media) });
   }

@@ -24,6 +24,7 @@ import { PropertiesBar } from './canvas/PropertiesBar';
 import { scheduleMediaCleanup } from './storage/mediaCleanup';
 import { dropOnFrame, hoverFrame } from './draw/frameDrop';
 import { AiDialog } from './ai/AiDialog';
+import { AskBoardsDialog } from './ai/boardAi';
 import { AiSettingsDialog } from './ai/AiSettings';
 
 function Toast() {
@@ -123,6 +124,7 @@ export function App() {
       <ScriptOverlay />
       <ShotDialog />
       <VideoReviewOverlay />
+      <AskBoardsDialog />
       <AiDialog />
       <AiSettingsDialog />
       <ConfirmDialog />
