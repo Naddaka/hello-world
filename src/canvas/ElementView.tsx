@@ -30,6 +30,7 @@ import { isReviewable, openReview } from '../video/VideoReview';
 import { descendants } from '../model/store';
 import { useFrameDrop } from '../draw/frameDrop';
 import { describeImages } from '../ai/boardAi';
+import { openFrameImage } from '../ai/FrameImage';
 
 /**
  * Where an element is drawn: absolutely positioned on the canvas, or in the
@@ -112,6 +113,7 @@ function elementMenu(element: ZElement, ids: string[], mode: ViewMode, at: { x: 
         actions.update(element.id, { backdrop: { id: info.id, ext: info.ext } });
       },
     });
+    items.push({ label: 'ИИ: сгенерировать кадр…', hint: 'по описанию', run: () => openFrameImage(element.id) });
     if (element.backdrop) items.push({ label: 'Убрать изображение', run: () => actions.update(element.id, { backdrop: null }) });
     if (element.strokes.length) items.push({ label: 'Стереть рисунок', run: () => actions.update(element.id, { strokes: [] }) });
     if (framesOn(boardId).length) items.push({ label: 'Shot list по кадрам доски', run: () => { const id = makeShotList(boardId); if (id) actions.select([id]); } });

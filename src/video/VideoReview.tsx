@@ -11,6 +11,7 @@ import { shortcutKey } from '../ui/keys';
 import { freeSpot } from '../canvas/placement';
 import { confirmDialog } from '../ui/Confirm';
 import { setPosterFromFrame } from './posters';
+import { reviewTasksAsIs, reviewTasksWithAi } from '../ai/reviewAi';
 
 /** Which video or audio file is open for review. */
 export const useReview = create<{ id: string | null }>(() => ({ id: null }));
@@ -88,6 +89,7 @@ function Review({ file }: { file: FileElement }) {
   const [draft, setDraft] = useState('');
   const [color, setColor] = useState<MarkerColor>('blue');
   const [menu, setMenu] = useState(false);
+  const [tasksMenu, setTasksMenu] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const fps = file.fps ?? DEFAULT_FPS;
   const df = !!file.dropFrame && canDropFrame(fps);
@@ -169,8 +171,10 @@ function Review({ file }: { file: FileElement }) {
       const typing = (e.target as HTMLElement).closest('textarea, input, select');
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (menu) setMenu(false);
-        else if (typing) (e.target as HTMLElement).blur();
+        if (menu || tasksMenu) {
+          setMenu(false);
+          setTasksMenu(false);
+        } else if (typing) (e.target as HTMLElement).blur();
         else close();
         return;
       }
@@ -275,7 +279,41 @@ function Review({ file }: { file: FileElement }) {
           </button>
         )}
         <div style={{ position: 'relative' }}>
-          <button type="button" className="btn-accent" aria-expanded={menu} disabled={!markers.length} onClick={() => setMenu(!menu)}>
+          <button type="button" className="ibtn wide" aria-expanded={tasksMenu} disabled={!markers.length} onClick={() => { setMenu(false); setTasksMenu(!tasksMenu); }}>
+            В задачи ▾
+          </button>
+          {tasksMenu && (
+            <div className="popover panel" style={{ left: 'auto', right: 0, width: 290 }} role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className="menu-item menu-item-2"
+                onClick={() => {
+                  setTasksMenu(false);
+                  reviewTasksAsIs(file, markers, tc);
+                }}
+              >
+                <span>Список задач как есть</span>
+                <small>Каждый комментарий — задача с таймкодом, на доске рядом с видео</small>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="menu-item menu-item-2"
+                onClick={() => {
+                  setTasksMenu(false);
+                  video.current?.pause();
+                  reviewTasksWithAi(file, markers, tc);
+                }}
+              >
+                <span>Список правок с ИИ</span>
+                <small>Объединит комментарии об одном и том же и сформулирует как действия</small>
+              </button>
+            </div>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <button type="button" className="btn-accent" aria-expanded={menu} disabled={!markers.length} onClick={() => { setTasksMenu(false); setMenu(!menu); }}>
             Экспорт маркеров
           </button>
           {menu && (

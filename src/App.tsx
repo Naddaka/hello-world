@@ -24,6 +24,7 @@ import { PropertiesBar } from './canvas/PropertiesBar';
 import { scheduleMediaCleanup } from './storage/mediaCleanup';
 import { dropOnFrame, hoverFrame } from './draw/frameDrop';
 import { AiDialog } from './ai/AiDialog';
+import { FrameImageDialog } from './ai/FrameImage';
 import { AskBoardsDialog } from './ai/boardAi';
 import { AiSettingsDialog } from './ai/AiSettings';
 
@@ -125,6 +126,7 @@ export function App() {
       <ShotDialog />
       <VideoReviewOverlay />
       <AskBoardsDialog />
+      <FrameImageDialog />
       <AiDialog />
       <AiSettingsDialog />
       <ConfirmDialog />
