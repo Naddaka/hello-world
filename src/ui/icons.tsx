@@ -60,3 +60,4 @@ export const IconTag = make(<><path d="M3 12V4h8l10 10-8 8z" /><circle cx="7.5" 
 export const IconSketch = make(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 15c2-4 4 1 6-2s3-2 4-1" /></>);
 export const IconComment = make(<path d="M4 5h16v11H9l-5 4z" />);
 export const IconShortcut = make(<><path d="M9 15l6-6" /><path d="M10 9h5v5" /></>, { stroke: 2.4 });
+export const IconSparkle = make(<><path d="M10 3l1.7 4.8L16.5 9.5l-4.8 1.7L10 16l-1.7-4.8L3.5 9.5l4.8-1.7z" /><path d="M18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9z" /></>, { stroke: 1.7 });

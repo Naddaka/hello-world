@@ -16,6 +16,7 @@ import { exportScript, type ScriptExportFormat } from './print';
 import { KIND_LABELS, KIND_ORDER, NEXT_ON_ENTER, TAB_NEXT, blocksToDoc, currentLine, docToBlocks, scriptExtensions, setKind, showBreakdown, showPageBreaks, toggleDual } from './schema';
 import { CATEGORIES, addItem, itemSceneCounts, renameItem } from './breakdown';
 import { makeBreakdownTable, makeStoryboard } from './storyboard';
+import { ScriptAiMenu } from '../ai/ScriptAi';
 
 export function newScriptFields(blocks?: ScriptBlock[], titlePage?: ScriptTitlePage, title = 'Новый сценарий') {
   return {
@@ -198,7 +199,7 @@ type Side = 'scenes' | 'characters' | 'breakdown';
 function ScriptEditorView({ element }: { element: ScriptElement }) {
   const [title, setTitle] = useState(element.title);
   const [blocks, setBlocks] = useState(element.blocks);
-  const [menu, setMenu] = useState<'export' | 'board' | null>(null);
+  const [menu, setMenu] = useState<'export' | 'board' | 'ai' | null>(null);
   const [selText, setSelText] = useState('');
   const [category, setCategory] = useState<BreakdownCategory>('props');
   const [newItem, setNewItem] = useState('');
@@ -453,6 +454,19 @@ function ScriptEditorView({ element }: { element: ScriptElement }) {
           Открыть…
         </button>
         <input ref={fileInput} type="file" accept=".fountain,.spmd,.fdx,.txt" hidden onChange={(e) => void importFile(e.target.files?.[0])} />
+        <ScriptAiMenu
+          editor={editor}
+          script={current}
+          stats={stats}
+          getBreakdown={() => latest.current.breakdown}
+          setBreakdown={(next) => {
+            setBreakdown(next);
+            setSide('breakdown');
+          }}
+          flush={() => save({}, true)}
+          open={menu === 'ai'}
+          setOpen={(o) => setMenu(o ? 'ai' : null)}
+        />
         <div style={{ position: 'relative' }}>
           <button type="button" className="ibtn wide" aria-expanded={menu === 'board'} onClick={() => setMenu(menu ? null : 'board')}>
             На доску ▾

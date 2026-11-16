@@ -23,6 +23,8 @@ import { ConfirmDialog } from './ui/Confirm';
 import { PropertiesBar } from './canvas/PropertiesBar';
 import { scheduleMediaCleanup } from './storage/mediaCleanup';
 import { dropOnFrame, hoverFrame } from './draw/frameDrop';
+import { AiDialog } from './ai/AiDialog';
+import { AiSettingsDialog } from './ai/AiSettings';
 
 function Toast() {
   const toast = useStore((s) => s.toast);
@@ -121,6 +123,8 @@ export function App() {
       <ScriptOverlay />
       <ShotDialog />
       <VideoReviewOverlay />
+      <AiDialog />
+      <AiSettingsDialog />
       <ConfirmDialog />
       <MilanoteImportDialog />
     </div>

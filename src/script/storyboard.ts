@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
-import { commit, useStore, canvasChildren, columnChildren } from '../model/store';
-import type { Op } from '../model/ops';
+import { asOneStep, commit, useStore, canvasChildren, columnChildren } from '../model/store';
+import { updateOp, type Op } from '../model/ops';
 import { DEFAULT_WIDTH, GRID, type ScriptElement, type ShotInfo, type SketchElement, type TableElement, type ZElement } from '../model/types';
 import { FORMATS, eighthsLabel, scriptStats } from './layout';
 import { breakdownTable } from './breakdown';
@@ -75,6 +75,74 @@ export function makeStoryboard(script: ScriptElement, framesPerScene = 3): strin
   });
   commit(ops);
   return boardId;
+}
+
+/** The storyboard board made for a script, if it is still next to it. */
+export function findStoryboard(script: ScriptElement): string | null {
+  const elements = useStore.getState().elements;
+  const parentId = script.parentId ?? useStore.getState().boardId;
+  const title = `Раскадровка · ${script.title}`;
+  return Object.values(elements).find((e) => e.type === 'BOARD' && e.parentId === parentId && e.section !== 'TRASH' && e.title === title)?.id ?? null;
+}
+
+export interface PlannedShot {
+  size: string;
+  angle: string;
+  movement: string;
+  lens: string;
+  duration: number;
+  description: string;
+}
+
+const isBlankFrame = (f: SketchElement) => !f.strokes.length && !f.backdrop && !f.caption.trim() && !!f.shot && !f.shot.size && !f.shot.angle && !f.shot.movement && !f.shot.lens && f.shot.duration == null;
+
+/**
+ * Puts a planned list of shots for one scene on the script's storyboard (made
+ * if there is none): blank frames of the scene are filled first, the rest are
+ * added to the right, numbered after the frames that already hold something.
+ * The board's shot list is rebuilt. One undo step. Returns the board.
+ */
+export function placeShots(script: ScriptElement, sceneNumber: number, shots: PlannedShot[]): string | null {
+  if (!shots.length) return null;
+  return asOneStep(() => {
+    const stats = scriptStats(script.blocks, FORMATS[script.format]);
+    const row = Math.max(0, stats.scenes.findIndex((s) => s.number === sceneNumber));
+    const boardId = findStoryboard(script) ?? makeStoryboard(script, 0);
+    if (!boardId) return null;
+    const now = Date.now();
+    const scene = String(sceneNumber);
+    const mine = framesOn(boardId).filter((f) => f.shot!.scene === scene);
+    const kept = mine.filter((f) => !isBlankFrame(f));
+    const blanks = mine.filter(isBlankFrame).sort((a, b) => a.y - b.y || a.x - b.x);
+    const y = mine.length ? Math.min(...mine.map((f) => f.y)) : row * ROW_HEIGHT;
+    let nextX = mine.length ? Math.max(...mine.map((f) => f.x + f.width)) + FRAME_GAP : 33;
+    let z = Math.max(0, ...canvasChildren(useStore.getState().elements, boardId).map((e) => e.z)) + 1;
+    const ops: Op[] = [];
+    shots.forEach((shot, i) => {
+      const info: ShotInfo = { scene, shot: String(kept.length + i + 1), size: shot.size, angle: shot.angle, movement: shot.movement, lens: shot.lens, duration: shot.duration || null };
+      const blank = blanks[i];
+      if (blank) ops.push(updateOp(blank, { shot: info, caption: shot.description }));
+      else {
+        ops.push({ kind: 'create', element: { id: nanoid(), parentId: boardId, section: 'CANVAS', x: nextX, y, z: z++, width: FRAME_WIDTH, createdAt: now, updatedAt: now, type: 'SKETCH', strokes: [], aspect: 16 / 9, caption: shot.description, shot: info } });
+        nextX += FRAME_WIDTH + FRAME_GAP;
+      }
+    });
+    // Blank frames the plan did not need would be numbered out of order: remove them.
+    for (const blank of blanks.slice(shots.length)) ops.push({ kind: 'delete', element: blank });
+    commit(ops);
+    refreshShotList(boardId);
+    return boardId;
+  });
+}
+
+/** Rebuilds the board's shot list table from its frames, or makes one. */
+export function refreshShotList(boardId: string): string | null {
+  const elements = useStore.getState().elements;
+  const table = canvasChildren(elements, boardId).find((e): e is TableElement => e.type === 'TABLE' && e.cells[0]?.[0] === SHOT_LIST_HEADER[0] && e.cells[0]?.[1] === SHOT_LIST_HEADER[1]);
+  if (!table) return makeShotList(boardId);
+  const frames = framesOn(boardId);
+  commit([updateOp(table, tableFields(shotListCells(frames), true))]);
+  return table.id;
 }
 
 /** A new frame right after `frame`, numbered as the next shot of the same scene. */

@@ -9,6 +9,8 @@ import { exportBoard, type BoardExportFormat } from '../doc/boardExport';
 import { openMilanoteImport } from '../import/MilanoteImport';
 import { IconBoard, IconHome, IconMoon, IconPresent, IconRedo, IconSearch, IconSun, IconUndo } from './icons';
 import { boardTint, isHexColor, textOn } from './colors';
+import { BoardAiMenu } from '../ai/BoardAiMenu';
+import { boardAiItems } from '../ai/boardAi';
 
 const macOverlay = isTauri() && /Macintosh/.test(navigator.userAgent);
 // Full-window views (documents) also need room for the window buttons.
@@ -108,6 +110,7 @@ export function TopBar() {
           <IconPresent size={17} />
         </button>
       </div>
+      <BoardAiMenu items={boardAiItems} />
       <button type="button" className="ibtn wide" title="Импорт из Milanote" onClick={openMilanoteImport}>
         Импорт
       </button>

@@ -129,6 +129,15 @@ pub async fn save_media_bytes(app: AppHandle, request: tauri::ipc::Request<'_>) 
     describe(&target, id, ext, name)
 }
 
+/// Stores bytes produced inside the app (a generated picture) in the media library.
+pub fn store_bytes(app: &AppHandle, bytes: &[u8], name: &str, content_type: &str) -> Result<MediaInfo, String> {
+    let ext = choose_extension(name, content_type);
+    let id = new_id();
+    let target = media_dir(app)?.join(format!("{id}.{ext}"));
+    std::fs::write(&target, bytes).map_err(|e| e.to_string())?;
+    describe(&target, id, ext, name.to_string())
+}
+
 /// Downloads a remote file (a link preview image) into the media library.
 #[tauri::command]
 pub async fn import_media_url(app: AppHandle, url: String) -> Result<MediaInfo, String> {

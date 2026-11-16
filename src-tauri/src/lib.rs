@@ -1,3 +1,4 @@
+mod ai;
 mod links;
 mod media;
 mod milanote;
@@ -40,6 +41,7 @@ pub fn run() {
                 .build(),
         )
         .manage(milanote::ExportState::default())
+        .manage(ai::AiState::default())
         // Closing the main window quits the app (with the Milanote sign-in window, if open),
         // as on Cmd+Q; the page saves its data before it lets the window close.
         .on_window_event(|window, event| {
@@ -61,6 +63,11 @@ pub fn run() {
             media::write_file,
             media::print_window,
             links::link_preview,
+            ai::ai_key_status,
+            ai::ai_set_key,
+            ai::ai_fetch,
+            ai::ai_cancel,
+            ai::ai_generate_image,
             milanote::milanote_open,
             milanote::milanote_run,
             milanote::milanote_close,

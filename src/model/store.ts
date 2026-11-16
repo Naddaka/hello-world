@@ -164,13 +164,38 @@ function now() {
   return Date.now();
 }
 
+/** Changes made inside `asOneStep`, to be recorded together. */
+let group: Transaction | null = null;
+
+/**
+ * Runs several changes as one undo step (an accepted AI proposal that creates
+ * a board, fills it and adds a table is undone with a single ⌘Z).
+ */
+export function asOneStep<T>(run: () => T): T {
+  if (group) return run();
+  group = [];
+  try {
+    return run();
+  } finally {
+    const tx = group;
+    group = null;
+    if (tx.length) {
+      history.record(tx);
+      set({ canUndo: history.canUndo, canRedo: history.canRedo });
+    }
+  }
+}
+
 /** Applies a transaction, records it for undo (unless `record` is false) and persists it, marking changed elements as edited now. */
 export function commit(tx: Transaction, record = true, stamp = true) {
   if (tx.length === 0) return;
   // `stamp` false: a cosmetic change (board icons from an import) that should not count as an edit.
   const stamped = stamp ? tx.map((op) => (op.kind === 'update' ? { ...op, after: { ...op.after, updatedAt: now() } } : op)) : tx;
   const { elements, changed, removed } = applyTransaction(get().elements, stamped);
-  if (record) history.record(stamped);
+  if (record) {
+    if (group) group.push(...stamped);
+    else history.record(stamped);
+  }
   set({ elements, canUndo: history.canUndo, canRedo: history.canRedo });
   schedulePersist(changed, removed);
 }
